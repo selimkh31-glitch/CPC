@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
-import { USER_PUBLIC_COLUMNS, type GroupMemberRow, type GroupRow } from "@/lib/types";
+import { callEdgeFunction } from "@/lib/api/edge";
+import { USER_PUBLIC_COLUMNS, type GroupMemberRow, type GroupRole, type GroupRow } from "@/lib/types";
 
 /**
- * Groupes sociaux — fondation (mission "GROUPES SOCIAUX", section 12).
- * Backend + RLS + hooks livrés cette session ; AUCUN écran ne les consomme
- * encore (voir rapport, section "Groups" — "Groupes, phase 2 : écrans").
- * Toute écriture "simple" (créer, rejoindre, quitter) passe par un appel
- * client direct, protégé par RLS (supabase/migrations/0017_group_rls.sql) —
- * même convention que club_sessions/reviews. Le changement de rôle d'un
- * membre (promotion ADMIN) n'a PAS de hook ici : il n'existe aucune Edge
- * Function branchée sur set_group_member_role() cette session (READY FOR
- * PROVIDER, fonction SQL prête, service_role uniquement).
+ * Groupes sociaux — fondation + UI (mission "GROUPES SOCIAUX", section 12).
+ * Toute écriture "simple" (créer, rejoindre, quitter, supprimer) passe par
+ * un appel client direct, protégé par RLS (supabase/migrations/0017_group_rls.sql)
+ * — même convention que club_sessions/reviews. Le changement de rôle passe
+ * par l'Edge Function set-group-member-role (multi-étapes/sensible :
+ * vérification OWNER + interdiction du rôle OWNER côté serveur), jamais un
+ * UPDATE direct — RLS n'expose d'ailleurs aucune policy UPDATE sur
+ * group_members pour authenticated.
  */
 
 /** Groupes dont l'utilisateur connecté est déjà membre. */
@@ -121,7 +121,12 @@ export function useJoinGroup(userId: string) {
   });
 }
 
-/** Quitter un groupe (RLS `group_members_leave_self` — sa propre ligne uniquement). */
+/**
+ * Quitter un groupe (RLS `group_members_leave_self`). Bloqué en base pour le
+ * OWNER (voir migration) — l'appelant doit filtrer ce cas côté UI (bouton
+ * masqué/désactivé) plutôt que de laisser l'erreur serveur être la seule
+ * ligne de défense, mais RLS reste la garantie réelle.
+ */
 export function useLeaveGroup(userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -135,5 +140,67 @@ export function useLeaveGroup(userId: string) {
       queryClient.invalidateQueries({ queryKey: ["group-members", groupId] });
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
+/** Supprime un groupe (RLS `groups_delete_owner` — owner uniquement). Cascade DB sur membres/conversation/messages. */
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      const { error } = await supabase.from("groups").delete().eq("id", groupId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, groupId) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["my-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["public-groups"] });
+      queryClient.removeQueries({ queryKey: ["group", groupId] });
+      queryClient.removeQueries({ queryKey: ["group-members", groupId] });
+    },
+    onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
+/**
+ * Change le rôle d'un membre (ADMIN <-> MEMBER uniquement, jamais OWNER —
+ * voir set-group-member-role/index.ts). Le OWNER appelant est vérifié côté
+ * serveur (SQL + Edge Function), pas seulement en désactivant le bouton ici.
+ */
+export function useSetGroupMemberRole(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { targetUserId: string; newRole: Extract<GroupRole, "ADMIN" | "MEMBER"> }) =>
+      callEdgeFunction("set-group-member-role", { groupId, targetUserId: vars.targetUserId, newRole: vars.newRole }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["group-members", groupId] });
+    },
+    onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
+/**
+ * Id de la conversation GROUP associée (provisionnée par le trigger
+ * on_group_created + tenue à jour par sync_group_conversation_membership,
+ * voir 0017_group_rls.sql). `null` tant qu'on n'est pas encore membre — RLS
+ * `conversations_select_member` (0016_chat_rls.sql) filtre déjà, cette
+ * requête ne peut donc jamais renvoyer la conversation d'un groupe dont
+ * l'utilisateur n'est pas membre.
+ */
+export function useGroupConversationId(groupId: string | null) {
+  return useQuery({
+    queryKey: ["group-conversation", groupId],
+    enabled: Boolean(groupId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("group_id", groupId!)
+        .eq("type", "GROUP")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.id ?? null;
+    },
   });
 }

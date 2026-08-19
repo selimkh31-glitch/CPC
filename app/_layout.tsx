@@ -170,6 +170,17 @@ function RootNavigator() {
           name="conversation/[id]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
         />
+        {/* Social Foundations — Groupes (mission section 12). Même doctrine
+            que Chat ci-dessus : pas d'entrée dans une tab bar, accessible via
+            router.push depuis le raccourci "Groupes" de l'onglet Profil. */}
+        <Stack.Screen
+          name="groups"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Groupes" }}
+        />
+        <Stack.Screen
+          name="group/[id]"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+        />
       </Stack.Protected>
 
       {/* Hors de tout Stack.Protected : accessible sans session (deep link
