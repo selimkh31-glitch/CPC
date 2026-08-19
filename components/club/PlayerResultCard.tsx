@@ -31,8 +31,14 @@ export function PlayerResultCard({
       data={cardData}
       variant="compact"
       rightSlot={
+        // Poste RÉEL du joueur (jamais slotPosition, constant pour toute la
+        // liste). Régression du passage à PlayerCard (audit post-session) :
+        // le code affichait POSITION_LABELS[slotPosition] — identique pour
+        // CHAQUE carte de la liste puisque slotPosition ne varie pas d'un
+        // joueur à l'autre — au lieu du poste réel de ce joueur, rendant le
+        // badge muet dès qu'il ne s'agissait pas d'un match "(principal)".
         <Badge tone={isPrimaryMatch ? "accent" : "neutral"}>
-          {`${POSITION_LABELS[slotPosition]}${isPrimaryMatch ? " (principal)" : ""}`}
+          {`${POSITION_LABELS[player.main_position]}${isPrimaryMatch ? " (principal)" : ""}`}
         </Badge>
       }
       footer={
