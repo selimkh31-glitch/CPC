@@ -66,12 +66,6 @@ function RootNavigator() {
   const { mode } = useAppMode();
   const [retrying, setRetrying] = useState(false);
 
-  // --- DIAGNOSTIC TEMPORAIRE (à retirer après investigation) ---
-  console.log("[ROOT] session:", Boolean(session));
-  console.log("[ROOT] profile:", Boolean(profile));
-  console.log("[ROOT] loading:", Boolean(loading));
-  console.log("[ROOT] profileError:", Boolean(profileError));
-
   if (loading) {
     return <View className="flex-1 bg-bg" />;
   }
@@ -164,6 +158,17 @@ function RootNavigator() {
         <Stack.Screen
           name="pricing"
           options={{ presentation: "modal", headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Passer Pro" }}
+        />
+        {/* Social Foundations — Chat (mission section 11). Aucun point d'entrée
+            dans une tab bar (voir mission section 37) : accessible via
+            router.push, notamment depuis le bouton "Message" du profil joueur. */}
+        <Stack.Screen
+          name="conversations"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Messages" }}
+        />
+        <Stack.Screen
+          name="conversation/[id]"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
         />
       </Stack.Protected>
 

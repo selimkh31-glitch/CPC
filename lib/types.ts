@@ -224,6 +224,72 @@ export interface MatchParticipantRow {
   username: string;
 }
 
+/**
+ * Social Foundations — Chat (mission "CHAT — VRAIE FONDATION", section 11).
+ * Voir supabase/migrations/0016_chat_rls.sql pour les policies exactes.
+ */
+export type ConversationType = "DIRECT" | "GROUP" | "CLUB";
+export type ConversationRole = "OWNER" | "ADMIN" | "MEMBER";
+
+export interface ConversationRow {
+  id: string;
+  type: ConversationType;
+  club_id: string | null;
+  group_id: string | null;
+  created_by: string;
+  created_at: string;
+  /** Embed optionnel — membres de la conversation, utilisé pour dériver
+   *  "l'autre" utilisateur d'une conversation DIRECT côté client. */
+  members?: ConversationMemberRow[];
+}
+
+export interface ConversationMemberRow {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  role: ConversationRole;
+  joined_at: string;
+  last_read_at: string | null;
+  user?: UserRow;
+}
+
+export interface MessageRow {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
+  sender?: UserRow;
+}
+
+/**
+ * Social Foundations — Groupes (mission section 12). Distinct d'un club.
+ * Voir supabase/migrations/0017_group_rls.sql pour les policies exactes.
+ */
+export type GroupVisibility = "PUBLIC" | "PRIVATE";
+export type GroupRole = "OWNER" | "ADMIN" | "MEMBER";
+
+export interface GroupRow {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  owner_id: string;
+  visibility: GroupVisibility;
+  created_at: string;
+}
+
+export interface GroupMemberRow {
+  id: string;
+  group_id: string;
+  user_id: string;
+  role: GroupRole;
+  joined_at: string;
+  user?: UserRow;
+}
+
 export interface SeasonStatRow {
   id: string;
   season_id: string;

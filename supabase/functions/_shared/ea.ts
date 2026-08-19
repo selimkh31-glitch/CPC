@@ -7,11 +7,15 @@
  * Porté depuis lib/ea/ (version Next.js) — logique identique, adaptée à Deno.
  */
 
-const BASE_URL = "https://proclubs.ea.com/api/fc";
+// Exportés (lecture seule) pour supabase/functions/_shared/ea/proClubsAdapter.ts —
+// l'adapter EAProvider réutilise EXACTEMENT ce client défensif (retries,
+// timeout, headers) plutôt que de le dupliquer. Aucune valeur ni logique
+// changée ici, seule la visibilité (`export`) est ajoutée.
+export const BASE_URL = "https://proclubs.ea.com/api/fc";
 const DEFAULT_TIMEOUT_MS = 8000;
 const MAX_RETRIES = 2;
 
-const REALISTIC_HEADERS: Record<string, string> = {
+export const REALISTIC_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
   Accept: "application/json, text/plain, */*",
@@ -25,7 +29,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function eaGet<T>(path: string): Promise<T> {
+export async function eaGet<T>(path: string): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {

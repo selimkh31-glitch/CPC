@@ -58,6 +58,11 @@ verify_jwt = true
 [functions.respond-invitation]
 verify_jwt = true
 
+# Social Foundations — Chat (mission section 11), appelée par l'app mobile
+# avec le JWT de session comme toutes les fonctions ci-dessus.
+[functions.start-direct-conversation]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 

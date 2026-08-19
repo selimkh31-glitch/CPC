@@ -1,4 +1,5 @@
 import type { MatchOutcome } from "@/lib/types";
+import type { Rarity } from "@/lib/ovr";
 
 /**
  * Palette Cinematic (Phase G.2) en valeurs brutes — pour tout ce qui ne peut
@@ -34,4 +35,36 @@ export const OUTCOME_LABELS: Record<MatchOutcome, string> = {
   WIN: "Victoire",
   DRAW: "Match nul",
   LOSS: "Défaite",
+};
+
+/**
+ * Rareté visuelle (bronze/argent/or/icon) — valeurs identiques à
+ * RARITY_GRADIENT/RARITY_BORDER/RARITY_TEXT définis localement dans
+ * components/profile/ClubProCard.tsx (non modifié, jamais rétrofitté ici —
+ * même doctrine que CINEMATIC_COLORS ci-dessus). Source canonique pour tout
+ * NOUVEAU composant qui a besoin de ces couleurs (PlayerCard,
+ * components/player/PlayerCard.tsx) plutôt que de les redupliquer une
+ * troisième fois. Garder synchronisé manuellement avec ClubProCard.tsx si
+ * l'un des deux change — Player Card, Phase 2 pourrait migrer ClubProCard
+ * vers cette source unique.
+ */
+export const RARITY_GRADIENT: Record<Rarity, [string, string]> = {
+  bronze: ["#a3673a33", "#131519"],
+  silver: ["#c0c5cc33", "#131519"],
+  gold: ["#e8b84b40", "#131519"],
+  icon: ["#39e6ff40", "#8b5cf633"],
+};
+
+export const RARITY_BORDER: Record<Rarity, string> = {
+  bronze: "border-rarity-bronze/50",
+  silver: "border-rarity-silver/50",
+  gold: "border-rarity-gold/60",
+  icon: "border-rarity-icon/60",
+};
+
+export const RARITY_TEXT: Record<Rarity, string> = {
+  bronze: "text-rarity-bronze",
+  silver: "text-rarity-silver",
+  gold: "text-rarity-gold",
+  icon: "text-rarity-icon",
 };

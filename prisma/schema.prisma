@@ -125,6 +125,34 @@ enum Plan {
   PRO
 }
 
+// Social Foundations — Chat (mission "CHAT — VRAIE FONDATION"). Une seule
+// conversation par 1:1 (DIRECT), par groupe (GROUP) ou par club (CLUB) —
+// abstraction commune, jamais un système séparé par type (section 11).
+enum ConversationType {
+  DIRECT
+  GROUP
+  CLUB
+}
+
+enum ConversationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Social Foundations — Groupes (mission section 12). Distinct d'un Club
+// (identité EA FC / compétitive) : un groupe est purement social.
+enum GroupVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 // ------------------------------------------------------------------
 // Modèles
 // ------------------------------------------------------------------
@@ -170,6 +198,12 @@ model User {
   // Match Result Engine, Phase A.
   matchResultsAsMvp     MatchResult[]        @relation("MatchResultMvp")
   matchResultsRecorded  MatchResult[]        @relation("MatchResultRecordedBy")
+  // Social Foundations — chat / groupes.
+  conversationsCreated     Conversation[]       @relation("ConversationsCreated")
+  conversationMemberships  ConversationMember[]
+  messagesSent             Message[]
+  groupsOwned              Group[]              @relation("GroupOwner")
+  groupMemberships         GroupMember[]
 
   @@index([reliabilityScore])
   @@index([platform])
@@ -207,6 +241,11 @@ model Club {
   matchParticipations     MatchParticipation[]
   // Match Result Engine, Phase A.
   matchResults            MatchResult[]
+  // Social Foundations — au plus une conversation CLUB par club (index
+  // unique partiel posé en SQL, non exprimable ici — voir migration RLS).
+  // Phase 2 : aucune Edge Function ne provisionne encore cette conversation
+  // (schéma prêt, non branché — voir rapport de session).
+  conversation            Conversation?
 
   @@index([ownerId])
   @@index([level])
@@ -550,4 +589,116 @@ model MatchResult {
   @@unique([matchCheckinId, clubId])
   @@index([clubId])
   @@map("match_results")
+}
+
+// ------------------------------------------------------------------
+// Social Foundations — Chat (mission "CHAT — VRAIE FONDATION", section 11).
+// Abstraction commune DIRECT (1:1) / GROUP / CLUB — jamais un système par
+// type. Écriture : `sender_id` toujours dérivé du JWT côté serveur (RLS
+// `with check`, jamais fourni "en confiance" par le client) — voir
+// supabase/migrations/0016_chat_rls.sql pour le détail des policies.
+// ------------------------------------------------------------------
+
+model Conversation {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type      ConversationType
+  // Non nul uniquement pour type = CLUB (resp. GROUP). @unique ici satisfait
+  // la contrainte Prisma "1:1 doit être unique côté FK" — NULL n'entre
+  // jamais en collision avec NULL en Postgres, donc les conversations
+  // DIRECT/GROUP (clubId null) et DIRECT/CLUB (groupId null) ne sont pas
+  // affectées. La contrainte RÉELLEMENT appliquée en base est un index
+  // unique PARTIEL, plus précis (`WHERE type = 'CLUB'`, resp. `'GROUP'`),
+  // posé à la main dans la migration SQL (non exprimable en Prisma) — ce
+  // @unique sert uniquement à la validité du schéma Prisma, pas de double
+  // contrainte réelle en trop.
+  clubId    String?          @unique @map("club_id") @db.Uuid
+  groupId   String?          @unique @map("group_id") @db.Uuid
+  createdBy String           @map("created_by") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  club    Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  group   Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User                 @relation("ConversationsCreated", fields: [createdBy], references: [id], onDelete: Cascade)
+  members ConversationMember[]
+  messages Message[]
+
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String           @map("conversation_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           ConversationRole @default(MEMBER)
+  joinedAt       DateTime         @default(now()) @map("joined_at")
+  // Pilote le badge "non lu" (section 11) — mis à jour par le client
+  // uniquement sur SA propre ligne (RLS + grant colonne, jamais `role`).
+  lastReadAt     DateTime?        @map("last_read_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_members")
+}
+
+model Message {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  senderId       String    @map("sender_id") @db.Uuid
+  body           String
+  createdAt      DateTime  @default(now()) @map("created_at")
+  editedAt       DateTime? @map("edited_at")
+  // Soft delete uniquement (section 21) — jamais un vrai DELETE, pour
+  // préserver l'intégrité de la pagination par curseur (created_at).
+  deletedAt      DateTime? @map("deleted_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ------------------------------------------------------------------
+// Social Foundations — Groupes (mission section 12). Distinct d'un Club.
+// La création d'un groupe provisionne atomiquement sa conversation GROUP
+// (trigger `on_group_created`, supabase/migrations/0017_group_rls.sql) —
+// même doctrine que `on_club_created` (0003_triggers.sql), non modifié.
+// ------------------------------------------------------------------
+
+model Group {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  description    String?
+  avatarUrl      String?         @map("avatar_url")
+  ownerId        String          @map("owner_id") @db.Uuid
+  visibility     GroupVisibility @default(PRIVATE)
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  owner        User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  // Provisionnée atomiquement par le trigger on_group_created — jamais nulle
+  // en pratique, mais optionnelle ici pour ne pas complexifier l'INSERT
+  // initial (le groupe existe avant que le trigger ne crée la conversation).
+  conversation Conversation?
+
+  @@index([ownerId])
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId  String    @map("group_id") @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now()) @map("joined_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
 }
