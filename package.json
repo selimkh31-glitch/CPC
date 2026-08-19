@@ -55,6 +55,7 @@
     "test:ea-normalize": "tsx scripts/test-ea-normalize.ts",
     "test:ovr": "tsx scripts/test-ovr.ts",
     "test:reliability": "tsx scripts/test-reliability.ts",
+    "test:player-card": "tsx scripts/test-player-card.ts",
     "lint": "expo lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
