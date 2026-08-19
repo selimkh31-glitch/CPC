@@ -92,7 +92,62 @@ un vrai ranking par division) vivrait dans une table séparée
 `supabase/functions/_shared/ea/provider.ts`) une fois cette méthode
 implémentée — jamais fusionnée avec `season_stats`.
 
-## 4. Pourquoi ce n'a pas été construit cette session
+## 4. Ranking Engine — centralisation (ajout session 2026-08-20, mission section 13)
+
+Principe explicite : **un seul service de calcul de classement**, jamais un
+calcul dupliqué par écran/feature. Aujourd'hui, `season-ranking` (Edge
+Function cron) est déjà cette seule source pour le classement global CPC —
+`app/(player)/(tabs)/leagues.tsx` ne fait QUE lire `season_stats`, aucun tri/
+calcul de points recalculé côté client au-delà d'un `sort()` d'affichage.
+C'est le bon pattern à répliquer, pas à réinventer, pour Ligues/Tournois
+multiples le jour où ils existeront :
+
+```
+matches (CPC, EA, ou les deux via le mapping ci-dessous)
+      ↓
+   RankingService (Edge Function unique, quel que soit le contexte)
+      ↓
+season_stats (CPC_GLOBAL) | league_standings (LEAGUE) | tournament_standings (TOURNAMENT)
+```
+
+Champs communs déjà identifiés comme nécessaires par la mission (wins,
+draws, losses, goals, goal difference, points, matches, streak) : tous déjà
+présents ou triviaux à ajouter sur le modèle `season_stats` existant — pas
+de nouvelle terminologie à inventer, réutiliser les noms de colonnes déjà en
+place (`goals`, `assists`, `matches_played`, `points`).
+
+## 5. EA Match ↔ CPC Match — mapping idempotent (mission section 14)
+
+**Ne jamais supposer qu'un match EA devient automatiquement un match CPC.**
+Le modèle `MatchResult` existant (`match_results`, Match Result Engine) est
+déjà scopé "un match CPC = un `match_checkin` déjà lancé côté club, un
+score saisi par un OWNER/MANAGER" — une source fondamentalement différente
+d'un match EA (détecté par sync, jamais initié par un humain CPC).
+
+Si/quand un pont EA -> CPC devient nécessaire (ex. "importer automatiquement
+les résultats de ligue EA comme historique de match CPC"), le contrat
+minimal :
+
+```sql
+-- Sur le futur match CPC concerné (ou une table de mapping dédiée, à
+-- décider selon le besoin réel — ne pas trancher sans cas d'usage concret) :
+external_match_id   text        -- id EA du match (EAMatch.matchId, nullable côté EA lui-même)
+external_provider    text        -- 'proclubs-community' | 'ea-official' (EAProviderName)
+cpc_match_id          uuid        -- FK vers le match CPC créé/rapproché
+
+unique (external_match_id, external_provider)  -- idempotence : un même
+                                                -- match EA ne peut jamais
+                                                -- créer deux fois un match CPC
+```
+
+Point d'attention déjà documenté ailleurs dans ce repo et qui s'applique
+ici : `EAMatch.matchId` (voir `ea/types.ts`) est `string | null` — jamais
+garanti présent par la source. Un mapping qui dépendrait uniquement de ce
+champ échouerait silencieusement sur les payloads où il est absent ; prévoir
+un identifiant composite de repli (ex. `externalId` du club + `timestamp` du
+match) documenté au moment de l'implémentation réelle, pas avant.
+
+## 6. Pourquoi ce n'a pas été construit cette session
 
 Budget de session limité (60–90 min) et priorités P0/P1 déjà consommées par
 l'audit sécurité, la fondation EA, le Chat et les Groupes (voir rapport,
