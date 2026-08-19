@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.eas/
+prisma/dev.db
+prisma/dev.db-journal

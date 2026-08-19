@@ -1,0 +1,9 @@
+-- Ce fichier est un marqueur : le schéma applicatif (tables, colonnes, index,
+-- clés étrangères) est généré et appliqué par Prisma, PAS par une migration
+-- SQL manuelle. Voir prisma/schema.prisma.
+--
+-- Workflow :
+--   1. Renseigne DATABASE_URL / DIRECT_URL dans .env.local (projet Supabase)
+--   2. `npm run prisma:migrate` -> crée les tables dans le schéma `public`
+--   3. Applique ensuite `0002_rls_policies.sql` (voir README > "Base de données & RLS")
+--      via le SQL Editor de Supabase, ou `supabase db push` si tu utilises la CLI Supabase.

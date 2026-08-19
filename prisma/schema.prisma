@@ -1,0 +1,553 @@
+// ClubPro Connect — schéma Prisma
+//
+// Le champ `id` des `users` correspond à `auth.users.id` (Supabase Auth, uuid),
+// toujours fourni explicitement à l'écriture (jamais généré). Tous les autres
+// `id` utilisent `@default(dbgenerated("gen_random_uuid()"))` : un vrai DEFAULT
+// Postgres (natif depuis PG13, pas besoin de pgcrypto), pour que les INSERT
+// faits hors Prisma Client (supabase-js côté app, Edge Functions) fonctionnent
+// sans avoir à fournir `id` — c'est le cas de la quasi-totalité des écritures
+// runtime de cette app (Prisma ne sert qu'aux migrations/au seed).
+//
+// Prisma gère le schéma applicatif (public.*) ; les policies RLS et les
+// triggers Postgres (auto-membership à la création d'un club, `updated_at`
+// auto sur club_sessions) vivent dans `supabase/migrations/000x_*.sql` car
+// Prisma ne les modélise pas. Voir README.md > "Base de données & RLS".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------------
+// Enums
+// ------------------------------------------------------------------
+
+enum Platform {
+  PS
+  XBOX
+  PC
+}
+
+enum Position {
+  GK
+  CB
+  LB
+  RB
+  CDM
+  CM
+  CAM
+  LM
+  RM
+  LW
+  RW
+  ST
+}
+
+enum PlayStyle {
+  ATTACKING
+  DEFENSIVE
+  BALANCED
+  PLAYMAKER
+  POACHER
+  ENFORCER
+}
+
+enum ClubLevel {
+  CASUAL
+  COMPETITIVE
+}
+
+enum ClubRole {
+  OWNER
+  MANAGER
+  MEMBER
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  // Phase 5 — invitation de transition acceptée par le joueur mais pas encore
+  // finalisée : il n'intègre club_members/slot_assignments du nouveau club
+  // qu'au moment où son match libérateur chez l'ancien club est validé (voir
+  // ClubDeparture). Jamais utilisée pour une invitation normale.
+  RESERVED
+}
+
+// Phase 5 — cycle de vie d'une sortie de club (demande joueur OU libération
+// owner/manager) — voir ClubDeparture.
+enum DepartureStatus {
+  PENDING
+  ACCEPTED_NOW
+  ACCEPTED_NEXT_MATCH
+  REFUSED
+  EXPIRED
+  FORCE_EXIT
+  OWNER_RELEASED
+}
+
+// Qui est à l'origine de la ligne ClubDeparture — distingue une demande de
+// départ (joueur) d'une libération à l'initiative du club.
+enum DepartureInitiator {
+  PLAYER
+  OWNER
+}
+
+// Statut d'un joueur dans la composition au moment d'un check-in (Phase 5).
+enum MatchParticipationStatus {
+  PRESENT
+  ABSENT
+}
+
+// Match Result Engine, Phase A — dérivé côté serveur uniquement (finalize_match),
+// jamais reçu depuis le client. Voir MatchResult.
+enum MatchOutcome {
+  WIN
+  DRAW
+  LOSS
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+// ------------------------------------------------------------------
+// Modèles
+// ------------------------------------------------------------------
+
+model User {
+  id                  String      @id @db.Uuid
+  username            String      @unique
+  platform            Platform
+  mainPosition        Position    @map("main_position")
+  secondaryPositions  Position[]  @map("secondary_positions")
+  playStyle           PlayStyle   @map("play_style")
+  languages           String[]
+  availability        Json        @default("{}")
+  reliabilityScore    Float       @default(0) @map("reliability_score")
+  verifiedStats       Json?       @map("verified_stats")
+  eaClubLinked        String?     @map("ea_club_linked")
+  plan                Plan        @default(FREE)
+  // Trust Engine — streak de sessions honorées consécutives.
+  currentStreak       Int         @default(0) @map("current_streak")
+  bestStreak          Int         @default(0) @map("best_streak")
+  // Badges gagnés (streak, saison, rareté) — affichés sur la ClubPro Card.
+  badges              Json        @default("[]")
+  applicationsToday   Int         @default(0) @map("applications_today")
+  applicationsResetAt DateTime    @default(now()) @map("applications_reset_at")
+  // Token Expo Push (expo-notifications) — notifications candidatures/réponses/live.
+  pushToken           String?     @map("push_token")
+  createdAt           DateTime    @default(now()) @map("created_at")
+
+  ownedClubs         Club[]            @relation("ClubOwner")
+  memberships        ClubMember[]
+  applications       Application[]
+  reviewsWritten     Review[]          @relation("ReviewsWritten")
+  reviewsReceived    Review[]          @relation("ReviewsReceived")
+  seasonStats        SeasonStat[]
+  slotAssignments    SlotAssignment[]
+  invitationsReceived Invitation[]     @relation("InvitationsReceived")
+  invitationsSent    Invitation[]      @relation("InvitationsSent")
+  // Phase 5 — engagement / départs / check-in.
+  departuresAsPlayer   ClubDeparture[]      @relation("DeparturesAsPlayer")
+  departuresResponded  ClubDeparture[]      @relation("DeparturesResponded")
+  matchCheckinsLaunched MatchCheckin[]      @relation("MatchCheckinsLaunched")
+  matchParticipations  MatchParticipation[]
+  // Match Result Engine, Phase A.
+  matchResultsAsMvp     MatchResult[]        @relation("MatchResultMvp")
+  matchResultsRecorded  MatchResult[]        @relation("MatchResultRecordedBy")
+
+  @@index([reliabilityScore])
+  @@index([platform])
+  @@map("users")
+}
+
+model Club {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  ownerId     String    @map("owner_id") @db.Uuid
+  level       ClubLevel @default(CASUAL)
+  description String?
+  languages   String[]
+  eaClubId    String?   @map("ea_club_id")
+  // Identifiant de formation (ex: "4-3-3") — doit correspondre à une clé de
+  // FORMATIONS dans lib/formations.ts. Le catalogue des formations et leurs
+  // 11 slots ne sont volontairement PAS dupliqués en base (source de vérité
+  // = code applicatif) ; seule la sélection courante du club est persistée.
+  formation   String?
+  // Lien Party PlayStation (ou équivalent) — ouvert tel quel via le
+  // mécanisme de liens natif côté app, aucune validation de format ici.
+  voiceLink   String?   @map("voice_link")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  owner           User             @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         ClubMember[]
+  sessions        ClubSession[]
+  applications    Application[]
+  slotAssignments SlotAssignment[]
+  invitations     Invitation[]
+  // Phase 5 — engagement / départs / check-in.
+  departures              ClubDeparture[]      @relation("ClubDepartures")
+  departureTransitionOffers ClubDeparture[]    @relation("DepartureTransitionTargetClub")
+  matchCheckins           MatchCheckin[]
+  matchParticipations     MatchParticipation[]
+  // Match Result Engine, Phase A.
+  matchResults            MatchResult[]
+
+  @@index([ownerId])
+  @@index([level])
+  @@map("clubs")
+}
+
+model ClubMember {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId   String   @map("club_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     ClubRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+  // Phase 5 — engagement / départs. Alimentées EXCLUSIVEMENT par les
+  // fonctions serveur (request-departure, respond-departure,
+  // resolve-expired-departures, launch-match-checkin) : voir le revoke UPDATE
+  // ciblé sur ces 3 colonnes en 0010_engagement_model.sql. Jamais écrites par
+  // le client, même owner (club_members_write_owner est column-agnostic).
+  matchesPlayedCount        Int     @default(0) @map("matches_played_count")
+  strikeCount               Int     @default(0) @map("strike_count")
+  activeDepartureRequestId  String? @map("active_departure_request_id") @db.Uuid
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeDeparture ClubDeparture? @relation("ActiveDepartureRequest", fields: [activeDepartureRequestId], references: [id], onDelete: SetNull)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+  @@map("club_members")
+}
+
+model ClubSession {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId          String     @map("club_id") @db.Uuid
+  isLive          Boolean    @default(false) @map("is_live")
+  neededPositions Position[] @map("needed_positions")
+  note            String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  // @default(now()) garantit un INSERT valide même hors Prisma Client (supabase-js) ;
+  // le trigger Postgres `moddatetime` (supabase/migrations/0003_triggers.sql) la
+  // rafraîchit à chaque UPDATE (toggle live) pour que le tri du Live Feed reste correct.
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  club         Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  applications Application[]
+  // Phase 5 — un check-in doit obligatoirement être rattaché à une session
+  // réelle du club (pas de check-in "hors session", décision produit validée).
+  matchCheckins MatchCheckin[]
+
+  @@index([isLive])
+  @@index([clubId])
+  @@map("club_sessions")
+}
+
+model Application {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  clubId    String            @map("club_id") @db.Uuid
+  sessionId String            @map("session_id") @db.Uuid
+  // Poste réellement candidaté (doit appartenir à session.needed_positions au
+  // moment de la candidature — vérifié dans supabase/functions/apply). Table
+  // vide en prod au moment de l'ajout de ce champ : NOT NULL direct, pas de
+  // backfill nécessaire (voir audit avant migration).
+  position  Position
+  // Slot précis visé (ex: "LCB"), nullable — rétrocompatibilité obligatoire :
+  // une candidature "position large" (Live Feed actuel) a slotId = null : le
+  // owner choisit le slot exact à l'acceptation s'il y a ambiguïté. Une
+  // candidature initiée depuis la feuille de match (phase UI ultérieure) pin
+  // directement le slot cliqué.
+  slotId    String?           @map("slot_id")
+  status    ApplicationStatus @default(PENDING)
+  message   String?
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club    Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  session ClubSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, status])
+  @@index([sessionId])
+  @@index([userId])
+  @@map("applications")
+}
+
+// Occupation actuelle d'un slot de la formation courante d'un club par un
+// membre. Représente uniquement "ce membre occupe ce slot maintenant" — ne
+// contient jamais le catalogue des formations (voir Club.formation et
+// lib/formations.ts). La suppression d'un SlotAssignment ne supprime JAMAIS
+// le ClubMember correspondant : ce sont deux relations indépendantes.
+model SlotAssignment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId     String   @map("club_id") @db.Uuid
+  slotId     String   @map("slot_id")
+  userId     String   @map("user_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Un slot n'a qu'un seul occupant ; un joueur n'occupe qu'un seul slot par club.
+  @@unique([clubId, slotId])
+  @@unique([clubId, userId])
+  @@map("slot_assignments")
+}
+
+// Invitation club -> joueur, conceptuellement distincte d'Application
+// (joueur -> club). slotId nullable : une invitation peut viser un slot
+// précis ou être générale (le owner assigne un slot après acceptation).
+model Invitation {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId    String           @map("club_id") @db.Uuid
+  slotId    String?          @map("slot_id")
+  userId    String           @map("user_id") @db.Uuid
+  invitedBy String           @map("invited_by") @db.Uuid
+  status    InvitationStatus @default(PENDING)
+  createdAt DateTime         @default(now()) @map("created_at")
+  // Phase 5 — non nul uniquement pour une invitation de transition (offre
+  // faite à un joueur en ACCEPTED_NEXT_MATCH chez son club actuel). Permet au
+  // nouveau club d'afficher "Encore 1 match avec <club actuel>".
+  departureRequestId String? @map("departure_request_id") @db.Uuid
+
+  club    Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user    User @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  inviter User @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
+  departureRequest ClubDeparture? @relation("InvitationDepartureRequest", fields: [departureRequestId], references: [id], onDelete: SetNull)
+  transitionForDepartures ClubDeparture[] @relation("DepartureTransitionInvitation")
+
+  @@index([clubId, status])
+  @@index([userId, status])
+  @@map("invitations")
+}
+
+model Review {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewerId     String   @map("reviewer_id") @db.Uuid
+  targetUserId   String   @map("target_user_id") @db.Uuid
+  ratingSkill    Int      @map("rating_skill")
+  ratingBehavior Int      @map("rating_behavior")
+  showedUp       Boolean  @map("showed_up")
+  comment        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reviewer   User @relation("ReviewsWritten", fields: [reviewerId], references: [id], onDelete: Cascade)
+  targetUser User @relation("ReviewsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId])
+  @@map("reviews")
+}
+
+model Season {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  startsAt  DateTime @map("starts_at")
+  endsAt    DateTime @map("ends_at")
+  isActive  Boolean  @default(false) @map("is_active")
+
+  stats SeasonStat[]
+
+  @@map("seasons")
+}
+
+model SeasonStat {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seasonId      String   @map("season_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  goals         Int      @default(0)
+  assists       Int      @default(0)
+  cleanSheets   Int      @default(0) @map("clean_sheets")
+  matchesPlayed Int      @default(0) @map("matches_played")
+  mvpCount      Int      @default(0) @map("mvp_count")
+  points        Int      @default(0)
+  division      Int      @default(5)
+  // @default(now()) garantit un INSERT valide depuis l'upsert Edge Function (ea-sync),
+  // qui ne fournit pas ce champ explicitement.
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, points])
+  @@index([seasonId, division])
+  @@map("season_stats")
+}
+
+// ------------------------------------------------------------------
+// Phase 5 — Contrat d'effectif : engagement minimum, départs, transitions,
+// check-in pré-match. Voir supabase/migrations/0010_engagement_model.sql
+// pour la contrainte multi-appartenance (index partiel, non exprimable ici),
+// les RLS et le revoke des colonnes sensibles de ClubMember.
+// ------------------------------------------------------------------
+
+// Journal unique de toute fin (ou tentative de fin) d'engagement d'un membre :
+// demande de départ initiée par le joueur, refus, expiration, Force Exit, ET
+// libération à l'initiative de l'owner/manager (initiatedBy les distingue).
+// Un seul historique à interroger pour que le joueur "sache toujours" où il
+// en est (statut courant + historique complet), plutôt que deux tables
+// parallèles pour deux origines d'événement conceptuellement proches.
+model ClubDeparture {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId String @map("club_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  status      DepartureStatus    @default(PENDING)
+  initiatedBy DepartureInitiator @map("initiated_by")
+
+  requestedAt DateTime  @default(now()) @map("requested_at")
+  // Nullable : n'a de sens que pour une ligne PENDING (posé explicitement par
+  // request-departure = now() + 3 min, jamais un défaut DB — voir schema.prisma
+  // en-tête : la règle des 3 minutes reste du code applicatif, pas figée ici).
+  expiresAt   DateTime? @map("expires_at")
+  respondedAt DateTime? @map("responded_at")
+  // Nullable : null si expiration automatique (personne n'a répondu).
+  respondedBy String?   @map("responded_by") @db.Uuid
+
+  // Le match qui finalise un ACCEPTED_NEXT_MATCH (posé au lancement du check-in
+  // qui valide l'engagement restant, voir MatchCheckin).
+  releaseMatchCheckinId String? @map("release_match_checkin_id") @db.Uuid
+  // L'invitation de transition acceptée (RESERVED) pendant ACCEPTED_NEXT_MATCH.
+  transitionInvitationId String? @map("transition_invitation_id") @db.Uuid
+  // Dénormalisé pour affichage rapide "prochain club" sans jointure via l'invitation.
+  transitionTargetClubId String? @map("transition_target_club_id") @db.Uuid
+
+  club Club @relation("ClubDepartures", fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation("DeparturesAsPlayer", fields: [userId], references: [id], onDelete: Cascade)
+  // Déviation volontaire de la convention "tout cascade" : la suppression du
+  // compte de l'owner/manager qui a répondu ne doit pas effacer l'historique
+  // de départ vécu par le joueur — seul le pointeur vers le répondant s'efface.
+  responder User? @relation("DeparturesResponded", fields: [respondedBy], references: [id], onDelete: SetNull)
+
+  releaseCheckin        MatchCheckin? @relation("DepartureReleaseCheckin", fields: [releaseMatchCheckinId], references: [id], onDelete: SetNull)
+  transitionInvitation  Invitation?   @relation("DepartureTransitionInvitation", fields: [transitionInvitationId], references: [id], onDelete: SetNull)
+  transitionTargetClub  Club?         @relation("DepartureTransitionTargetClub", fields: [transitionTargetClubId], references: [id], onDelete: SetNull)
+
+  activeForMembers         ClubMember[] @relation("ActiveDepartureRequest")
+  transitionOffersReceived Invitation[] @relation("InvitationDepartureRequest")
+
+  @@index([userId])
+  @@index([clubId, status])
+  @@map("club_departures")
+}
+
+// Lancement effectif d'un match — un check-in n'est créé qu'au moment où
+// l'owner/manager valide "Lancer le match" (launchedAt fait foi), jamais à
+// l'ouverture de l'écran "Prêt à lancer ?" (qui reste 100% côté client tant
+// que rien n'est lancé). Doit obligatoirement référencer une club_session
+// réelle (pas de check-in "hors session", décision produit validée).
+model MatchCheckin {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId String @map("club_id") @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+
+  // Snapshot de clubs.formation à l'instant du lancement — clubs.formation
+  // peut changer plus tard, on garde la preuve de ce qui a été réellement joué.
+  formationId String?  @map("formation_id")
+  launchedAt  DateTime @default(now()) @map("launched_at")
+  // Nullable (déviation volontaire) : la suppression du compte owner/manager
+  // qui a lancé le match ne doit pas effacer l'historique du match lui-même.
+  launchedBy  String?  @map("launched_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  club    Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  session ClubSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  launcher User?       @relation("MatchCheckinsLaunched", fields: [launchedBy], references: [id], onDelete: SetNull)
+
+  participations     MatchParticipation[]
+  releasedDepartures ClubDeparture[]       @relation("DepartureReleaseCheckin")
+  // Match Result Engine, Phase A — au plus un résultat par check-in
+  // (contrainte unique portée par MatchResult.matchCheckinId, pas ici).
+  result             MatchResult?
+
+  @@index([clubId])
+  // Match Result Engine, Phase A — nécessaire pour que MatchResult puisse
+  // référencer (matchCheckinId, clubId) en FK composite et garantir au niveau
+  // DB que club_id d'un résultat correspond toujours au club réel du
+  // check-in référencé (jamais un simple club_id dénormalisé non vérifié).
+  @@unique([id, clubId])
+  @@map("match_checkins")
+}
+
+// Une ligne par joueur présent en feuille au moment d'un check-in — TITULAIRE
+// (slotId non nul) ou BANC (slotId nul), avec son résultat final. Les lignes
+// ABSENT sont conservées (jamais supprimées) : c'est la matière première des
+// futures statistiques de présence/fiabilité. Seul status = PRESENT compte
+// comme "match joué" (matches_played_count sur ClubMember).
+model MatchParticipation {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchCheckinId String @map("match_checkin_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  // Dénormalisé : évite une jointure via match_checkins pour les requêtes
+  // d'historique/statistiques scoped à un club.
+  clubId         String @map("club_id") @db.Uuid
+  // Poste occupé au lancement — nul si le joueur était sur le banc.
+  slotId         String? @map("slot_id")
+  status         MatchParticipationStatus
+
+  checkin MatchCheckin @relation(fields: [matchCheckinId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club    Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([matchCheckinId, userId])
+  @@index([userId])
+  @@index([clubId, status])
+  @@map("match_participations")
+}
+
+// Match Result Engine, Phase A — résultat d'un match, au plus un par
+// match_checkin (contrainte unique). `clubId` dénormalisé (même convention
+// que MatchParticipation) mais garanti cohérent avec le check-in référencé
+// par une FK composite (matchCheckinId, clubId) -> match_checkins(id, clubId)
+// (voir @@unique([id, clubId]) sur MatchCheckin) — pas seulement une
+// dénormalisation de confort, une garantie DB. `outcome` est TOUJOURS calculé
+// côté serveur (finalize_match) à partir de ourScore/opponentScore, jamais
+// reçu du client. `recordedBy` (déviation volontaire par rapport à
+// launchedBy/respondedBy, décision produit explicite) : NOT NULL + RESTRICT —
+// un match_result doit toujours conserver l'identité du OWNER/MANAGER qui a
+// validé le résultat, jamais orpheline même si ce compte est supprimé plus
+// tard (RESTRICT empêche la suppression du compte tant que le résultat
+// existe, plutôt que d'effacer cette identité).
+model MatchResult {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchCheckinId String       @unique @map("match_checkin_id") @db.Uuid
+  clubId         String       @map("club_id") @db.Uuid
+  ourScore       Int          @map("our_score")
+  opponentScore  Int          @map("opponent_score")
+  outcome        MatchOutcome
+  // Nullable : aucun MVP désigné n'est un cas normal, pas une omission.
+  mvpUserId      String?      @map("mvp_user_id") @db.Uuid
+  recordedBy     String       @map("recorded_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  checkin MatchCheckin @relation(fields: [matchCheckinId, clubId], references: [id, clubId], onDelete: Cascade)
+  club    Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  mvp     User?        @relation("MatchResultMvp", fields: [mvpUserId], references: [id], onDelete: SetNull)
+  // Onupdate Restrict n'a pas de sens ici (id ne change jamais) — seul onDelete est fixé explicitement.
+  recorder User        @relation("MatchResultRecordedBy", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  // Requis par Prisma pour la relation composite ci-dessus (1:1 sur des
+  // champs composites) — redondant avec l'unique simple sur matchCheckinId
+  // (qui garantit déjà, seul, "au plus un résultat par check-in"), pas une
+  // règle métier supplémentaire.
+  @@unique([matchCheckinId, clubId])
+  @@index([clubId])
+  @@map("match_results")
+}

@@ -1,0 +1,71 @@
+# Configuration Supabase CLI pour ClubPro Connect.
+# Volontairement minimal : ce repo ne fait tourner aucune stack locale
+# (`supabase start`) — Prisma migre directement sur le projet distant
+# (voir README > "Base de données & RLS") et seules les sections nécessaires
+# au déploiement des Edge Functions sont déclarées ici. Toute section omise
+# reprend les valeurs par défaut de la CLI (voir `supabase init` si besoin).
+#
+# Projet distant réel : cfgvtyxiggewauevvigm (https://cfgvtyxiggewauevvigm.supabase.co)
+# — non lié ici (`project_id` ci-dessous est un identifiant local, pas le ref distant).
+project_id = "clubpro-connect"
+
+# ------------------------------------------------------------------
+# Vérification JWT par fonction.
+#
+# Par défaut, `supabase functions deploy` exige un JWT Supabase valide au
+# niveau de la gateway, avant même que le code de la fonction ne s'exécute.
+# C'est le comportement voulu pour les 7 fonctions appelées par l'app mobile
+# (elles reçoivent le JWT de session via `supabase.functions.invoke()`).
+#
+# `ea-sync` et `season-ranking` sont des jobs cron (appelés par pg_cron/pg_net
+# avec un simple secret partagé `CRON_SECRET`, jamais un JWT Supabase).
+# `revenuecat-webhook` est appelée par RevenueCat avec `REVENUECAT_WEBHOOK_SECRET`,
+# jamais un JWT Supabase non plus. Sans `verify_jwt = false`, la gateway
+# rejetterait ces 3 fonctions en 401 avant même d'atteindre la vérification du
+# secret applicatif — elles seraient injoignables par leurs vrais appelants.
+# ------------------------------------------------------------------
+
+[functions.apply]
+verify_jwt = true
+
+[functions.respond-application]
+verify_jwt = true
+
+[functions.submit-review]
+verify_jwt = true
+
+[functions.link-ea-club]
+verify_jwt = true
+
+[functions.smart-match]
+verify_jwt = true
+
+[functions.scout-report]
+verify_jwt = true
+
+[functions.moderate]
+verify_jwt = true
+
+[functions.invite-to-slot]
+verify_jwt = true
+
+[functions.invite-to-club]
+verify_jwt = true
+
+[functions.finalize-match]
+verify_jwt = true
+
+[functions.respond-invitation]
+verify_jwt = true
+
+[functions.ea-sync]
+verify_jwt = false
+
+[functions.season-ranking]
+verify_jwt = false
+
+[functions.resolve-expired-departures]
+verify_jwt = false
+
+[functions.revenuecat-webhook]
+verify_jwt = false

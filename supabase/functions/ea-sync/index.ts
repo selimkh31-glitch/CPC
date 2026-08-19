@@ -1,0 +1,80 @@
+import { jsonResponse } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/supabase.ts";
+import { FEATURE_EA_STATS, fetchVerifiedClubStats } from "../_shared/ea.ts";
+import { computeReliabilityScore } from "../_shared/reliability.ts";
+
+/**
+ * Job planifié quotidien (section 4) — cron Supabase (pg_cron -> pg_net, voir
+ * README > "Cron jobs"). Récupère les stats EA des clubs liés et les met en
+ * cache dans Supabase. L'app mobile ne lit JAMAIS l'API EA directement.
+ * Protégé par CRON_SECRET (header Authorization: Bearer <secret>).
+ */
+Deno.serve(async (req) => {
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const auth = req.headers.get("authorization");
+  // `cronSecret` absent -> toujours refuser, même si `auth` vaut littéralement
+  // "Bearer undefined" (ce que donnerait une comparaison naïve avec un secret
+  // non configuré).
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) return jsonResponse({ error: "Non autorisé" }, 401);
+  if (!FEATURE_EA_STATS) return jsonResponse({ skipped: true, reason: "FEATURE_EA_STATS désactivé" });
+
+  const admin = getAdminClient();
+
+  const { data: usersWithClub } = await admin.from("users").select("*").not("ea_club_linked", "is", null);
+  const byClub = new Map<string, any[]>();
+  for (const u of usersWithClub ?? []) {
+    const key = u.ea_club_linked as string;
+    byClub.set(key, [...(byClub.get(key) ?? []), u]);
+  }
+
+  const { data: activeSeason } = await admin.from("seasons").select("*").eq("is_active", true).maybeSingle();
+
+  let updated = 0;
+  let failed = 0;
+
+  for (const [eaClubId, users] of byClub) {
+    const statsByName = await fetchVerifiedClubStats(eaClubId);
+    if (!statsByName) {
+      failed += users.length;
+      continue; // fallback silencieux : on garde les anciennes valeurs en cache
+    }
+
+    for (const u of users) {
+      const mine = statsByName[u.username.trim().toLowerCase()];
+      if (!mine) continue;
+
+      const { data: reviews } = await admin.from("reviews").select("*").eq("target_user_id", u.id);
+      const reliabilityScore = computeReliabilityScore({
+        reviews: (reviews ?? []).map((r: any) => ({
+          ratingSkill: r.rating_skill,
+          ratingBehavior: r.rating_behavior,
+          showedUp: r.showed_up,
+        })),
+        currentStreak: u.current_streak,
+        verifiedStats: mine,
+      });
+
+      await admin.from("users").update({ verified_stats: mine, reliability_score: reliabilityScore }).eq("id", u.id);
+
+      if (activeSeason) {
+        const points = mine.goals * 4 + mine.assists * 3 + mine.cleanSheets * 2;
+        await admin.from("season_stats").upsert(
+          {
+            season_id: activeSeason.id,
+            user_id: u.id,
+            goals: mine.goals,
+            assists: mine.assists,
+            clean_sheets: mine.cleanSheets,
+            matches_played: mine.matchesPlayed,
+            points,
+          },
+          { onConflict: "season_id,user_id" }
+        );
+      }
+
+      updated += 1;
+    }
+  }
+
+  return jsonResponse({ updated, failed, clubsProcessed: byClub.size });
+});

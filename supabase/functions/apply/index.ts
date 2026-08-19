@@ -1,0 +1,141 @@
+import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
+import { moderateText } from "../_shared/ai.ts";
+import { sendPushNotification } from "../_shared/push.ts";
+import { optionalString, requireString, requireUuid, ValidationError } from "../_shared/validate.ts";
+
+const FREE_APPLICATIONS_PER_DAY = 3;
+
+function isSameDay(a: Date, b: Date) {
+  return a.toDateString() === b.toDateString();
+}
+
+/** Candidature en 1 clic (section 3.D) — gating freemium 3/jour pour le plan free. */
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const user = await getCallingUser(req);
+  if (!user) return jsonResponse({ error: "Non authentifié" }, 401);
+
+  let sessionId: string;
+  let position: string;
+  let slotId: string | undefined;
+  let message: string | undefined;
+  try {
+    const body = await req.json();
+    sessionId = requireUuid(body.sessionId, "sessionId");
+    position = requireString(body.position, "position", { min: 1, max: 10 });
+    slotId = optionalString(body.slotId, "slotId", { max: 20 });
+    message = optionalString(body.message, "message", { max: 280 });
+  } catch (err) {
+    if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
+    return jsonResponse({ error: "Corps de requête invalide." }, 400);
+  }
+
+  const admin = getAdminClient();
+
+  const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
+  if (!profile) return jsonResponse({ error: "Profil introuvable, termine l'onboarding." }, 404);
+
+  const { data: session } = await admin.from("club_sessions").select("*").eq("id", sessionId).single();
+  if (!session || !session.is_live) {
+    return jsonResponse({ error: "Cette session n'est plus disponible." }, 410);
+  }
+
+  if (!session.needed_positions.includes(position)) {
+    return jsonResponse({ error: "Ce poste n'est pas recherché par cette session." }, 400);
+  }
+
+  // Candidature sur un slot précis (phase 4, feuille de match) — vérification
+  // best-effort ici (évite une candidature évidemment vouée à l'échec) ; la
+  // vraie garantie anti-double-attribution reste accept_application() côté DB
+  // (verrouillage + contrainte unique), pas cette Edge Function.
+  if (slotId) {
+    const { data: existingSlot } = await admin
+      .from("slot_assignments")
+      .select("id")
+      .eq("club_id", session.club_id)
+      .eq("slot_id", slotId)
+      .maybeSingle();
+    if (existingSlot) {
+      return jsonResponse({ error: "Ce poste vient d'être pris." }, 409);
+    }
+  }
+
+  // Anti-auto-candidature — vérifié côté serveur, pas seulement dans l'UI
+  // (app/club/[id].tsx masque déjà le formulaire pour les membres existants,
+  // ce qui couvre l'owner puisqu'il est membre via le trigger on_club_created).
+  const { data: existingMembership } = await admin
+    .from("club_members")
+    .select("id")
+    .eq("club_id", session.club_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existingMembership) {
+    return jsonResponse({ error: "Tu es déjà membre de ce club." }, 409);
+  }
+
+  if (profile.plan === "FREE") {
+    const resetNeeded = !isSameDay(new Date(profile.applications_reset_at), new Date());
+    const count = resetNeeded ? 0 : profile.applications_today;
+    if (count >= FREE_APPLICATIONS_PER_DAY) {
+      return jsonResponse(
+        { error: `Limite Free atteinte (${FREE_APPLICATIONS_PER_DAY}/jour). Passe Pro pour candidater sans limite.` },
+        402
+      );
+    }
+    await admin
+      .from("users")
+      .update({
+        applications_today: resetNeeded ? 1 : count + 1,
+        applications_reset_at: resetNeeded ? new Date().toISOString() : profile.applications_reset_at,
+      })
+      .eq("id", user.id);
+  }
+
+  if (message) {
+    const moderation = await moderateText(message);
+    if (moderation.toxic) return jsonResponse({ error: "Message refusé par la modération." }, 422);
+  }
+
+  const { data: existing } = await admin
+    .from("applications")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("session_id", sessionId)
+    .eq("status", "PENDING")
+    .maybeSingle();
+  if (existing) return jsonResponse({ error: "Tu as déjà postulé à cette session." }, 409);
+
+  const { data: application, error } = await admin
+    .from("applications")
+    .insert({
+      user_id: user.id,
+      club_id: session.club_id,
+      session_id: sessionId,
+      position,
+      slot_id: slotId ?? null,
+      message: message || null,
+    })
+    .select()
+    .single();
+
+  if (error) return jsonResponse({ error: error.message }, 500);
+
+  // Notifie les owner/manager du club — non-bloquant.
+  const { data: managers } = await admin
+    .from("club_members")
+    .select("user:users(push_token)")
+    .eq("club_id", session.club_id)
+    .in("role", ["OWNER", "MANAGER"]);
+  for (const m of managers ?? []) {
+    await sendPushNotification(
+      (m as any).user?.push_token,
+      "Nouvelle candidature 📥",
+      `${profile.username} veut rejoindre ta session.`,
+      { type: "application", clubId: session.club_id }
+    );
+  }
+
+  return jsonResponse({ application });
+});
