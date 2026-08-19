@@ -63,6 +63,11 @@ verify_jwt = true
 [functions.start-direct-conversation]
 verify_jwt = true
 
+# Social Foundations — Groupes (mission section 12), appelée par l'app mobile
+# avec le JWT de session comme toutes les fonctions ci-dessus.
+[functions.set-group-member-role]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 

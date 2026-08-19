@@ -62,8 +62,18 @@ create policy "group_members_join_public" on public.group_members
     and exists (select 1 from public.groups g where g.id = group_members.group_id and g.visibility = 'PUBLIC')
   );
 
+-- Le OWNER ne peut PAS "quitter" via cette policy — sinon groups.owner_id
+-- pointerait vers un utilisateur sans ligne group_members, état incohérent
+-- (ni transfert de propriété ni suppression du groupe ne seraient alors
+-- possibles proprement). Décision produit volontairement absente cette
+-- session (pas de "transférer la propriété") : le OWNER doit supprimer le
+-- groupe (groups_delete_owner) s'il veut s'en aller. Vérifié en base, pas
+-- seulement côté UI (audit Phase 2, section 17 de la mission).
 create policy "group_members_leave_self" on public.group_members
-  for delete to authenticated using (auth.uid() = user_id);
+  for delete to authenticated using (
+    auth.uid() = user_id
+    and not exists (select 1 from public.groups g where g.id = group_members.group_id and g.owner_id = auth.uid())
+  );
 
 -- ------------------------------------------------------------------
 -- set_group_member_role — seul chemin pour changer le rôle d'un membre
@@ -94,6 +104,16 @@ begin
 
   if p_target_user_id = v_owner_id then
     raise exception 'cannot_change_owner_role';
+  end if;
+
+  -- Un groupe garde toujours EXACTEMENT un OWNER (groups.owner_id) : ce
+  -- chemin ne doit jamais pouvoir créer un second membre à rôle OWNER (ce
+  -- que le type public."GroupRole" autoriserait sans cette garde explicite —
+  -- trouvé à l'audit Phase 2, avant toute application de cette migration).
+  -- Un vrai transfert de propriété nécessiterait de déplacer groups.owner_id
+  -- lui-même, hors scope ici.
+  if p_new_role = 'OWNER' then
+    raise exception 'cannot_grant_owner_role';
   end if;
 
   update public.group_members
@@ -146,3 +166,69 @@ drop trigger if exists on_group_created on public.groups;
 create trigger on_group_created
   after insert on public.groups
   for each row execute function public.handle_new_group();
+
+-- ------------------------------------------------------------------
+-- sync_group_conversation_membership — GAP trouvé à l'audit Phase 2 (avant
+-- toute application distante) : handle_new_group() n'ajoute que le OWNER à
+-- la conversation GROUP au moment de la création. Un membre qui rejoint
+-- ENSUITE (group_members_join_public) ou qui quitte (group_members_leave_self)
+-- n'était PAS répercuté sur conversation_members — il rejoignait le groupe
+-- sans jamais pouvoir voir ni écrire dans son chat (bloqué par
+-- conversations_select_member / messages_insert_member, 0016_chat_rls.sql),
+-- silencieusement, sans erreur explicite. Ce trigger tient les deux tables
+-- synchronisées pour INSERT (rejoindre), UPDATE (set_group_member_role,
+-- répercute le rôle), et DELETE (quitter).
+--
+-- SECURITY DEFINER (bypass RLS pour écrire dans conversation_members, table
+-- sans policy INSERT/UPDATE authenticated — voir 0016_chat_rls.sql). Ne fait
+-- rien si la conversation GROUP n'existe pas encore (cas du tout premier
+-- INSERT dans group_members, fait par handle_new_group() lui-même AVANT
+-- que la conversation ne soit créée — cette même fonction insère alors
+-- explicitement la ligne conversation_members du OWNER, pas de doublon
+-- possible grâce à `on conflict do nothing`).
+-- ------------------------------------------------------------------
+create or replace function public.sync_group_conversation_membership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conversation_id uuid;
+  v_conversation_role public."ConversationRole";
+begin
+  if tg_op = 'DELETE' then
+    select id into v_conversation_id from public.conversations where group_id = old.group_id and type = 'GROUP';
+    if v_conversation_id is not null then
+      delete from public.conversation_members where conversation_id = v_conversation_id and user_id = old.user_id;
+    end if;
+    return old;
+  end if;
+
+  -- INSERT et UPDATE : group_members.role (GroupRole) -> conversation_members.role
+  -- (ConversationRole), mêmes libellés (OWNER/ADMIN/MEMBER), types distincts.
+  v_conversation_role := new.role::text::public."ConversationRole";
+
+  select id into v_conversation_id from public.conversations where group_id = new.group_id and type = 'GROUP';
+  if v_conversation_id is null then
+    return new; -- conversation pas encore créée (tout premier membre, voir handle_new_group()).
+  end if;
+
+  if tg_op = 'INSERT' then
+    insert into public.conversation_members (conversation_id, user_id, role)
+      values (v_conversation_id, new.user_id, v_conversation_role)
+      on conflict (conversation_id, user_id) do nothing;
+  elsif tg_op = 'UPDATE' then
+    update public.conversation_members
+      set role = v_conversation_role
+      where conversation_id = v_conversation_id and user_id = new.user_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_group_member_change on public.group_members;
+create trigger on_group_member_change
+  after insert or update or delete on public.group_members
+  for each row execute function public.sync_group_conversation_membership();
