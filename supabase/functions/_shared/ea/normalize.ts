@@ -1,4 +1,4 @@
-import type { EAClub, EAClubStats, EAMatch, EAMatchType, EAPlayerMatchStats, EAProviderName } from "./types.ts";
+import type { EAClub, EAClubStats, EAMatch, EAMatchType, EAPlayerMatchStats, EAPlayerStats, EAProviderName } from "./types.ts";
 
 /**
  * EA RAW -> ADAPTER -> NORMALIZED CPC TYPES (mission section 7).
@@ -72,6 +72,7 @@ export function normalizeClubStats(
 export function normalizePlayerMatchStats(raw: unknown): EAPlayerMatchStats {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
+    name: toStr(r.playername) ?? toStr(r.name) ?? "",
     goals: toNum(r.goals) ?? 0,
     assists: toNum(r.assists) ?? 0,
     cleanSheetsAny: toNum(r.cleansheetsAny) ?? 0,
@@ -118,5 +119,69 @@ export function normalizeMatch(
     matchType,
     timestamp: toStr(r.timestamp),
     players,
+  };
+}
+
+/**
+ * Agrège les stats d'UN joueur sur une liste de matchs déjà normalisés
+ * (`EAMatch.players` est indexé par id EA brut, jamais par nom — voir
+ * EAMatch.players ci-dessus — donc on doit chercher par VALEUR sur
+ * `EAPlayerMatchStats.name`, jamais indexer directement par nom).
+ *
+ * Extraite en fonction pure et testée (scripts/test-ea-normalize.ts) suite à
+ * un bug réel : `ProClubsEAProvider.getPlayerStats` indexait auparavant
+ * `match.players[playerName.toLowerCase()]` directement, ce qui ne pouvait
+ * jamais correspondre (la clé de `players` est un id EA, pas un nom) — la
+ * méthode retournait donc toujours `null` en pratique, malgré son statut
+ * "implémentée" dans le rapport de session précédent. Jamais exécutée
+ * contre un vrai payload EA avant ce correctif.
+ */
+export function aggregatePlayerStats(
+  matches: EAMatch[],
+  playerName: string,
+  provider: EAProviderName,
+  externalId: string,
+  externalPlatform: string | null
+): EAPlayerStats | null {
+  const key = playerName.trim().toLowerCase();
+  if (!key) return null;
+
+  let goals = 0;
+  let assists = 0;
+  let cleanSheets = 0;
+  let matchesPlayed = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+
+  for (const match of matches) {
+    for (const p of Object.values(match.players)) {
+      if (p.name.trim().toLowerCase() !== key) continue;
+      goals += p.goals;
+      assists += p.assists;
+      cleanSheets += p.cleanSheetsAny;
+      matchesPlayed += 1;
+      if (p.rating !== null) {
+        ratingSum += p.rating;
+        ratingCount += 1;
+      }
+      // Un match ne peut compter qu'un seul joueur par nom recherché côté
+      // club normalisé (EAMatch.players ne garde que la branche du club
+      // demandé, voir normalizeMatch) — pas de double-comptage possible ici.
+      break;
+    }
+  }
+
+  if (matchesPlayed === 0) return null;
+
+  return {
+    provider,
+    externalId,
+    externalPlatform,
+    syncedAt: new Date().toISOString(),
+    goals,
+    assists,
+    cleanSheets,
+    matchesPlayed,
+    avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
   };
 }

@@ -10,7 +10,7 @@ import type {
   EAPlayerStats,
   EAPlayoffData,
 } from "./types.ts";
-import { normalizeClub, normalizeMatch } from "./normalize.ts";
+import { aggregatePlayerStats, normalizeClub, normalizeMatch } from "./normalize.ts";
 
 const DEFAULT_PLATFORM = "common-gen5";
 
@@ -25,10 +25,16 @@ const DEFAULT_PLATFORM = "common-gen5";
  * régression) — cet adapter est le point d'entrée pour toute NOUVELLE Edge
  * Function qui a besoin de données EA normalisées.
  *
- * Seules 3 méthodes ont une implémentation réelle (searchClub,
- * getClubMatches, getPlayerStats), portées 1:1 depuis la logique déjà en
- * production. Les autres lèvent NotImplementedError — voir provider.ts et la
- * règle 44 de la mission ("ne jamais faire du fake").
+ * Seules 3 méthodes ont une implémentation réelle : searchClub et
+ * getClubMatches réutilisent 1:1 les requêtes déjà en production dans
+ * _shared/ea.ts (URLs/retries/timeout inchangés). getPlayerStats agrège les
+ * résultats de getClubMatches via aggregatePlayerStats (normalize.ts),
+ * unitairement testée (scripts/test-ea-normalize.ts) — mais AUCUNE des 3
+ * n'a été exécutée contre un vrai payload EA depuis cette classe (seules
+ * les requêtes réseau elles-mêmes, via ea-sync/link-ea-club, sont
+ * éprouvées en prod ; le chemin de normalisation qui les enveloppe ici est
+ * neuf). Les 6 autres méthodes lèvent NotImplementedError — voir
+ * provider.ts et la règle 44 de la mission ("ne jamais faire du fake").
  */
 export class ProClubsEAProvider implements EAProvider {
   readonly name = "proclubs-community" as const;
@@ -93,43 +99,7 @@ export class ProClubsEAProvider implements EAProvider {
   async getPlayerStats(clubId: string, playerName: string, platform: string = DEFAULT_PLATFORM): Promise<EAPlayerStats | null> {
     const matches = await this.getClubMatches(clubId, platform);
     if (!matches) return null;
-
-    const key = playerName.trim().toLowerCase();
-    if (!key) return null;
-
-    let goals = 0,
-      assists = 0,
-      cleanSheets = 0,
-      matchesPlayed = 0,
-      ratingSum = 0,
-      ratingCount = 0;
-
-    for (const match of matches) {
-      const p = match.players[key];
-      if (!p) continue;
-      goals += p.goals;
-      assists += p.assists;
-      cleanSheets += p.cleanSheetsAny;
-      matchesPlayed += 1;
-      if (p.rating !== null) {
-        ratingSum += p.rating;
-        ratingCount += 1;
-      }
-    }
-
-    if (matchesPlayed === 0) return null;
-
-    return {
-      provider: this.name,
-      externalId: clubId,
-      externalPlatform: platform,
-      syncedAt: new Date().toISOString(),
-      goals,
-      assists,
-      cleanSheets,
-      matchesPlayed,
-      avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
-    };
+    return aggregatePlayerStats(matches, playerName, this.name, clubId, platform);
   }
 
   async getPlayerCareerStats(_playerName: string, _platform?: string): Promise<EAPlayerCareerStats | null> {

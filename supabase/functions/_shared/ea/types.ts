@@ -48,6 +48,12 @@ export interface EAClubStats extends EAProvenance {
 }
 
 export interface EAPlayerMatchStats {
+  /** Nom EA du joueur tel que renvoyé par le match (`playername`/`name`) —
+   *  seule clé de rapprochement disponible (l'API n'expose pas d'id joueur
+   *  stable mappable à nos users.id, voir EAMatch.players ci-dessous). Chaîne
+   *  vide si absente du payload, jamais `null` (simplifie les comparaisons
+   *  insensibles à la casse côté agrégation, voir normalize.ts>aggregatePlayerStats). */
+  name: string;
   goals: number;
   assists: number;
   cleanSheetsAny: number;
@@ -60,8 +66,15 @@ export interface EAMatch extends EAProvenance {
   matchId: string | null;
   matchType: EAMatchType;
   timestamp: string | null;
-  /** Clé = nom de joueur EA en minuscules — l'API ne fournit aucun id joueur
-   *  stable rapprochable de nos users.id (voir _shared/ea.ts, note existante). */
+  /**
+   * Clé = identifiant de joueur EA brut tel que renvoyé par le payload
+   * (persona id, PAS un nom) — NE JAMAIS indexer directement par nom de
+   * joueur ici, c'est un bug déjà commis une fois (voir aggregatePlayerStats
+   * ci-dessous, normalize.ts). L'API ne fournit aucun id joueur stable
+   * rapprochable de nos users.id : le rapprochement se fait par valeur, via
+   * `EAPlayerMatchStats.name` (comparaison insensible à la casse), jamais
+   * via cette clé d'objet.
+   */
   players: Record<string, EAPlayerMatchStats>;
 }
 
