@@ -4,7 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Send } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "@/components/ui/Input";
-import { ErrorState } from "@/components/ui/Screen";
+import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useLoadOlderMessages, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/hooks/useChat";
@@ -73,6 +73,9 @@ export default function ConversationThreadScreen() {
         onStartReached={() => loadOlder.mutate()}
         onStartReachedThreshold={0.3}
         renderItem={({ item }) => <MessageBubble message={item} isOwn={item.sender_id === profile?.id} />}
+        ListEmptyComponent={
+          <EmptyState title="Aucun message pour l'instant." subtitle="Écris le premier message ci-dessous." />
+        }
       />
       <View className="flex-row items-center gap-2 border-t border-border bg-bg p-3" style={{ paddingBottom: insets.bottom + 12 }}>
         <Input

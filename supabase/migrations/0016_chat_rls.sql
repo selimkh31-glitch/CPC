@@ -91,6 +91,18 @@ create policy "messages_insert_member" on public.messages
     )
   );
 
+-- AUDIT (post-session, priorité mission "PHASE 3") : cette policy seule
+-- (using/with check sur sender_id) ne borne QUE sender_id — rien dans son
+-- texte n'empêche un UPDATE de réassigner conversation_id sur son propre
+-- message. Le blocage réel vient du GRANT UPDATE column-level ci-dessous :
+-- Postgres vérifie les privilèges UPDATE par colonne indépendamment des
+-- policies RLS, AVANT même d'évaluer using/with check sur les colonnes hors
+-- grant. Avec seulement `grant update (body, edited_at, deleted_at)`, toute
+-- tentative d'UPDATE incluant conversation_id (ou sender_id) dans son SET —
+-- y compris via `.update({ conversation_id: ... })` côté PostgREST/supabase-js
+-- — échoue par "permission denied for column", quel que soit le contenu de
+-- cette policy. Conclusion de l'audit : PAS exploitable, déjà mitigé par le
+-- grant colonne (pas seulement "documenté comme risque résiduel").
 create policy "messages_update_own" on public.messages
   for update to authenticated
   using (auth.uid() = sender_id)

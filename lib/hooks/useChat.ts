@@ -92,8 +92,15 @@ function acquireMessagesChannel(conversationId: string) {
     const channel = supabase
       .channel(`messages-${conversationId}`)
       .on(
+        // "*" (pas seulement INSERT) — audit post-session : un edit ou un
+        // soft-delete (UPDATE body/edited_at/deleted_at, voir
+        // messages_update_own) ne se propageait pas en temps réel aux
+        // autres membres de la conversation tant que l'écoute était
+        // restreinte à INSERT. Coût négligeable (une invalidation
+        // supplémentaire, idempotente) pour un vrai correctif de section 11
+        // ("édition", "soft delete").
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         () => listeners.forEach((listener) => listener())
       )
       .subscribe();
