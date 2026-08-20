@@ -596,7 +596,7 @@ model MatchResult {
 // Abstraction commune DIRECT (1:1) / GROUP / CLUB — jamais un système par
 // type. Écriture : `sender_id` toujours dérivé du JWT côté serveur (RLS
 // `with check`, jamais fourni "en confiance" par le client) — voir
-// supabase/migrations/0016_chat_rls.sql pour le détail des policies.
+// supabase/migrations/0017_chat_rls.sql pour le détail des policies.
 // ------------------------------------------------------------------
 
 model Conversation {
@@ -664,7 +664,7 @@ model Message {
 // ------------------------------------------------------------------
 // Social Foundations — Groupes (mission section 12). Distinct d'un Club.
 // La création d'un groupe provisionne atomiquement sa conversation GROUP
-// (trigger `on_group_created`, supabase/migrations/0017_group_rls.sql) —
+// (trigger `on_group_created`, supabase/migrations/0018_group_rls.sql) —
 // même doctrine que `on_club_created` (0003_triggers.sql), non modifié.
 // ------------------------------------------------------------------
 

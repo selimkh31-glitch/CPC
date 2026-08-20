@@ -6,7 +6,7 @@ import { requireUuid, ValidationError } from "../_shared/validate.ts";
  * Chat, section 11 — ouvre (ou retrouve) la conversation DIRECT entre
  * l'utilisateur appelant et `otherUserId`. Délègue tout le travail atomique
  * (dédoublonnage + insertion des 2 membres) à start_direct_conversation()
- * (SECURITY DEFINER, supabase/migrations/0016_chat_rls.sql) — cette fonction
+ * (SECURITY DEFINER, supabase/migrations/0017_chat_rls.sql) — cette fonction
  * ne fait que valider l'auth/l'entrée et traduire les erreurs métier.
  */
 Deno.serve(async (req) => {

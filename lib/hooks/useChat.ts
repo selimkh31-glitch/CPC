@@ -9,7 +9,7 @@ import { USER_PUBLIC_COLUMNS, type ConversationRow, type MessageRow, type UserRo
  * Chat — fondation (mission "CHAT — VRAIE FONDATION", section 11).
  * Toute écriture de message passe par un INSERT client direct (RLS
  * `messages_insert_member` dérive `sender_id` du JWT — voir
- * supabase/migrations/0016_chat_rls.sql), même convention que
+ * supabase/migrations/0017_chat_rls.sql), même convention que
  * club_sessions/reviews pour les mutations "simples". Seule la CRÉATION
  * d'une conversation DIRECT (dédoublonnage) passe par une Edge Function
  * (start-direct-conversation), trop multi-étapes pour du RLS seul.

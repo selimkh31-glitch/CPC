@@ -7,7 +7,7 @@ import { USER_PUBLIC_COLUMNS, type GroupMemberRow, type GroupRole, type GroupRow
 /**
  * Groupes sociaux — fondation + UI (mission "GROUPES SOCIAUX", section 12).
  * Toute écriture "simple" (créer, rejoindre, quitter, supprimer) passe par
- * un appel client direct, protégé par RLS (supabase/migrations/0017_group_rls.sql)
+ * un appel client direct, protégé par RLS (supabase/migrations/0018_group_rls.sql)
  * — même convention que club_sessions/reviews. Le changement de rôle passe
  * par l'Edge Function set-group-member-role (multi-étapes/sensible :
  * vérification OWNER + interdiction du rôle OWNER côté serveur), jamais un
@@ -183,8 +183,8 @@ export function useSetGroupMemberRole(groupId: string) {
 /**
  * Id de la conversation GROUP associée (provisionnée par le trigger
  * on_group_created + tenue à jour par sync_group_conversation_membership,
- * voir 0017_group_rls.sql). `null` tant qu'on n'est pas encore membre — RLS
- * `conversations_select_member` (0016_chat_rls.sql) filtre déjà, cette
+ * voir 0018_group_rls.sql). `null` tant qu'on n'est pas encore membre — RLS
+ * `conversations_select_member` (0017_chat_rls.sql) filtre déjà, cette
  * requête ne peut donc jamais renvoyer la conversation d'un groupe dont
  * l'utilisateur n'est pas membre.
  */

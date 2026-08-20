@@ -1,13 +1,16 @@
 -- ==============================================================================
 -- ClubPro Connect — RLS/RPC pour le Chat (mission "CHAT — VRAIE FONDATION",
--- section 11). À exécuter APRÈS prisma/migrations/20260820000000_social_foundations.
+-- section 11). À exécuter APRÈS 0016_social_foundations.sql (renommé depuis
+-- 0016_chat_rls.sql lors de la réorganisation "Option B" : le DDL des tables
+-- vit désormais dans supabase/migrations/, plus dans la seule migration
+-- Prisma — voir l'en-tête de 0016_social_foundations.sql).
 --
--- NON APPLIQUÉE au projet distant pendant cette session (voir rapport,
--- section "Ce qui reste"). Grants table-level + schema USAGE déjà couverts
--- par les default privileges posés dans 0006_fix_schema_grants.sql pour
--- toute nouvelle table (authenticated/service_role) — sauf `role` sur
--- conversation_members, explicitement restreint plus bas (même doctrine que
--- push_token sur `users`, 0006_fix_schema_grants.sql).
+-- NON APPLIQUÉE au projet distant à la date d'écriture (voir rapport de
+-- session). Grants table-level + schema USAGE déjà couverts par les default
+-- privileges posés dans 0006_fix_schema_grants.sql pour toute nouvelle table
+-- (authenticated/service_role) — sauf `role` sur conversation_members,
+-- explicitement restreint plus bas (même doctrine que push_token sur
+-- `users`, 0006_fix_schema_grants.sql).
 --
 -- Type CLUB : schéma prêt (colonne club_id, index unique partiel) mais
 -- AUCUNE Edge Function ne le provisionne dans cette session — Phase 2.
@@ -21,7 +24,7 @@ alter table public.messages enable row level security;
 -- conversations — visibles uniquement par leurs membres. Aucune policy
 -- INSERT/UPDATE/DELETE pour `authenticated` : toute création passe par
 -- start_direct_conversation() (RPC ci-dessous, service_role uniquement) ou,
--- pour GROUP, par le trigger on_group_created (0017_group_rls.sql). Même
+-- pour GROUP, par le trigger on_group_created (0018_group_rls.sql). Même
 -- principe que season_stats (0002_rls_policies.sql) : l'absence de policy
 -- bloque la commande pour ce rôle, indépendamment des grants table-level.
 -- ------------------------------------------------------------------

@@ -1,14 +1,20 @@
 -- Social Foundations — Chat + Groupes (mission "EA DATA FOUNDATION + SOCIAL +
 -- COMPETITIONS + PLAYER CARDS + HARDENING", sections 11-12).
 --
--- IMPORTANT (voir supabase/config.toml et README > "Base de données & RLS") :
--- ce fichier N'A PAS été appliqué au projet Supabase distant
--- (cfgvtyxiggewauevvigm) pendant cette session. Écrit et relu pour
--- cohérence avec le schéma Prisma (prisma/schema.prisma) mais jamais
--- exécuté via `prisma migrate deploy` — voir rapport de session, section
--- "Ce qui reste : appliquer les migrations". À appliquer manuellement après
--- relecture, AVANT supabase/migrations/0016_chat_rls.sql et
--- 0017_group_rls.sql qui en dépendent.
+-- IMPORTANT — SUPERSEDÉ pour l'application distante (réorganisation "Option
+-- B", voir rapport de session) : ce fichier N'A JAMAIS été appliqué au
+-- projet Supabase distant (cfgvtyxiggewauevvigm) et NE DOIT PAS l'être via
+-- `prisma migrate deploy` — le DDL identique a été transcrit fidèlement dans
+-- supabase/migrations/0016_social_foundations.sql, qui est désormais la
+-- seule source appliquée au distant (voir son en-tête pour le détail).
+-- L'appliquer ICI en plus créerait un doublon (tables/enums déjà existants).
+--
+-- Ce fichier reste CONSERVÉ TEL QUEL (non supprimé) pour la continuité de
+-- l'historique de migrations Prisma local/outillage (`prisma generate`,
+-- `prisma migrate diff`, seed) — prisma/schema.prisma décrit le même modèle
+-- que supabase/migrations/0016_social_foundations.sql ; les deux DOIVENT
+-- rester synchronisés si le schéma évolue, mais seul le second est la
+-- source de vérité du schéma distant réel.
 
 -- CreateEnum
 CREATE TYPE "ConversationType" AS ENUM ('DIRECT', 'GROUP', 'CLUB');

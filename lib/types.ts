@@ -226,7 +226,7 @@ export interface MatchParticipantRow {
 
 /**
  * Social Foundations — Chat (mission "CHAT — VRAIE FONDATION", section 11).
- * Voir supabase/migrations/0016_chat_rls.sql pour les policies exactes.
+ * Voir supabase/migrations/0017_chat_rls.sql pour les policies exactes.
  */
 export type ConversationType = "DIRECT" | "GROUP" | "CLUB";
 export type ConversationRole = "OWNER" | "ADMIN" | "MEMBER";
@@ -266,7 +266,7 @@ export interface MessageRow {
 
 /**
  * Social Foundations — Groupes (mission section 12). Distinct d'un club.
- * Voir supabase/migrations/0017_group_rls.sql pour les policies exactes.
+ * Voir supabase/migrations/0018_group_rls.sql pour les policies exactes.
  */
 export type GroupVisibility = "PUBLIC" | "PRIVATE";
 export type GroupRole = "OWNER" | "ADMIN" | "MEMBER";

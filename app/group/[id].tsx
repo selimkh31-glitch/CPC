@@ -26,7 +26,7 @@ import type { GroupMemberRow } from "@/lib/types";
  * Détail d'un groupe (mission section 12, Chantier D) — membres (Player
  * Card, section 8/10 : intégration réelle demandée), rôles, chat, join/leave/
  * delete. Toute action de permission (changer un rôle, supprimer) est
- * garantie côté DB/RLS (0017_group_rls.sql) — les conditions d'affichage
+ * garantie côté DB/RLS (0018_group_rls.sql) — les conditions d'affichage
  * ci-dessous ne sont qu'un confort UX, jamais la source de vérité.
  */
 export default function GroupDetailScreen() {

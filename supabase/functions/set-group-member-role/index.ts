@@ -15,7 +15,7 @@ function mapRoleError(message: string): { text: string; status: number } {
  * Groupes sociaux, mission section 12 — seul point d'entrée client pour
  * promouvoir/rétrograder un membre (ADMIN <-> MEMBER). Délègue toute la
  * logique d'autorisation à set_group_member_role() (SECURITY DEFINER,
- * supabase/migrations/0017_group_rls.sql) : seul le OWNER peut appeler,
+ * supabase/migrations/0018_group_rls.sql) : seul le OWNER peut appeler,
  * jamais de rôle OWNER assignable ici, jamais le rôle du OWNER modifiable.
  * `newRole` volontairement restreint à ADMIN/MEMBER dans la validation —
  * défense en profondeur, la garde définitive reste côté fonction SQL.

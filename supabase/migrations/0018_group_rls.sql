@@ -1,9 +1,11 @@
 -- ==============================================================================
 -- ClubPro Connect — RLS/trigger pour les Groupes sociaux (mission "GROUPES
--- SOCIAUX", section 12). À exécuter APRÈS 0016_chat_rls.sql.
+-- SOCIAUX", section 12). À exécuter APRÈS 0017_chat_rls.sql (lui-même après
+-- 0016_social_foundations.sql — renommé depuis 0017_group_rls.sql lors de
+-- la réorganisation "Option B", voir l'en-tête de 0016_social_foundations.sql).
 --
--- NON APPLIQUÉE au projet distant pendant cette session (voir rapport,
--- section "Ce qui reste").
+-- NON APPLIQUÉE au projet distant à la date d'écriture (voir rapport de
+-- session).
 --
 -- Un groupe est distinct d'un club (section 12, en-tête) : identité sociale,
 -- pas compétitive. Sa création provisionne atomiquement sa conversation
@@ -174,13 +176,13 @@ create trigger on_group_created
 -- ENSUITE (group_members_join_public) ou qui quitte (group_members_leave_self)
 -- n'était PAS répercuté sur conversation_members — il rejoignait le groupe
 -- sans jamais pouvoir voir ni écrire dans son chat (bloqué par
--- conversations_select_member / messages_insert_member, 0016_chat_rls.sql),
+-- conversations_select_member / messages_insert_member, 0017_chat_rls.sql),
 -- silencieusement, sans erreur explicite. Ce trigger tient les deux tables
 -- synchronisées pour INSERT (rejoindre), UPDATE (set_group_member_role,
 -- répercute le rôle), et DELETE (quitter).
 --
 -- SECURITY DEFINER (bypass RLS pour écrire dans conversation_members, table
--- sans policy INSERT/UPDATE authenticated — voir 0016_chat_rls.sql). Ne fait
+-- sans policy INSERT/UPDATE authenticated — voir 0017_chat_rls.sql). Ne fait
 -- rien si la conversation GROUP n'existe pas encore (cas du tout premier
 -- INSERT dans group_members, fait par handle_new_group() lui-même AVANT
 -- que la conversation ne soit créée — cette même fonction insère alors
