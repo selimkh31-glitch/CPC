@@ -6,13 +6,24 @@ import { USER_PUBLIC_COLUMNS, type GroupMemberRow, type GroupRole, type GroupRow
 
 /**
  * Groupes sociaux — fondation + UI (mission "GROUPES SOCIAUX", section 12).
- * Toute écriture "simple" (créer, rejoindre, quitter, supprimer) passe par
- * un appel client direct, protégé par RLS (supabase/migrations/0018_group_rls.sql)
- * — même convention que club_sessions/reviews. Le changement de rôle passe
- * par l'Edge Function set-group-member-role (multi-étapes/sensible :
+ * Toute écriture "simple" (rejoindre, quitter, supprimer) passe par un appel
+ * client direct, protégé par RLS (supabase/migrations/0018_group_rls.sql) —
+ * même convention que club_sessions/reviews. Le changement de rôle passe par
+ * l'Edge Function set-group-member-role (multi-étapes/sensible :
  * vérification OWNER + interdiction du rôle OWNER côté serveur), jamais un
  * UPDATE direct — RLS n'expose d'ailleurs aucune policy UPDATE sur
  * group_members pour authenticated.
+ *
+ * EXCEPTION — création (useCreateGroup) : passe par l'Edge Function
+ * create-group, PAS un INSERT client direct. Correctif d'un bug réel
+ * (0020_create_group_function.sql) : `.insert(...).select().single()`
+ * (INSERT ... RETURNING) échouait pour un groupe PRIVATE — le RETURNING
+ * exige que la ligne satisfasse la policy SELECT groups_select_visible,
+ * qui pour PRIVATE dépend de group_members, pas encore "visible" à ce
+ * point précis du même statement (le trigger on_group_created s'exécute
+ * dans la même transaction mais après l'évaluation RETURNING). PUBLIC
+ * fonctionnait par accident (visibility='PUBLIC' seul suffit). Voir
+ * l'en-tête de la migration pour le détail complet.
  */
 
 /** Groupes dont l'utilisateur connecté est déjà membre. */
@@ -82,18 +93,22 @@ export function useGroupMembers(groupId: string | null) {
   });
 }
 
-/** Crée un groupe — le trigger on_group_created ajoute atomiquement le owner comme membre + provisionne sa conversation. */
+/**
+ * Crée un groupe — via l'Edge Function create-group (voir en-tête de ce
+ * fichier). Le trigger on_group_created ajoute atomiquement le owner comme
+ * membre + provisionne sa conversation ; fonctionne identiquement pour
+ * PUBLIC et PRIVATE (contrairement à l'ancien INSERT client direct).
+ */
 export function useCreateGroup(ownerId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { name: string; description?: string; visibility: "PUBLIC" | "PRIVATE" }) => {
-      const { data, error } = await supabase
-        .from("groups")
-        .insert({ name: input.name, description: input.description ?? null, visibility: input.visibility, owner_id: ownerId })
-        .select("*")
-        .single();
-      if (error) throw error;
-      return data as GroupRow;
+      const { group } = await callEdgeFunction<{ group: GroupRow }>("create-group", {
+        name: input.name,
+        description: input.description,
+        visibility: input.visibility,
+      });
+      return group;
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

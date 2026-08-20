@@ -68,6 +68,10 @@ verify_jwt = true
 [functions.set-group-member-role]
 verify_jwt = true
 
+# Correctif "création groupe PRIVATE" (post-0019), même doctrine que ci-dessus.
+[functions.create-group]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 
