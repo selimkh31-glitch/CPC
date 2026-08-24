@@ -126,19 +126,19 @@ Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `
 
 ## 6. QA cloud (24 août 2026) — tip #14 (PR #5 IN)
 
-`test:live-filters` **présent** (PR #5 dans le tip).
+`test:live-filters` **présent** (PR #5 dans le tip). Relance après merge `70364c0`.
 
 | Commande | Résultat |
 |---|---|
-| `npm run typecheck` | à relancer après merge |
-| `npm run test:live` | à relancer |
-| `npm run test:live-filters` | à relancer (script PR #5) |
-| `npm run test:live-match` | à relancer |
+| `npm run typecheck` | **PASS** |
+| `npm run test:live` | **PASS** (14) |
+| `npm run test:live-filters` | **PASS** (6) |
+| `npm run test:live-match` | **PASS** (15) |
 | `npm run test:recruitment` | PASS historique (5) |
 | `npm run test:safety` | PASS historique (8) |
-| `npm run test:player-card` | à relancer |
+| `npm run test:player-card` | **PASS** (9) |
 | `npm run test:club-profile` | PASS historique (8) |
-| `npm run test:session-state` | à relancer |
+| `npm run test:session-state` | **PASS** (9) |
 | `npm run test:social` | PASS historique (5) |
 | `npm run test:competitions` | PASS historique (9) |
 | `npm run test:ovr` | PASS historique (9) |
