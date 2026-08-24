@@ -1,5 +1,4 @@
-import { Pressable, Text, View } from "react-native";
-import { router } from "expo-router";
+import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
@@ -10,14 +9,15 @@ import { isLiveActive } from "@/lib/live";
 
 /**
  * Reco LIVE déterministe (poste + plateforme + expiry + besoin club).
- * Pas d'IA, pas d'égalité username EA.
+ * Affiche le motif réel — jamais un score / % de compatibilité.
  */
-export function SmartMatchBanner() {
+export function SmartMatchBanner({ visible = true }: { visible?: boolean }) {
   const { profile } = useAuth();
   const { data: sessions, isLoading } = useLiveSessions();
   const now = useLiveClock();
 
-  if (isLoading) return <Skeleton className="h-24 mb-4" />;
+  if (!visible) return null;
+  if (isLoading) return <Skeleton className="mb-3 h-14" />;
   if (!profile) return null;
 
   const clubs = (sessions ?? [])
@@ -39,38 +39,22 @@ export function SmartMatchBanner() {
     },
     clubs,
     now
-  ).slice(0, 3);
+  );
 
   if (matches.length === 0) return null;
 
-  const nameBySession = new Map((sessions ?? []).map((s) => [s.id, s.club?.name ?? "Club"]));
+  const sampleReason = matches[0]?.reason;
 
   return (
-    <View className="mb-4 rounded-2xl border border-accent/30 bg-accent/10 p-4">
-      <View className="mb-2 flex-row items-center gap-1.5">
-        <Sparkles size={15} color="#39ff8a" />
-        <Text className="text-xs font-extrabold uppercase tracking-wide text-accent">
-          Compatible avec ton LIVE
+    <View className="mb-3 flex-row items-start gap-2 rounded-xl bg-accent/10 px-3 py-2.5">
+      <Sparkles size={14} color="#39ff8a" />
+      <View className="min-w-0 flex-1">
+        <Text className="text-xs font-bold text-accent">
+          {matches.length} club{matches.length > 1 ? "s" : ""} correspondent à ton profil
         </Text>
-      </View>
-      <View className="gap-1.5">
-        {matches.map((m) => (
-          <Pressable
-            key={m.sessionId}
-            onPress={() => router.push(`/club/${m.clubId}?session=${m.sessionId}`)}
-            className="flex-row items-center justify-between"
-          >
-            <View className="flex-1 pr-2">
-              <Text numberOfLines={1} className="text-sm font-bold text-fg">
-                {nameBySession.get(m.sessionId) ?? "Club"}
-              </Text>
-              <Text numberOfLines={1} className="text-xs text-fg-muted">
-                {m.reason}
-              </Text>
-            </View>
-            <Text className="ml-2 text-sm font-extrabold text-accent">{m.score}</Text>
-          </Pressable>
-        ))}
+        <Text numberOfLines={2} className="mt-0.5 text-[11px] text-fg-muted">
+          {sampleReason || "Poste recherché · même plateforme"}
+        </Text>
       </View>
     </View>
   );
