@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { Radio } from "lucide-react-native";
 import { LiveClubCard } from "@/components/live/LiveClubCard";
 import { LivePlayerCard } from "@/components/live/LivePlayerCard";
@@ -13,6 +14,7 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { isLiveActive } from "@/lib/live";
 
@@ -32,9 +34,12 @@ export default function LiveScreen() {
     refetch: refetchPlayers,
     isRefetching: playersRefetching,
   } = useLivePlayers();
+  const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const [filters, setFilters] = useState<LiveFiltersState>(EMPTY_LIVE_FILTERS);
   const [pane, setPane] = useState<LivePane>("feed");
   const now = useLiveClock();
+  const playerClubId =
+    memberships?.find((m) => m.role === "MEMBER" || m.role === "MANAGER")?.club.id ?? null;
 
   const filtered = useMemo(() => {
     return (items ?? []).filter((item) => {
@@ -71,7 +76,7 @@ export default function LiveScreen() {
       {pane === "find" ? (
         <View className="flex-1">
           <View className="px-4 pt-2">
-            <LivePaneHeader pane={pane} onPane={setPane} clubCount={filtered.length} />
+            <LivePaneHeader pane={pane} onPane={setPane} clubCount={filtered.length} playerClubId={playerClubId} />
           </View>
           <FindClubPanel />
         </View>
@@ -83,7 +88,7 @@ export default function LiveScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#39ff8a" />}
           ListHeaderComponent={
             <View className="mb-4">
-              <LivePaneHeader pane={pane} onPane={setPane} clubCount={filtered.length} />
+              <LivePaneHeader pane={pane} onPane={setPane} clubCount={filtered.length} playerClubId={playerClubId} />
               <PlayerLivePanel />
               <SmartMatchBanner />
               <LiveFilters value={filters} onChange={setFilters} />
@@ -132,10 +137,12 @@ function LivePaneHeader({
   pane,
   onPane,
   clubCount,
+  playerClubId,
 }: {
   pane: LivePane;
   onPane: (pane: LivePane) => void;
   clubCount: number;
+  playerClubId: string | null;
 }) {
   return (
     <View className="mb-4">
@@ -143,6 +150,14 @@ function LivePaneHeader({
         <Radio size={22} color="#39ff8a" />
         <Text className="font-display text-3xl text-fg">LIVE</Text>
         {pane === "feed" && <Text className="ml-auto text-sm text-fg-muted">{clubCount} clubs</Text>}
+        {playerClubId ? (
+          <Pressable
+            onPress={() => router.push(`/match-sheet?clubId=${playerClubId}`)}
+            className={`${pane === "feed" ? "" : "ml-auto"} active:opacity-80`}
+          >
+            <Text className="text-sm font-bold text-accent">Mon club</Text>
+          </Pressable>
+        ) : null}
       </View>
       <Text className="mb-3 text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs.</Text>
       <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">

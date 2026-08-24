@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
+import { toast } from "@/lib/toast";
 import type { ApplicationRow } from "@/lib/types";
 
 /**
@@ -107,6 +108,89 @@ export function useRespondApplication(clubId: string) {
   });
 }
 
+function notifyPlayerApplicationStatus(status: string) {
+  if (status === "ACCEPTED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    toast.success("Une de tes candidatures a été acceptée !");
+    return;
+  }
+  if (status === "REJECTED" || status === "DECLINED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une de tes candidatures a été refusée.");
+    return;
+  }
+  if (status === "EXPIRED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une candidature a expiré avec le LIVE.");
+    return;
+  }
+  if (status === "CANCELLED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une candidature a été annulée (club hors LIVE).");
+  }
+}
+
+/**
+ * Canal joueur `my-applications-${userId}` — partagé par référence-comptage.
+ * L'onglet Activité (segment Candidatures) et le stack `/my-applications`
+ * peuvent monter `MyApplicationsList` en même temps (deep link / notif alors
+ * que le tab reste monté). Un second `.on()` après `.subscribe()` casse
+ * Realtime — même doctrine que `useApplications` (club) et `useMyInvitations`.
+ * Toast / haptics de statut : une seule fois par event, pas par listener.
+ */
+const myPlayerApplicationChannels = new Map<
+  string,
+  {
+    channel: ReturnType<typeof supabase.channel>;
+    listListeners: Set<() => void>;
+    statusListeners: Set<(status: string) => void>;
+    refCount: number;
+  }
+>();
+
+function acquireMyPlayerApplicationsChannel(userId: string) {
+  let entry = myPlayerApplicationChannels.get(userId);
+  if (!entry) {
+    const listListeners = new Set<() => void>();
+    const statusListeners = new Set<(status: string) => void>();
+    const channel = supabase
+      .channel(`my-applications-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          listListeners.forEach((listener) => listener());
+          if (payload.eventType === "UPDATE") {
+            const status = (payload.new as { status: string }).status;
+            notifyPlayerApplicationStatus(status);
+            statusListeners.forEach((listener) => listener(status));
+          }
+        }
+      )
+      .subscribe();
+    entry = { channel, listListeners, statusListeners, refCount: 0 };
+    myPlayerApplicationChannels.set(userId, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+function releaseMyPlayerApplicationsChannel(
+  userId: string,
+  kind: "list" | "status",
+  listener: (() => void) | ((status: string) => void)
+) {
+  const entry = myPlayerApplicationChannels.get(userId);
+  if (!entry) return;
+  if (kind === "list") entry.listListeners.delete(listener as () => void);
+  else entry.statusListeners.delete(listener as (status: string) => void);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    myPlayerApplicationChannels.delete(userId);
+  }
+}
+
 /** Candidatures du joueur connecté, tous statuts confondus (écran "Mes candidatures"). */
 export function useMyApplications(userId: string | null) {
   const queryClient = useQueryClient();
@@ -127,18 +211,10 @@ export function useMyApplications(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-applications-list-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
-        () => queryClient.invalidateQueries({ queryKey: ["my-applications", userId] })
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["my-applications", userId] });
+    const entry = acquireMyPlayerApplicationsChannel(userId);
+    entry.listListeners.add(listener);
+    return () => releaseMyPlayerApplicationsChannel(userId, "list", listener);
   }, [userId, queryClient]);
 
   return query;
@@ -166,27 +242,12 @@ export function useWithdrawApplication() {
   });
 }
 
-/** Notifie l'écran en temps réel quand le statut d'une candidature du user change (haptics + refetch). */
+/** Optionnel — callbacks UI additionnels (sans toast : le canal envoie la notif une seule fois). */
 export function useMyApplicationStatusUpdates(userId: string | null, onChange: (status: string) => void) {
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-applications-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const status = (payload.new as { status: string }).status;
-          Haptics.notificationAsync(
-            status === "ACCEPTED" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
-          );
-          onChange(status);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const entry = acquireMyPlayerApplicationsChannel(userId);
+    entry.statusListeners.add(onChange);
+    return () => releaseMyPlayerApplicationsChannel(userId, "status", onChange);
   }, [userId, onChange]);
 }
