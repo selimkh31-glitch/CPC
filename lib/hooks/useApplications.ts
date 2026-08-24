@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
+import { toast } from "@/lib/toast";
 import type { ApplicationRow } from "@/lib/types";
 
 /**
@@ -107,12 +108,35 @@ export function useRespondApplication(clubId: string) {
   });
 }
 
+function notifyPlayerApplicationStatus(status: string) {
+  if (status === "ACCEPTED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    toast.success("Une de tes candidatures a été acceptée !");
+    return;
+  }
+  if (status === "REJECTED" || status === "DECLINED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une de tes candidatures a été refusée.");
+    return;
+  }
+  if (status === "EXPIRED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une candidature a expiré avec le LIVE.");
+    return;
+  }
+  if (status === "CANCELLED") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    toast.info("Une candidature a été annulée (club hors LIVE).");
+  }
+}
+
 /**
  * Canal joueur `my-applications-${userId}` — partagé par référence-comptage.
  * L'onglet Activité (segment Candidatures) et le stack `/my-applications`
  * peuvent monter `MyApplicationsList` en même temps (deep link / notif alors
  * que le tab reste monté). Un second `.on()` après `.subscribe()` casse
  * Realtime — même doctrine que `useApplications` (club) et `useMyInvitations`.
+ * Toast / haptics de statut : une seule fois par event, pas par listener.
  */
 const myPlayerApplicationChannels = new Map<
   string,
@@ -136,11 +160,9 @@ function acquireMyPlayerApplicationsChannel(userId: string) {
         { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
         (payload) => {
           listListeners.forEach((listener) => listener());
-          if (payload.eventType === "UPDATE" && statusListeners.size > 0) {
+          if (payload.eventType === "UPDATE") {
             const status = (payload.new as { status: string }).status;
-            Haptics.notificationAsync(
-              status === "ACCEPTED" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
-            );
+            notifyPlayerApplicationStatus(status);
             statusListeners.forEach((listener) => listener(status));
           }
         }
@@ -220,7 +242,7 @@ export function useWithdrawApplication() {
   });
 }
 
-/** Notifie l'écran en temps réel quand le statut d'une candidature du user change (haptics + refetch). */
+/** Optionnel — callbacks UI additionnels (sans toast : le canal envoie la notif une seule fois). */
 export function useMyApplicationStatusUpdates(userId: string | null, onChange: (status: string) => void) {
   useEffect(() => {
     if (!userId) return;

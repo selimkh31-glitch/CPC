@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { Text, View } from "react-native";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -7,7 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
 import { POSITION_LABELS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
-import { useMyApplications, useWithdrawApplication, useMyApplicationStatusUpdates } from "@/lib/hooks/useApplications";
+import { useMyApplications, useWithdrawApplication } from "@/lib/hooks/useApplications";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 import type { ApplicationStatus } from "@/lib/types";
@@ -38,14 +37,6 @@ export function MyApplicationsList() {
   const userId = session?.user.id ?? null;
   const { data: applications, isLoading, isError, refetch } = useMyApplications(userId);
   const withdraw = useWithdrawApplication();
-
-  const onStatusChange = useCallback((status: string) => {
-    if (status === "ACCEPTED") toast.success("Une de tes candidatures a été acceptée !");
-    if (status === "REJECTED" || status === "DECLINED") toast.info("Une de tes candidatures a été refusée.");
-    if (status === "EXPIRED") toast.info("Une candidature a expiré avec le LIVE.");
-    if (status === "CANCELLED") toast.info("Une candidature a été annulée (club hors LIVE).");
-  }, []);
-  useMyApplicationStatusUpdates(userId, onStatusChange);
 
   if (isLoading) {
     return (
