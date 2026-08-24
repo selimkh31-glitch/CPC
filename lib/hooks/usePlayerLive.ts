@@ -12,6 +12,78 @@ function invalidatePlayerLive(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["my-player-session"] });
 }
 
+const livePlayerChannels = new Map<
+  string,
+  { channel: ReturnType<typeof supabase.channel>; listeners: Set<() => void>; refCount: number }
+>();
+
+function acquireLivePlayersChannel() {
+  const topic = "live-players";
+  let entry = livePlayerChannels.get(topic);
+  if (!entry) {
+    const listeners = new Set<() => void>();
+    const channel = supabase
+      .channel(topic)
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_sessions" }, () => {
+        listeners.forEach((listener) => listener());
+      })
+      .subscribe();
+    entry = { channel, listeners, refCount: 0 };
+    livePlayerChannels.set(topic, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+function releaseLivePlayersChannel(listener: () => void) {
+  const topic = "live-players";
+  const entry = livePlayerChannels.get(topic);
+  if (!entry) return;
+  entry.listeners.delete(listener);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    livePlayerChannels.delete(topic);
+  }
+}
+
+const myPlayerSessionChannels = new Map<
+  string,
+  { channel: ReturnType<typeof supabase.channel>; listeners: Set<() => void>; refCount: number }
+>();
+
+function acquireMyPlayerSessionChannel(userId: string) {
+  const topic = `my-player-session-${userId}`;
+  let entry = myPlayerSessionChannels.get(topic);
+  if (!entry) {
+    const listeners = new Set<() => void>();
+    const channel = supabase
+      .channel(topic)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "player_sessions", filter: `user_id=eq.${userId}` },
+        () => listeners.forEach((listener) => listener())
+      )
+      .subscribe();
+    entry = { channel, listeners, refCount: 0 };
+    myPlayerSessionChannels.set(topic, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+function releaseMyPlayerSessionChannel(userId: string, listener: () => void) {
+  const topic = `my-player-session-${userId}`;
+  const entry = myPlayerSessionChannels.get(topic);
+  if (!entry) return;
+  entry.listeners.delete(listener);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    myPlayerSessionChannels.delete(topic);
+  }
+}
+
 /** Session LIVE du joueur connecté (la plus récente, active ou non). */
 export function useMyPlayerSession(userId: string | null) {
   const queryClient = useQueryClient();
@@ -34,17 +106,10 @@ export function useMyPlayerSession(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-player-session-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "player_sessions", filter: `user_id=eq.${userId}` },
-        () => queryClient.invalidateQueries({ queryKey: ["my-player-session", userId] })
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["my-player-session", userId] });
+    const entry = acquireMyPlayerSessionChannel(userId);
+    entry.listeners.add(listener);
+    return () => releaseMyPlayerSessionChannel(userId, listener);
   }, [userId, queryClient]);
 
   return query;
@@ -80,15 +145,10 @@ export function useLivePlayers() {
   });
 
   useEffect(() => {
-    const channel = supabase
-      .channel("live-players")
-      .on("postgres_changes", { event: "*", schema: "public", table: "player_sessions" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["live-players"] });
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["live-players"] });
+    const entry = acquireLivePlayersChannel();
+    entry.listeners.add(listener);
+    return () => releaseLivePlayersChannel(listener);
   }, [queryClient]);
 
   return query;

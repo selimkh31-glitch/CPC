@@ -11,6 +11,41 @@ import type { ClubSessionRow } from "@/lib/types";
  * is_live + expires_at côté SQL et isLiveActive côté client.
  * refetchInterval : un LIVE qui expire pendant que l'écran est ouvert disparaît.
  */
+const liveFeedChannels = new Map<
+  string,
+  { channel: ReturnType<typeof supabase.channel>; listeners: Set<() => void>; refCount: number }
+>();
+
+function acquireLiveFeedChannel() {
+  const topic = "live-feed";
+  let entry = liveFeedChannels.get(topic);
+  if (!entry) {
+    const listeners = new Set<() => void>();
+    const channel = supabase
+      .channel(topic)
+      .on("postgres_changes", { event: "*", schema: "public", table: "club_sessions" }, () => {
+        listeners.forEach((listener) => listener());
+      })
+      .subscribe();
+    entry = { channel, listeners, refCount: 0 };
+    liveFeedChannels.set(topic, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+function releaseLiveFeedChannel(listener: () => void) {
+  const topic = "live-feed";
+  const entry = liveFeedChannels.get(topic);
+  if (!entry) return;
+  entry.listeners.delete(listener);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    liveFeedChannels.delete(topic);
+  }
+}
+
 export function useLiveSessions() {
   const queryClient = useQueryClient();
 
@@ -45,16 +80,10 @@ export function useLiveSessions() {
   });
 
   useEffect(() => {
-    const channel = supabase
-      .channel("live-feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "club_sessions" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
+    const entry = acquireLiveFeedChannel();
+    entry.listeners.add(listener);
+    return () => releaseLiveFeedChannel(listener);
   }, [queryClient]);
 
   return query;
