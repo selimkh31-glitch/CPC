@@ -54,14 +54,50 @@ export function useInvitePlayer() {
  * l'inviteur) — comportement voulu depuis le début, jamais atteint en
  * pratique avant ce fix.
  *
- * Pas de canal realtime dédié (évite de dupliquer un système déjà couvert par
- * l'invalidation directe du cache dans `useInvitePlayer`/`useInvitePlayerToClub`
- * ci-dessous + le refetch React Query standard au focus/remount) — une
- * réponse ACCEPTED/DECLINED côté joueur n'est donc pas répercutée en direct
- * ici tant qu'aucun refetch ne survient.
+ * Realtime : canal ref-compté `club-invitations-${clubId}` (postgres_changes
+ * sur `invitations` filtré `club_id=eq.`), même doctrine que `useApplications`
+ * / `useMyInvitations`. Match, Effectif et Candidatures montent ce hook en
+ * parallèle — un second `.on()` après subscribe ferait planter Realtime.
  */
+const clubInvitationsChannels = new Map<
+  string,
+  { channel: ReturnType<typeof supabase.channel>; listeners: Set<(payload: any) => void>; refCount: number }
+>();
+
+function acquireClubInvitationsChannel(clubId: string) {
+  let entry = clubInvitationsChannels.get(clubId);
+  if (!entry) {
+    const listeners = new Set<(payload: any) => void>();
+    const channel = supabase
+      .channel(`club-invitations-${clubId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invitations", filter: `club_id=eq.${clubId}` },
+        (payload) => listeners.forEach((listener) => listener(payload))
+      )
+      .subscribe();
+    entry = { channel, listeners, refCount: 0 };
+    clubInvitationsChannels.set(clubId, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+function releaseClubInvitationsChannel(clubId: string, listener: (payload: any) => void) {
+  const entry = clubInvitationsChannels.get(clubId);
+  if (!entry) return;
+  entry.listeners.delete(listener);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    clubInvitationsChannels.delete(clubId);
+  }
+}
+
 export function useClubInvitations(clubId: string | null) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ["club-invitations", clubId],
     enabled: Boolean(clubId),
     queryFn: async () => {
@@ -74,6 +110,18 @@ export function useClubInvitations(clubId: string | null) {
       return data as InvitationRow[];
     },
   });
+
+  useEffect(() => {
+    if (!clubId) return;
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["club-invitations", clubId] });
+    const entry = acquireClubInvitationsChannel(clubId);
+    entry.listeners.add(listener);
+    return () => {
+      releaseClubInvitationsChannel(clubId, listener);
+    };
+  }, [clubId, queryClient]);
+
+  return query;
 }
 
 /**

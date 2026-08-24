@@ -1,8 +1,8 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
-import { sendPushNotification } from "../_shared/push.ts";
 import { requireEnum, requireUuid, ValidationError } from "../_shared/validate.ts";
 import { nextApplicationStatus, type ApplicationStatus } from "../_shared/recruitment.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 /** Accepter/refuser une candidature instantanément (section 3.D) — owner/manager only. */
 Deno.serve(async (req) => {
@@ -80,15 +80,20 @@ Deno.serve(async (req) => {
 
   const { data: applicant } = await admin
     .from("users")
-    .select("push_token")
+    .select("id, push_token")
     .eq("id", application.user_id)
     .maybeSingle();
-  await sendPushNotification(
-    applicant?.push_token,
-    status === "ACCEPTED" ? "Candidature acceptée ! 🎉" : "Candidature refusée",
-    status === "ACCEPTED" ? "Tu as été accepté dans le club." : "Ta candidature n'a pas été retenue cette fois.",
-    { type: "application_status", status }
-  );
+  await notifyUser(admin, {
+    userId: application.user_id,
+    type: status === "ACCEPTED" ? "APPLICATION_ACCEPTED" : "APPLICATION_DECLINED",
+    title: status === "ACCEPTED" ? "Candidature acceptée" : "Candidature refusée",
+    body:
+      status === "ACCEPTED"
+        ? "Tu as été accepté dans le club Pro Clubs."
+        : "Ta candidature n'a pas été retenue cette fois.",
+    data: { clubId: application.club_id, applicationId: application.id, status },
+    pushToken: applicant?.push_token,
+  });
 
   return jsonResponse({ application: updated });
 });

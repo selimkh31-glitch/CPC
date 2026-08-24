@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { computeLiveExpiresAt, isLiveActive, parseLiveDurationMs } from "@/lib/live";
 import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
 import { USER_PUBLIC_COLUMNS, type PlayerSessionRow } from "@/lib/types";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 
 function invalidatePlayerLive(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["live-players"] });
@@ -66,7 +67,15 @@ export function useLivePlayers() {
         .order("updated_at", { ascending: false });
       if (error) throw error;
       const now = Date.now();
-      return (data as PlayerSessionRow[]).filter((row) => isLiveActive(row, now) && row.user);
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      return (data as PlayerSessionRow[]).filter(
+        (row) => isLiveActive(row, now) && row.user && !blocked.has(row.user_id)
+      );
     },
   });
 

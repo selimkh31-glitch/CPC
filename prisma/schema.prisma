@@ -176,6 +176,9 @@ model User {
   reliabilityScore    Float       @default(0) @map("reliability_score")
   verifiedStats       Json?       @map("verified_stats")
   eaClubLinked        String?     @map("ea_club_linked")
+  // NONE = pas de lien EA. USERNAME_EQUALITY = club EA lié, rapprochement
+  // joueur par pseudo uniquement (aucun id joueur EA stable n'existe).
+  eaIdentityKind      String      @default("NONE") @map("ea_identity_kind")
   plan                Plan        @default(FREE)
   // Trust Engine — streak de sessions honorées consécutives.
   currentStreak       Int         @default(0) @map("current_streak")
@@ -212,6 +215,11 @@ model User {
   groupsOwned              Group[]              @relation("GroupOwner")
   groupMemberships         GroupMember[]
   playerSessions           PlayerSession[]
+  blocksMade               UserBlock[]          @relation("BlocksMade")
+  blocksReceived           UserBlock[]          @relation("BlocksReceived")
+  reportsMade              UserReport[]         @relation("ReportsMade")
+  reportsReceived          UserReport[]         @relation("ReportsReceived")
+  notifications            Notification[]
 
   @@index([reliabilityScore])
   @@index([platform])
@@ -734,4 +742,55 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_members")
+}
+
+// ------------------------------------------------------------------
+// Safety — block / report (écritures Edge) + notifications in-app.
+// Voir supabase/migrations/0025_safety_notifications.sql.
+// ------------------------------------------------------------------
+
+model UserBlock {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model UserReport {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId String   @map("reporter_id") @db.Uuid
+  reportedId String   @map("reported_id") @db.Uuid
+  reason     String
+  details    String?
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  reporter User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("ReportsReceived", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([reportedId, status])
+  @@map("user_reports")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String
+  data      Json      @default("{}")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

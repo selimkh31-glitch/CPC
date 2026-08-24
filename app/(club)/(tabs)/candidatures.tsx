@@ -1,5 +1,7 @@
-import { ScrollView, Text } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { Bell } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplicationsPanel } from "@/components/club/ApplicationsPanel";
@@ -8,6 +10,7 @@ import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
 
 /**
  * Candidatures — Mode Club (Foundation #1). ApplicationsPanel réutilisé tel
@@ -29,6 +32,7 @@ export default function CandidaturesTab() {
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
+  const unreadNotifications = useUnreadNotificationCount(session?.user.id ?? null);
 
   if (isLoading || !club) {
     return (
@@ -44,7 +48,18 @@ export default function CandidaturesTab() {
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
         <ModeSwitch managedClubs={managedClubs} />
-        <Text className="font-display text-2xl text-fg">Candidatures</Text>
+        <View className="flex-row items-center justify-between">
+          <Text className="font-display text-2xl text-fg">Candidatures</Text>
+          <Pressable
+            onPress={() => router.push("/notifications")}
+            className="flex-row items-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
+          >
+            <Bell size={16} color="#f4f5f7" />
+            <Text className="text-sm font-bold text-fg">
+              Notifs{unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
+            </Text>
+          </Pressable>
+        </View>
         <ApplicationsPanel clubId={club.id} />
         <ClubInvitationsPanel clubId={club.id} />
       </ScrollView>

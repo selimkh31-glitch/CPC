@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useLoadOlderMessages, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/hooks/useChat";
 import { cn, timeAgo } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import type { MessageRow } from "@/lib/types";
 
 /**
@@ -39,7 +40,12 @@ export default function ConversationThreadScreen() {
     const body = draft.trim();
     if (!body || !id) return;
     setDraft("");
-    send.mutate(body, { onError: () => setDraft(body) });
+    send.mutate(body, {
+      onError: (err: any) => {
+        setDraft(body);
+        toast.error(err?.message ?? "Impossible d'envoyer le message.");
+      },
+    });
   };
 
   if (isLoading) {

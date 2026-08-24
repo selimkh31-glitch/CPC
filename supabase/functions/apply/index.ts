@@ -1,9 +1,10 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { moderateText } from "../_shared/ai.ts";
-import { sendPushNotification } from "../_shared/push.ts";
 import { optionalString, requireString, requireUuid, ValidationError } from "../_shared/validate.ts";
 import { canApplyToLiveClub } from "../_shared/liveMatch.ts";
+import { rejectIfBlocked } from "../_shared/blocked.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 const FREE_APPLICATIONS_PER_DAY = 3;
 
@@ -45,6 +46,12 @@ Deno.serve(async (req) => {
     .single();
   if (!session || !session.is_live) {
     return jsonResponse({ error: "Cette session n'est plus disponible." }, 410);
+  }
+
+  const ownerId = (session as any).club?.owner_id as string | undefined;
+  if (ownerId) {
+    const blocked = await rejectIfBlocked(admin, user.id, ownerId);
+    if (blocked) return blocked;
   }
 
   const eligibility = canApplyToLiveClub(
@@ -147,6 +154,9 @@ Deno.serve(async (req) => {
     if (msg.includes("position_not_played") || msg.includes("position_not_needed") || msg.includes("session_no_need")) {
       return jsonResponse({ error: "Ce poste n'est pas compatible avec cette session." }, 400);
     }
+    if (msg.includes("users_blocked")) {
+      return jsonResponse({ error: "Tu ne peux pas interagir avec ce joueur." }, 403);
+    }
     return jsonResponse({ error: error.message }, 500);
   }
 
@@ -164,19 +174,22 @@ Deno.serve(async (req) => {
       .eq("id", user.id);
   }
 
-  // Notifie les owner/manager du club — non-bloquant.
   const { data: managers } = await admin
     .from("club_members")
-    .select("user:users(push_token)")
+    .select("user_id, user:users(id, push_token)")
     .eq("club_id", session.club_id)
     .in("role", ["OWNER", "MANAGER"]);
   for (const m of managers ?? []) {
-    await sendPushNotification(
-      (m as any).user?.push_token,
-      "Nouvelle candidature 📥",
-      `${profile.username} veut rejoindre ta session.`,
-      { type: "application", clubId: session.club_id }
-    );
+    const managerId = (m as any).user_id ?? (m as any).user?.id;
+    if (!managerId) continue;
+    await notifyUser(admin, {
+      userId: managerId,
+      type: "APPLICATION_RECEIVED",
+      title: "Nouvelle candidature",
+      body: `${profile.username} veut rejoindre ta session LIVE.`,
+      data: { clubId: session.club_id, applicationId: application.id },
+      pushToken: (m as any).user?.push_token,
+    });
   }
 
   return jsonResponse({ application });

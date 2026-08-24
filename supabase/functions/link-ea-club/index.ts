@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  await admin.from("users").update({ ea_club_linked: eaClubId }).eq("id", user.id);
+  await admin.from("users").update({ ea_club_linked: eaClubId, ea_identity_kind: "USERNAME_EQUALITY" }).eq("id", user.id);
 
   const statsByName = await fetchVerifiedClubStats(eaClubId);
   const mine = statsByName?.[profile.username.trim().toLowerCase()] ?? null;

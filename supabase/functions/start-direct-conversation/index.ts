@@ -1,6 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireUuid, ValidationError } from "../_shared/validate.ts";
+import { rejectIfBlocked } from "../_shared/blocked.ts";
 
 /**
  * Chat, section 11 — ouvre (ou retrouve) la conversation DIRECT entre
@@ -29,6 +30,9 @@ Deno.serve(async (req) => {
   }
 
   const admin = getAdminClient();
+  const blocked = await rejectIfBlocked(admin, user.id, otherUserId);
+  if (blocked) return blocked;
+
   const { data: conversation, error } = await admin.rpc("start_direct_conversation", {
     p_actor_id: user.id,
     p_other_user_id: otherUserId,
@@ -37,6 +41,9 @@ Deno.serve(async (req) => {
   if (error) {
     if (error.message.includes("user_not_found")) return jsonResponse({ error: "Joueur introuvable." }, 404);
     if (error.message.includes("cannot_message_self")) return jsonResponse({ error: "Impossible de démarrer une conversation avec toi-même." }, 400);
+    if (error.message.includes("users_blocked")) {
+      return jsonResponse({ error: "Tu ne peux pas interagir avec ce joueur." }, 403);
+    }
     console.error("[start-direct-conversation] échec RPC:", error.message);
     return jsonResponse({ error: "Impossible de démarrer la conversation." }, 500);
   }

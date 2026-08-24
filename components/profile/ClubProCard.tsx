@@ -6,6 +6,8 @@ import { BadgeCheck, Flame, Share2 } from "lucide-react-native";
 import { POSITION_LABELS, PLATFORM_LABELS, PLAY_STYLE_LABELS } from "@/lib/constants";
 import { computeOvr, rarityForOvr, RARITY_LABEL, type Rarity } from "@/lib/ovr";
 import type { Platform, PlayStyleCode, PositionCode, VerifiedStats } from "@/lib/types";
+import type { EaIdentityKind } from "@/lib/statsSource";
+import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
 
 export interface ClubProCardData {
@@ -18,6 +20,7 @@ export interface ClubProCardData {
   currentStreak: number;
   verifiedStats?: VerifiedStats | null;
   eaClubLinked?: string | null;
+  eaIdentityKind?: EaIdentityKind | null;
 }
 
 const RARITY_GRADIENT: Record<Rarity, [string, string]> = {
@@ -49,7 +52,8 @@ const RARITY_TEXT: Record<Rarity, string> = {
 export function ClubProCard({ data }: { data: ClubProCardData }) {
   const ovr = computeOvr({ reliabilityScore: data.reliabilityScore, verifiedStats: data.verifiedStats });
   const rarity = rarityForOvr(ovr);
-  const verified = Boolean(data.eaClubLinked);
+  const identity = eaIdentityBadge(data.eaIdentityKind);
+  const verified = Boolean(data.eaClubLinked) || identity.show;
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -112,9 +116,14 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
         </View>
 
         {verified && (
-          <View className="mt-3 flex-row items-center self-start gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
-            <BadgeCheck size={14} color="#39ff8a" />
-            <Text className="text-xs font-bold text-accent">Stats EA liées</Text>
+          <View className="mt-3 self-start rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
+            <View className="flex-row items-center gap-1.5">
+              <BadgeCheck size={14} color="#39ff8a" />
+              <Text className="text-xs font-bold text-accent">{identity.label || "Stats club EA liées"}</Text>
+            </View>
+            <Text className="mt-0.5 text-[10px] text-fg-muted">
+              {identity.hint || "Rapprochement par pseudo — pas un id joueur EA vérifié."}
+            </Text>
           </View>
         )}
 

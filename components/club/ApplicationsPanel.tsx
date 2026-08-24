@@ -9,14 +9,19 @@ import { ErrorState } from "@/components/ui/Screen";
 import { POSITION_LABELS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import { useApplications, useRespondApplication } from "@/lib/hooks/useApplications";
+import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 
 /** Candidatures entrantes en temps réel, triées par fiabilité (section 3.B/D). */
 export function ApplicationsPanel({ clubId }: { clubId: string }) {
+  const { session } = useAuth();
   const { data: applications, isLoading, isError, refetch } = useApplications(clubId);
+  const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const respond = useRespondApplication(clubId);
 
-  const pending = (applications ?? []).filter((a) => a.status === "PENDING");
+  const blocked = new Set(blockedIds ?? []);
+  const pending = (applications ?? []).filter((a) => a.status === "PENDING" && !blocked.has(a.user_id));
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingStatus, setActingStatus] = useState<"ACCEPTED" | "DECLINED" | null>(null);
 

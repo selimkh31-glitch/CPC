@@ -72,6 +72,15 @@ verify_jwt = true
 [functions.create-group]
 verify_jwt = true
 
+[functions.block-user]
+verify_jwt = true
+
+[functions.unblock-user]
+verify_jwt = true
+
+[functions.report-user]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 

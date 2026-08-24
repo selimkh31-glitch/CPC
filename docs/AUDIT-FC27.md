@@ -142,9 +142,9 @@ Hors P0 (volontaire) : compétitions, ligues multi, tournois, block/report, Reve
 
 ---
 
-## 7. État P0 + P1 (branche `cursor/fc27-audit-p0-live-495d`, PR #2)
+## 7. État P0 + P1 + Safety/Notifs (branche `cursor/fc27-audit-p0-live-495d`, PR #2)
 
-**Ne pas merger.** Qualité boucle LIVE+recrutement+discovery : **FUNCTIONAL** (prêt test iPhone Dev Client, pas PRODUCTION READY). Matching EA username equality **inchangé** (limite API EA, hors matcher LIVE).
+**Ne pas merger.** Qualité boucle LIVE+recrutement+discovery+safety : **FUNCTIONAL** (prêt test iPhone Dev Client, pas PRODUCTION READY).
 
 ### Implémenté
 
@@ -155,7 +155,25 @@ Hors P0 (volontaire) : compétitions, ligues multi, tournois, block/report, Reve
 | Recrutement | PENDING unique ; DECLINED/CANCELLED/EXPIRED ; transitions PENDING-only ; withdraw PENDING-only ; manager ne peut plus ACCEPT en UPDATE client | **FUNCTIONAL** |
 | Expiry qui tourne | RPC `expire_stale_live_sessions` (SECURITY DEFINER, GRANT authenticated) + pg_cron SQL si dispo + Edge `expire-live-sessions` + filtre client `isLiveActive` + horloge 15s | **FUNCTIONAL** |
 | Discovery | SQL `is_live` + `expires_at > now` + besoin non vide ; horloge UI ; filtre plateforme ; Effectif seulement compatible | **FUNCTIONAL** |
-| Copy FC 27 | Login/onboarding/README/prompt ; OVR CPC ; Stats EA liées ; pas FIFA ; pas de stats inventées Scout fallback | **FUNCTIONAL** |
+| Copy FC 27 | Login/onboarding/README/prompt ; OVR CPC ; pas FIFA ; pas de stats inventées Scout fallback | **FUNCTIONAL** |
+| **Block / report** | Tables `user_blocks` / `user_reports` + RLS + Edge `block-user` / `unblock-user` / `report-user`. Un block **cache et stoppe** l’autre : discovery LIVE, matching, apply, invitations, messages DIRECT (RPC + trigger). Report persisté OPEN (unique par paire) lisible par le reporter, utilisable en modération. UI : profil Bloquer/Signaler, `/blocked`, `/report/[userId]`, loading/empty/error. | **FUNCTIONAL** |
+| **Notifications in-app** | Table `notifications` + RLS (select own, update `read_at` only) + RPC `create_notification` (service_role). Helper `notifyUser` branché sur apply / invite-to-club / invite-to-slot / respond-application / respond-invitation. Liste `/notifications`, mark read / tout lu, realtime `postgres_changes` (ref-compté, pas de polling). Push Expo conservé. | **FUNCTIONAL** |
+| **Invitation realtime club** | `useClubInvitations` : canal ref-compté `club-invitations-${clubId}` (`postgres_changes` `club_id=eq.`), même doctrine que `useApplications` / `useMyInvitations`. Pending/accepted/declined sync sans polling. | **FUNCTIONAL** |
+| **Identité EA (fondations sûres)** | `users.ea_identity_kind` = `NONE` \| `USERNAME_EQUALITY`. Posé à `USERNAME_EQUALITY` au `link-ea-club`. Tags source `EA` / `CPC` / `CALCULATED` (`lib/statsSource.ts`). ClubPro Card / PlayerCard : **pas** « Verified » / id joueur EA. Copy : rapprochement par pseudo. | **FUNCTIONAL** (limite source inchangée) |
+
+### Limite EA exacte (pas simulée)
+
+Aucun endpoint joueur EA stable n’est disponible dans ce repo. Preuve : `docs/ea-capability-matrix.md`.
+
+| Endpoint | Statut |
+|---|---|
+| `/allTimeLeaderboard/search?clubName=` (résoudre un **club**) | A/B — utilisé |
+| `/clubs/matches` league/friendly (`maxResultCount=10`) | A — stats **agrégées**, matching joueur = `username == playername` (casse ignorée) |
+| `/clubs/info`, `/clubs/overallStats`, `/members/stats`, `/members/career/stats` | **E / NOT AVAILABLE** |
+| `/currentSeasonLeaderboard`, `/allTimeLeaderboard` (hors search), playoffs | **E / NOT AVAILABLE** |
+| FC Community API officielle | **D** — jamais évaluée, pas d’implémentation |
+
+**Conséquence :** pas d’id joueur EA mappable à `users.id`. `USERNAME_EQUALITY` est un tag de **méthode de rapprochement**, jamais une identité vérifiée. Ne pas inventer de persona id / stats.
 
 ### Tests exécutés (cette branche)
 
@@ -169,6 +187,7 @@ npm run test:reliability
 npm run test:player-card
 npm run test:ea-normalize
 npm run test:m2-player-search
+npm run test:safety
 ```
 
 Pas de passage device iPhone dans cet environnement (Expo native). À faire sur Dev Client.
@@ -181,25 +200,26 @@ Pas de passage device iPhone dans cet environnement (Expo native). À faire sur 
 | `0022_recruitment_status_enums.sql` | ADD VALUE DECLINED/CANCELLED/EXPIRED (applications) + EXPIRED (invitations) — transaction séparée |
 | `0023_expire_live_janitor.sql` | RPC janitor (authenticated + DEFINER), trigger LIVE off → EXPIRED/CANCELLED, pg_cron optionnel |
 | `0024_apply_live_match_rls.sql` | CHECK live⇒besoin non vide ; trigger INSERT applications (LIVE+poste+plateforme) ; RLS manager UPDATE seulement DECLINED/CANCELLED depuis PENDING |
+| `0025_safety_notifications.sql` | `user_blocks` / `user_reports` / `notifications` + `users.ea_identity_kind` ; RLS lecture ; **revoke INSERT client** ; RPC `users_are_blocked`, `my_blocked_user_ids`, `create_notification` (service_role) ; triggers applications/invitations/messages DIRECT ; `start_direct_conversation` refuse `users_blocked` ; publication Realtime |
 
 Prisma `schema.prisma` est le miroir outillage (Option B : **ne pas** `prisma migrate deploy` en double sur le distant).
 
-Edge à redéployer : `apply`, `respond-application`, `respond-invitation`, `smart-match`, `expire-live-sessions`.
+Edge à redéployer : `apply`, `respond-application`, `respond-invitation`, `invite-to-club`, `invite-to-slot`, `smart-match`, `start-direct-conversation`, `link-ea-club`, `expire-live-sessions`, **plus** `block-user`, `unblock-user`, `report-user`.
 
-### P1 restant (hors boucle iPhone, ne pas faire dans ce slice)
+### Restant
 
-- **Safety** block/report utilisateur (ABSENT)
-- **Notifications** centre in-app ; push seulement Dev Client
-- **iOS/Android** EAS submit (placeholders) — le test iPhone se fait en Dev Client, pas un store build
-- **Realtime** invitations club (pas de canal)
-- **EA identity** au-delà de l’égalité username (limite source, P2)
+- **iOS/Android** EAS submit (placeholders) — test iPhone = Dev Client, pas store
+- **EA** : pas d’id joueur au-delà du pseudo (limite source, P2). `sync_status` toujours absent
 - **Club** sélecteur multi-dashboard ; conversation CLUB non provisionnée
+- Admin modération (REVIEWED/DISMISSED) : table prête, **pas d’UI staff** dans l’app
 - Ligues / tournois = **P3**, volontairement hors scope
+- Push inopérant simulateur / sans Dev Client (inchangé)
 
 ### Prochaine priorité
 
-1. **Test iPhone** (EAS Dev Client) de la boucle : LIVE joueur → feed → postuler (poste+plateforme) → accept/decline ; LIVE club + Effectif invite ; expiry visuelle sans cron ; double Postuler → 409.
-2. Ensuite P1 **Safety (block/report)** si la boucle tient sur device — pas competitions, pas rewrite.
+1. Appliquer `0025` + redéployer les Edge ci-dessus.
+2. **Test iPhone** Dev Client : block → l’autre disparaît du LIVE / matching / messages ; report OPEN visible ; notif apply/invite sans pull-to-refresh ; invitation ACCEPTED/DECLINED live côté club.
+3. Pas competitions, pas rewrite, **pas de merge**.
 
 Tags `stable-pre-social-phase` / `stable-social-foundations` : **ne pas supprimer**.
 

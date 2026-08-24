@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Crown, Inbox, LogOut, Mail, MessageCircle, Plus, Search, Users } from "lucide-react-native";
+import { Bell, Ban, Crown, Inbox, LogOut, Mail, MessageCircle, Plus, Search, Users } from "lucide-react-native";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -11,6 +11,7 @@ import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useMyInvitations } from "@/lib/hooks/useInvitations";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
 
 /**
  * Onglet Profil (Foundation #1, déplacé depuis app/(tabs)/profile.tsx) —
@@ -28,6 +29,7 @@ export default function ProfileTabScreen() {
   const { data: invitations } = useMyInvitations(session?.user.id ?? null);
   const { setMode, setSelectedManagedClubId } = useAppMode();
   const pendingInvitationsCount = invitations?.filter((i) => i.status === "PENDING").length ?? 0;
+  const unreadNotifications = useUnreadNotificationCount(session?.user.id ?? null);
 
   useEffect(() => {
     if (session) registerForPushNotificationsAsync(session.user.id).catch(() => {});
@@ -102,7 +104,7 @@ export default function ProfileTabScreen() {
             appliquée aux Ligues : pas de fausse donnée plutôt qu'un badge
             approximatif). */}
         <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">👥 Social</Text>
-        <View className="mb-6 flex-row gap-2">
+        <View className="mb-2 flex-row gap-2">
           <Pressable
             onPress={() => router.push("/conversations")}
             className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated py-3 active:opacity-80"
@@ -116,6 +118,24 @@ export default function ProfileTabScreen() {
           >
             <Users size={16} color="#f4f5f7" />
             <Text className="font-bold text-fg">Groupes</Text>
+          </Pressable>
+        </View>
+        <View className="mb-6 flex-row gap-2">
+          <Pressable
+            onPress={() => router.push("/notifications")}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated py-3 active:opacity-80"
+          >
+            <Bell size={16} color="#f4f5f7" />
+            <Text className="font-bold text-fg">
+              Notifications{unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/blocked")}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated py-3 active:opacity-80"
+          >
+            <Ban size={16} color="#f4f5f7" />
+            <Text className="font-bold text-fg">Bloqués</Text>
           </Pressable>
         </View>
 

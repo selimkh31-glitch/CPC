@@ -1,6 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { rankLiveClubsForPlayer } from "../_shared/liveMatch.ts";
+import { blockedCounterpartIds } from "../_shared/blocked.ts";
 
 /**
  * Matching LIVE déterministe (P1) — poste + plateforme owner + expiry + besoin.
@@ -25,8 +26,10 @@ Deno.serve(async (req) => {
     .gt("expires_at", new Date().toISOString())
     .limit(40);
 
+  const blockedIds = await blockedCounterpartIds(admin, user.id);
+
   const clubs = (liveSessions ?? [])
-    .filter((s: any) => s.club)
+    .filter((s: any) => s.club && !blockedIds.has(s.club.owner_id))
     .map((s: any) => ({
       clubId: s.club.id,
       sessionId: s.id,

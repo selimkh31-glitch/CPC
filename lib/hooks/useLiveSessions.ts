@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { isLiveActive } from "@/lib/live";
 import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
@@ -20,15 +21,25 @@ export function useLiveSessions() {
       await invokeExpireStaleLiveSessions();
       const { data, error } = await supabase
         .from("club_sessions")
-        .select("*, club:clubs(id,name,level,languages,owner:users(platform,username))")
+        .select("*, club:clubs(id,name,level,languages,owner_id, owner:users(id,platform,username))")
         .eq("is_live", true)
         .gt("expires_at", new Date().toISOString())
         .not("needed_positions", "eq", "{}")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       const now = Date.now();
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
       return (data as ClubSessionRow[]).filter(
-        (row) => isLiveActive(row, now) && (row.needed_positions?.length ?? 0) > 0
+        (row) =>
+          isLiveActive(row, now) &&
+          (row.needed_positions?.length ?? 0) > 0 &&
+          !blocked.has(row.club?.owner_id ?? "") &&
+          !blocked.has(row.club?.owner?.id ?? "")
       );
     },
   });

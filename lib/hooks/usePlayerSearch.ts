@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { excludeFullyEngagedElsewhere } from "@/lib/playerSearchFilters";
 import { USER_PUBLIC_COLUMNS, type UserRow } from "@/lib/types";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 import type { PositionCode } from "@/lib/constants";
 
 /**
@@ -30,7 +31,13 @@ export function usePlayerSearch(position: PositionCode | null, excludeUserIds: s
         .order("reliability_score", { ascending: false })
         .limit(30);
       if (error) throw error;
-      const rows = (data as unknown as UserRow[]).filter((u) => !excludeUserIds.includes(u.id));
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      const rows = (data as unknown as UserRow[]).filter((u) => !excludeUserIds.includes(u.id) && !blocked.has(u.id));
 
       let filtered = rows;
       if (rows.length > 0) {
@@ -78,7 +85,13 @@ export function useInvitableClubPlayers(query: string, excludeUserIds: string[])
         .order("reliability_score", { ascending: false })
         .limit(20);
       if (error) throw error;
-      const rows = (data as unknown as UserRow[]).filter((u) => !excludeUserIds.includes(u.id));
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      const rows = (data as unknown as UserRow[]).filter((u) => !excludeUserIds.includes(u.id) && !blocked.has(u.id));
 
       if (rows.length === 0) return rows;
 
