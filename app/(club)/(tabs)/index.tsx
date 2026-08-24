@@ -1,10 +1,8 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Radio } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
-import { PulseDot } from "@/components/ui/PulseDot";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
@@ -45,18 +43,9 @@ export default function ClubLiveTab() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
         <ModeSwitch managedClubs={managedClubs} />
 
-        <View className="flex-row items-center gap-2">
-          <Radio size={22} color="#39ff8a" />
-          <Text className="font-display text-3xl text-fg">LIVE</Text>
-          {activeSession && (
-            <View className="ml-auto flex-row items-center gap-1">
-              <PulseDot />
-              <Text className="text-xs font-extrabold text-accent">EN COURS</Text>
-            </View>
-          )}
-        </View>
         <View>
-          <Text className="font-display text-lg text-fg">{club.name}</Text>
+          <Text className="font-display text-2xl text-fg">Tu veux recruter maintenant ?</Text>
+          <Text className="mt-0.5 font-display text-lg text-fg">{club.name}</Text>
           <Text className="text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs.</Text>
         </View>
 
