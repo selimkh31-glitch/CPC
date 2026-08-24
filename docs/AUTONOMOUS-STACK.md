@@ -5,9 +5,9 @@
 **Date QA :** 24 août 2026  
 **Tip de la pile :** `cursor/qa-autonomous-stack-5884` (PR **#14**) — contient **PR #5** (LIVE UX compacte) **et** PR **#6–#13**.  
 **Base d’intégration :** `social-ea-foundations-phase-2` (contient déjà PR **#2** merged — P0/P1 LIVE + safety/notifications — et PR **#3** merged — retab IA).  
-**Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone. L’agent n’applique **pas** les migrations et ne merge **pas** les PR GitHub vers la base.
+**Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone, **prêt EAS iOS/Android** (config réelle, pas de build lancé). L’agent n’applique **pas** les migrations et ne merge **pas** les PR GitHub vers la base.
 
-Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable-social-foundations`.
+Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable-social-foundations`. Pas d’EAS build, pas de secrets dans git, pas d’Expo Go, pas de submit Apple/Play.
 
 ---
 
@@ -208,3 +208,37 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 ### Hors scope à ne pas « tester comme livré »
 
 - Expo Go, CPCP, stats EA inventées, brackets / standings compétition, conversation CLUB.
+
+---
+
+## 8. EAS iOS / Android — déjà configuré vs humain
+
+Lu dans le tip : `eas.json`, `app.json`, `package.json`. **Pas** de fichier `app.config.js` / `app.config.ts` (config Expo = `app.json` seulement). Aucun `eas build` / `eas submit` exécuté ici.
+
+### Déjà dans le repo
+
+| Élément | Valeur réelle |
+|---|---|
+| Expo | `expo` **~57.0.13**, `expo-dev-client` **~57.0.12** (`package.json`) |
+| `eas-cli` | **absent** de `dependencies` / `devDependencies`. Scripts `build:*` / `submit:*` appellent `eas` (install globale README : `npm install -g eas-cli`) |
+| `eas.json` CLI | `"version": ">= 13.0.0"`, `"appVersionSource": "remote"` |
+| Profil `development` | `developmentClient: true`, `distribution: "internal"`, iOS `resourceClass: "m-medium"` |
+| Profil `preview` | `distribution: "internal"`, `channel: "preview"` |
+| Profil `production` | `autoIncrement: true`, `channel: "production"` |
+| Slug / owner | `clubpro-connect` / `k64selim` (`app.json`) |
+| `extra.eas.projectId` | **présent** : `67b7875c-ab0e-4d3d-ab1e-43a4a164d127` |
+| iOS `bundleIdentifier` | `com.clubproconnect.app` |
+| Android `package` | `com.clubproconnect.app` |
+| Dossiers natifs | **aucun** `ios/` ni `android/` (workflow managed) |
+| Gitignore credentials | `.eas/`, `*.p8`, `*.p12`, `*.jks`, `*.key`, `*.mobileprovision` |
+
+Scripts npm : `build:dev` → `eas build --profile development` ; `build:preview` ; `build:prod` ; `submit:ios` / `submit:android`.
+
+### Humain (compte Apple / Expo / Play — pas un agent)
+
+- **`eas login`** sur le compte Expo owner `k64selim` (ou membre du projet `67b7875c-ab0e-4d3d-ab1e-43a4a164d127`). `eas init` n’est plus nécessaire : le `projectId` est déjà dans `app.json`.
+- **Apple Developer Program** + équipe réelle. `eas.json` → `submit.production.ios` est encore des **placeholders** : `appleId` `TON_APPLE_ID@exemple.com`, `ascAppId` `TODO_APP_STORE_CONNECT_APP_ID`, `appleTeamId` `TODO_APPLE_TEAM_ID`.
+- **Credentials iOS** (certificats / profils) : gérés par EAS après login, **pas** dans git.
+- **Android Play** : `serviceAccountKeyPath` pointe vers `./google-service-account.json` — **fichier absent du repo** (correct). Ne pas le committer. Track `internal` seulement.
+- **Premier Dev Client** : `eas build --profile development` (iOS et/ou Android) **par un humain**, device réel, puis `npx expo start --dev-client`. Pas Expo Go (notifications, RevenueCat).
+- **Store** : submit **non prêt** (placeholders Apple + JSON Play manquant). Ne pas `eas submit`, ne pas publier App Store / Play.
