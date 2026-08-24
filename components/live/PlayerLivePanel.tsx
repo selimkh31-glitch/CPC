@@ -102,7 +102,7 @@ export function PlayerLivePanel() {
           </Button>
           <Pressable
             onPress={() => setShowDetails((v) => !v)}
-            className="mt-2 items-center py-1"
+            className="mt-2 min-h-[44px] items-center justify-center py-1"
             accessibilityRole="button"
           >
             <Text className="text-xs font-semibold text-fg-subtle">Détails</Text>
@@ -141,7 +141,7 @@ export function PlayerLivePanel() {
               <Pressable
                 key={opt.value}
                 onPress={() => setDuration(opt.value)}
-                className={`flex-1 rounded-xl px-2 py-2 ${active ? "bg-accent" : ""}`}
+                className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-accent" : ""}`}
               >
                 <Text className={`text-center text-sm font-bold ${active ? "text-bg" : "text-fg-muted"}`}>
                   {opt.label}
@@ -151,7 +151,11 @@ export function PlayerLivePanel() {
           })}
         </View>
 
-        <Pressable onPress={() => setShowMore((v) => !v)} className="mb-2 py-1" accessibilityRole="button">
+        <Pressable
+          onPress={() => setShowMore((v) => !v)}
+          className="mb-2 min-h-[44px] justify-center py-1"
+          accessibilityRole="button"
+        >
           <Text className="text-xs font-semibold text-fg-subtle">
             {showMore ? "Masquer la note" : "Note (optionnel)"}
           </Text>

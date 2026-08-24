@@ -83,7 +83,7 @@ export function LiveFilters({
           }}
           accessibilityRole="button"
           accessibilityLabel="Plus de filtres"
-          className={`h-10 flex-row items-center gap-1 rounded-xl border px-2.5 ${
+          className={`min-h-[44px] flex-row items-center gap-1 rounded-xl border px-2.5 ${
             secondaryActive ? "border-border bg-bg-card" : "border-border bg-bg-elevated"
           }`}
         >

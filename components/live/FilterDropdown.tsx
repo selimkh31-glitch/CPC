@@ -44,7 +44,7 @@ export function FilterDropdown({
         }}
         accessibilityRole="button"
         accessibilityLabel={label}
-        className="min-h-[40px] flex-1 flex-row items-center justify-between gap-1 rounded-xl border border-border bg-bg-elevated px-2.5 py-2"
+        className="min-h-[44px] flex-1 flex-row items-center justify-between gap-1 rounded-xl border border-border bg-bg-elevated px-2.5 py-2"
       >
         <Text numberOfLines={1} className={cn("flex-1 text-xs font-bold", value ? "text-fg" : "text-fg-muted")}>
           {display}
@@ -56,7 +56,7 @@ export function FilterDropdown({
         <View className="gap-1.5 pb-2">
           <Pressable
             onPress={() => pick("")}
-            className={`rounded-xl px-4 py-3 ${value === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
+            className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${value === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
           >
             <Text className={`font-semibold ${value === "" ? "text-fg" : "text-fg-muted"}`}>{allLabel}</Text>
           </Pressable>
@@ -66,7 +66,7 @@ export function FilterDropdown({
               <Pressable
                 key={opt.value}
                 onPress={() => pick(opt.value)}
-                className={`rounded-xl px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
+                className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
               >
                 <Text className={`font-semibold ${active ? "text-fg" : "text-fg-muted"}`}>{opt.label}</Text>
               </Pressable>

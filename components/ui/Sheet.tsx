@@ -1,11 +1,17 @@
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { Modal, Pressable, Text, View, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 
+type SheetEntry = { id: symbol; close: () => void };
+
+/** Pile des sheets visibles — le back Android ne ferme que le sommet. */
+const sheetStack: SheetEntry[] = [];
+
 /**
  * Bottom sheet natif (Modal RN) — pas de nouvelle dépendance.
- * Même pattern que FormationSelector.
+ * KeyboardAvoidingView conservé. onRequestClose = sommet de pile uniquement.
  */
 export function Sheet({
   visible,
@@ -20,9 +26,28 @@ export function Sheet({
 }) {
   const insets = useSafeAreaInsets();
   const maxHeight = Math.round(Dimensions.get("window").height * 0.72);
+  const idRef = useRef(Symbol("sheet"));
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!visible) return;
+    const id = idRef.current;
+    const entry: SheetEntry = { id, close: () => onCloseRef.current() };
+    sheetStack.push(entry);
+    return () => {
+      const i = sheetStack.findIndex((s) => s.id === id);
+      if (i >= 0) sheetStack.splice(i, 1);
+    };
+  }, [visible]);
+
+  const handleRequestClose = () => {
+    const top = sheetStack[sheetStack.length - 1];
+    if (top?.id === idRef.current) onClose();
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleRequestClose}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
         <View className="flex-1 justify-end bg-black/50">
           <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
@@ -35,7 +60,12 @@ export function Sheet({
             </View>
             <View className="flex-row items-center justify-between px-4 py-3">
               <Text className="font-display text-lg text-fg">{title}</Text>
-              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Fermer">
+              <Pressable
+                onPress={onClose}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
+              >
                 <X size={20} color="#9aa0a8" />
               </Pressable>
             </View>

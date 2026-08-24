@@ -72,7 +72,7 @@ export default function LiveScreen() {
 
           <Pressable
             onPress={() => switchPane("find")}
-            className="mb-4 flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5"
+          className="mb-4 min-h-[44px] flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5"
             accessibilityRole="button"
             accessibilityLabel="Voir les clubs LIVE"
           >
@@ -111,7 +111,7 @@ function LivePaneHeader({ pane, onPane }: { pane: LivePane; onPane: (pane: LiveP
       <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">
         <Pressable
           onPress={() => onPane("feed")}
-          className={`flex-1 rounded-xl px-3 py-2.5 ${pane === "feed" ? "bg-accent" : ""}`}
+          className={`min-h-[44px] flex-1 justify-center rounded-xl px-3 py-2.5 ${pane === "feed" ? "bg-accent" : ""}`}
           accessibilityRole="button"
           accessibilityState={{ selected: pane === "feed" }}
         >
@@ -119,11 +119,11 @@ function LivePaneHeader({ pane, onPane }: { pane: LivePane; onPane: (pane: LiveP
         </Pressable>
         <Pressable
           onPress={() => onPane("find")}
-          className={`flex-1 rounded-xl px-3 py-2.5 ${pane === "find" ? "bg-bg-card" : ""}`}
+          className={`min-h-[44px] flex-1 justify-center rounded-xl px-3 py-2.5 ${pane === "find" ? "bg-accent" : ""}`}
           accessibilityRole="button"
           accessibilityState={{ selected: pane === "find" }}
         >
-          <Text className={`text-center text-sm font-bold ${pane === "find" ? "text-fg" : "text-fg-muted"}`}>
+          <Text className={`text-center text-sm font-bold ${pane === "find" ? "text-bg" : "text-fg-muted"}`}>
             Trouver un club
           </Text>
         </Pressable>

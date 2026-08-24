@@ -166,26 +166,29 @@ export function FindClubPanel() {
 
       {mode === "live" ? (
         <FlatList
+          style={{ flex: 1 }}
           data={displayed}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#39ff8a" />}
           renderItem={({ item }) => <LiveClubCard item={item} reason={reasonBySession.get(item.id)} />}
           ItemSeparatorComponent={() => <View className="h-2.5" />}
           ListEmptyComponent={
-            <LiveEmptyState
-              isLoading={isLoading}
-              isError={isError}
-              onRetry={onRefresh}
-              activeCount={activeLive.length}
-              displayedCount={displayed.length}
-              filtersEmpty={filtersEmpty}
-              relaxed={relaxed}
-              canWiden={canWiden}
-              onWiden={widen}
-              profilePosition={profile?.main_position ? POSITION_LABELS[profile.main_position] : null}
-              profilePlatform={profile?.platform ? PLATFORM_LABELS[profile.platform] : null}
-            />
+            <View style={{ flexGrow: 1, justifyContent: "center" }}>
+              <LiveEmptyState
+                isLoading={isLoading}
+                isError={isError}
+                onRetry={onRefresh}
+                activeCount={activeLive.length}
+                displayedCount={displayed.length}
+                filtersEmpty={filtersEmpty}
+                relaxed={relaxed}
+                canWiden={canWiden}
+                onWiden={widen}
+                profilePosition={profile?.main_position ? POSITION_LABELS[profile.main_position] : null}
+                profilePlatform={profile?.platform ? PLATFORM_LABELS[profile.platform] : null}
+              />
+            </View>
           }
         />
       ) : null}
@@ -195,7 +198,10 @@ export function FindClubPanel() {
 
 function ModeTab({ active, onPress, label }: { active: boolean; onPress: () => void; label: string }) {
   return (
-    <Pressable onPress={onPress} className={`flex-1 rounded-xl px-2 py-2 ${active ? "bg-bg-card" : ""}`}>
+    <Pressable
+      onPress={onPress}
+      className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-bg-card" : ""}`}
+    >
       <Text className={`text-center text-[11px] font-bold ${active ? "text-fg" : "text-fg-muted"}`}>{label}</Text>
     </Pressable>
   );
