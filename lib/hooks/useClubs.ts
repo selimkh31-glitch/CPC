@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { computeLiveExpiresAt, parseLiveDurationMs } from "@/lib/live";
+import { validateClubIdentity } from "@/lib/clubIdentity";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
 
 export function useClubsList() {
@@ -108,19 +109,20 @@ export function useCreateClub() {
   });
 }
 
+/**
+ * Mise à jour de l'identité du club via RLS `clubs_update_owner`.
+ * Le payload passe par l'allowlist : owner_id, formation, ea_club_id et
+ * une plateforme inventée ne sont jamais envoyés.
+ */
 export function useUpdateClub(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; level: string; languages: string[]; description?: string; voiceLink?: string }) => {
+    mutationFn: async (input: Record<string, unknown>) => {
+      const validated = validateClubIdentity(input);
+      if (!validated.ok) throw new Error(validated.message);
       const { data, error } = await supabase
         .from("clubs")
-        .update({
-          name: input.name,
-          level: input.level,
-          languages: input.languages,
-          description: input.description ?? null,
-          voice_link: input.voiceLink ?? null,
-        })
+        .update(validated.patch)
         .eq("id", clubId)
         .select()
         .single();
@@ -130,6 +132,7 @@ export function useUpdateClub(clubId: string) {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["clubs"] });
     },

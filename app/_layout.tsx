@@ -181,6 +181,16 @@ function RootNavigator() {
             title: "Identité Pro Clubs",
           }}
         />
+        <Stack.Screen
+          name="edit-club"
+          options={{
+            presentation: "modal",
+            headerShown: true,
+            headerStyle: { backgroundColor: "#08090b" },
+            headerTintColor: "#f4f5f7",
+            title: "Identité du club",
+          }}
+        />
         {/* Social Foundations — Chat (mission section 11). Aucun point d'entrée
             dans une tab bar (voir mission section 37) : accessible via
             router.push, notamment depuis le bouton "Message" du profil joueur. */}
