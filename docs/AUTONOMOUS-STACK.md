@@ -146,6 +146,20 @@ Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `
 | `npm run test:notification-read` | PASS historique (3) |
 | `npm run test:club-identity` | PASS historique (7) |
 
+### P0 Realtime (post-merges #5–#13) — 24 août 2026
+
+**Verdict : déjà correct.** Pas de second `.channel(topic)` sans Map ref-comptée. Fix `7046a8f` intact. Matching / TTL / RLS / apply inchangés.
+
+| Topic | Table | Acquire | Montages qui partagent |
+|---|---|---|---|
+| `live-feed` | `club_sessions` | `useLiveSessions` | LIVE joueur, FindClubPanel, SmartMatchBanner, deep link `/clubs` |
+| `live-players` | `player_sessions` | `useLivePlayers` | LIVE joueur, Recrutement club |
+| `my-player-session-${userId}` | `player_sessions` (filtre `user_id`) | `useMyPlayerSession` | PlayerLivePanel — **autre nom** que `live-players` |
+| `notifications-${userId}` | `notifications` | `useNotifications` | `_layout` SafetyRealtimeBridge, badge tabs, Activité, Recrutement, `/notifications` |
+| `messages-${conversationId}` | `messages` | `useMessages` | `/conversation/[id]` seulement. `useConversations` : **pas** de Realtime |
+
+Crash visé : `supabase.channel(topic)` réutilise l’instance ; un 2ᵉ `.on()` après `.subscribe()` plante. Un canal réel par topic, listeners en Set.
+
 ---
 
 ## 7. Ce que le fondateur doit tester sur iPhone
