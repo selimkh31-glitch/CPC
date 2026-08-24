@@ -1,0 +1,4 @@
+{
+  "name": "ClubPro Connect",
+  "install": "npm ci && npm run prisma:generate"
+}
