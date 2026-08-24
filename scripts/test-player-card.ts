@@ -7,7 +7,7 @@
  *
  * Lancer : npx tsx scripts/test-player-card.ts
  */
-import { buildPlayerCardData } from "../lib/playerCard";
+import { buildPlayerCardData, formatPositionsLine } from "../lib/playerCard";
 import { computeOvr, rarityForOvr } from "../lib/ovr";
 import type { UserRow } from "../lib/types";
 
@@ -117,3 +117,15 @@ test("eaIdentityKind NONE par défaut ; USERNAME_EQUALITY si club lié avec kind
   assert.equal(data.eaIdentityKind, "USERNAME_EQUALITY", "kind");
   assert.equal(data.verified, true, "verified = club lié, pas id joueur EA");
 });
+
+test("formatPositionsLine — principal seul, puis secondaires uniques sans mur de chips", () => {
+  assert.equal(formatPositionsLine("ST"), "ST · Attaquant", "principal");
+  assert.equal(
+    formatPositionsLine("ST", ["CAM", "ST", "RW"]),
+    "ST · Attaquant  ·  CAM · Milieu offensif  ·  RW · Ailier droit",
+    "secondaires dédupliqués"
+  );
+});
+
+console.log(`\n${passed} test(s) passés.`);
+

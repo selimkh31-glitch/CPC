@@ -14,6 +14,7 @@
  * partout, réutilise lib/ovr.ts sans le dupliquer).
  */
 import { computeOvr, rarityForOvr, type Rarity } from "@/lib/ovr";
+import { POSITION_LABELS } from "@/lib/constants";
 import type { Plan, Platform, PlayStyleCode, PositionCode, UserRow, VerifiedStats } from "@/lib/types";
 import type { EaIdentityKind } from "@/lib/statsSource";
 import { normalizeEaIdentityKind } from "@/lib/statsSource";
@@ -66,4 +67,10 @@ export function buildPlayerCardData(user: UserRow, opts: { clubName?: string | n
     eaIdentityKind: normalizeEaIdentityKind(user.ea_identity_kind),
     eaStats: user.verified_stats ?? null,
   };
+}
+
+/** Postes en une ligne (pas un mur de chips) — principal + secondaires uniques. */
+export function formatPositionsLine(main: PositionCode, secondary: PositionCode[] = []): string {
+  const positions = [main, ...secondary].filter((p, i, arr) => arr.indexOf(p) === i);
+  return positions.map((p) => `${p} · ${POSITION_LABELS[p]}`).join("  ·  ");
 }

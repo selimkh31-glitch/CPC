@@ -26,7 +26,7 @@ export function LinkEaClubForm() {
         <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>Stats EA liées</CardTitle>
       </CardHeader>
       <Text className="mb-3 text-sm text-fg-muted">
-        Lie ton club EA SPORTS FC pour afficher tes vraies stats sur ta ClubPro Card.
+        Lie ton club EA SPORTS FC 27 pour afficher tes vraies stats sur ta ClubPro Card.
       </Text>
       <View className="flex-row gap-2">
         <Input

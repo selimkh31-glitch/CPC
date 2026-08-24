@@ -3,37 +3,41 @@ import { Users } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PlayerCard } from "@/components/player/PlayerCard";
+import { buildPlayerCardData } from "@/lib/playerCard";
+import { sortClubRoster } from "@/lib/clubProfile";
 import { useUpdateMember } from "@/lib/hooks/useClubs";
 import { useReleaseMember } from "@/lib/hooks/useDepartures";
 import { toast } from "@/lib/toast";
-import type { ClubMemberRow } from "@/lib/types";
+import type { ClubMemberRow, ClubRole } from "@/lib/types";
+
+const ROLE_LABEL: Record<ClubRole, string> = {
+  OWNER: "Owner",
+  MANAGER: "Manager",
+  MEMBER: "Membre",
+};
 
 /**
- * Gestion des membres et rôles (section 3.B). Promotion/rétrogradation
- * MEMBER<->MANAGER reste owner only (RLS club_members_write_owner,
- * 0002_rls_policies.sql, n'autorise que owner_id = auth.uid() en écriture
- * directe sur club_members). "Retirer" est owner ET manager (release-member,
- * backend release_member_by_manager autorise OWNER ou MANAGER) — `canManage`
- * doit refléter ça, jamais recalculé ici.
- * Phase 5 : "Retirer" ne fait PLUS de delete direct sur club_members — passe
- * exclusivement par release-member (Edge Function), qui supprime aussi
- * slot_assignments côté serveur, historise l'événement (club_departures,
- * OWNER_RELEASED) et notifie le joueur. Jamais silencieux (confirmation
- * explicite avant l'appel).
+ * Effectif réel (club_members). Promotion MEMBER<->MANAGER : owner only
+ * (RLS club_members_write_owner). Retirer : owner ET manager via release-member.
+ * Aucun changement de RLS ni de rôles — affichage uniquement via PlayerCard.
  */
 export function MembersPanel({
   clubId,
+  clubName,
   members,
   isOwner,
   canManage,
 }: {
   clubId: string;
+  clubName?: string;
   members: ClubMemberRow[];
   isOwner: boolean;
   canManage: boolean;
 }) {
   const mutation = useUpdateMember(clubId);
   const release = useReleaseMember(clubId);
+  const roster = sortClubRoster(members);
 
   const updateRole = (userId: string, role: "MANAGER" | "MEMBER") =>
     mutation.mutate({ userId, role }, { onSuccess: () => toast.success("Rôle mis à jour."), onError: (e: any) => toast.error(e.message) });
@@ -56,43 +60,72 @@ export function MembersPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Membres</CardTitle>
+        <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Effectif</CardTitle>
         <Text className="text-sm text-fg-muted">{members.length}</Text>
       </CardHeader>
-      <View className="gap-2">
-        {members.map((m) => (
-          <View key={m.user_id} className="flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated p-2.5">
-            <View className="flex-row items-center gap-2">
-              <Text className="font-semibold text-fg">{m.user?.username}</Text>
-              <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>{m.role}</Badge>
-            </View>
-            {(isOwner || canManage) && m.role !== "OWNER" && (
-              <View className="flex-row gap-1.5">
-                {isOwner &&
-                  (m.role === "MEMBER" ? (
-                    <Button size="sm" variant="secondary" onPress={() => updateRole(m.user_id, "MANAGER")}>
-                      Promouvoir
+      {roster.length === 0 ? (
+        <Text className="text-sm text-fg-muted">Aucun membre dans ce club pour l&apos;instant.</Text>
+      ) : (
+        <View className="gap-2">
+          {roster.map((m) => {
+            const manage =
+              (isOwner || canManage) && m.role !== "OWNER" ? (
+                <View className="mt-2 flex-row flex-wrap gap-1.5">
+                  {isOwner &&
+                    (m.role === "MEMBER" ? (
+                      <Button size="sm" variant="secondary" onPress={() => updateRole(m.user_id, "MANAGER")}>
+                        Promouvoir
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" onPress={() => updateRole(m.user_id, "MEMBER")}>
+                        Rétrograder
+                      </Button>
+                    ))}
+                  {canManage && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={release.isPending}
+                      onPress={() => confirmRelease(m.user_id, m.user?.username ?? "ce joueur")}
+                    >
+                      Retirer
                     </Button>
-                  ) : (
-                    <Button size="sm" variant="secondary" onPress={() => updateRole(m.user_id, "MEMBER")}>
-                      Rétrograder
-                    </Button>
-                  ))}
-                {canManage && (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    loading={release.isPending}
-                    onPress={() => confirmRelease(m.user_id, m.user?.username ?? "ce joueur")}
-                  >
-                    Retirer
-                  </Button>
-                )}
-              </View>
-            )}
-          </View>
-        ))}
-      </View>
+                  )}
+                </View>
+              ) : null;
+
+            if (!m.user) {
+              return (
+                <View key={m.user_id} className="rounded-2xl border border-border bg-bg-elevated p-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-semibold text-fg-muted">Joueur</Text>
+                    <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
+                      {ROLE_LABEL[m.role]}
+                    </Badge>
+                  </View>
+                  {manage}
+                </View>
+              );
+            }
+
+            return (
+              <PlayerCard
+                key={m.user_id}
+                data={buildPlayerCardData(m.user, { clubName: clubName ?? null })}
+                variant="compact"
+                footer={
+                  <View className="mt-2 gap-2">
+                    <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
+                      {ROLE_LABEL[m.role]}
+                    </Badge>
+                    {manage}
+                  </View>
+                }
+              />
+            );
+          })}
+        </View>
+      )}
     </Card>
   );
 }

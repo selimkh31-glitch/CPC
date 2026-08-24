@@ -36,11 +36,14 @@ export function ModeSwitch({ managedClubs }: { managedClubs: { role: ClubRole; c
     <View className="flex-row self-start rounded-2xl border border-border bg-bg-elevated p-1">
       <Pressable
         onPress={() => switchTo("PLAYER")}
-        className={`rounded-xl px-4 py-2 ${mode === "PLAYER" ? "bg-accent" : ""}`}
+        className={`min-h-[44px] items-center justify-center rounded-xl px-4 ${mode === "PLAYER" ? "bg-accent" : ""}`}
       >
         <Text className={`text-sm font-bold ${mode === "PLAYER" ? "text-bg" : "text-fg-muted"}`}>Joueur</Text>
       </Pressable>
-      <Pressable onPress={() => switchTo("CLUB")} className={`rounded-xl px-4 py-2 ${mode === "CLUB" ? "bg-accent" : ""}`}>
+      <Pressable
+        onPress={() => switchTo("CLUB")}
+        className={`min-h-[44px] items-center justify-center rounded-xl px-4 ${mode === "CLUB" ? "bg-accent" : ""}`}
+      >
         <Text className={`text-sm font-bold ${mode === "CLUB" ? "text-bg" : "text-fg-muted"}`}>Club</Text>
       </Pressable>
     </View>

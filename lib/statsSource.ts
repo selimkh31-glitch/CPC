@@ -42,3 +42,11 @@ export function eaIdentityBadge(kind: EaIdentityKind | null | undefined): {
 export function normalizeEaIdentityKind(value: unknown): EaIdentityKind {
   return value === "USERNAME_EQUALITY" ? "USERNAME_EQUALITY" : "NONE";
 }
+
+/** True seulement s'il existe au moins un chiffre EA stocké — jamais un layout de "—". */
+export function hasVerifiedEaStatValues(stats: { goals?: number; assists?: number; matchesPlayed?: number; avgRating?: number } | null | undefined): boolean {
+  if (!stats) return false;
+  return [stats.goals, stats.assists, stats.matchesPlayed, stats.avgRating].some(
+    (v) => typeof v === "number" && Number.isFinite(v)
+  );
+}
