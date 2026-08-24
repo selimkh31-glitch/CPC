@@ -107,6 +107,7 @@ export default function ProfileTabScreen() {
           <MyClubsList
             memberships={memberships}
             isLoading={membershipsLoading}
+            playerSheetForManagers
             onManagedSelect={(clubId) => {
               setSelectedManagedClubId(clubId);
               setMode("CLUB");

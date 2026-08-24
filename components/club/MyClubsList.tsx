@@ -24,12 +24,18 @@ import type { ClubRole, ClubRow } from "@/lib/types";
  *     appelant existant qui ne serait pas encore migré.
  * Une ligne MEMBER va TOUJOURS vers /match-sheet (feuille de match, Mode
  * Joueur) — jamais concernée par `onManagedSelect`.
+ *
+ * `playerSheetForManagers` : sur Profil, un MANAGER doit garder un accès
+ * joueur à ClubHome (départ/transition). Le Mode Club reste le ModeSwitch.
+ * Le sélecteur « Quel club gérer ? » ne pose PAS ce flag — un MANAGER y
+ * appelle toujours `onManagedSelect`.
  */
 export function MyClubsList({
   memberships,
   isLoading,
   navigationMode = "push",
   onManagedSelect,
+  playerSheetForManagers = false,
 }: {
   memberships: { role: ClubRole; club: ClubRow }[] | undefined;
   isLoading: boolean;
@@ -37,9 +43,15 @@ export function MyClubsList({
   /** Si fourni, une ligne OWNER/MANAGER appelle ce callback (clubId) au lieu
    *  de naviguer — utilisé pour la sélection du club géré en Mode Club. */
   onManagedSelect?: (clubId: string) => void;
+  /** Profil : ligne MANAGER -> /match-sheet au lieu de basculer en Mode Club. */
+  playerSheetForManagers?: boolean;
 }) {
   const goToClub = (clubId: string, role: ClubRole) => {
     Haptics.selectionAsync();
+    if (role === "MANAGER" && playerSheetForManagers) {
+      router[navigationMode](`/match-sheet?clubId=${clubId}`);
+      return;
+    }
     if (role === "OWNER" || role === "MANAGER") {
       if (onManagedSelect) {
         onManagedSelect(clubId);
