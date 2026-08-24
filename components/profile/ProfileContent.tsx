@@ -4,7 +4,6 @@ import { Ban, Flag, MessageCircle, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/Screen";
 import { ClubProCard } from "@/components/profile/ClubProCard";
 import { LinkEaClubForm } from "@/components/profile/LinkEaClubForm";
 import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
@@ -31,8 +30,8 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
 
   if (isError) {
     return (
-      <View className="w-full">
-        <ErrorState message="Impossible de charger ce profil." onRetry={refetch} />
+      <View className="w-full items-center">
+        <ClubProCard error onRetry={refetch} />
       </View>
     );
   }
@@ -40,7 +39,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   if (isLoading || !user) {
     return (
       <View className="items-center gap-4">
-        <Skeleton className="h-72 w-full max-w-sm" />
+        <ClubProCard loading />
         <Skeleton className="h-32 w-full" />
       </View>
     );
@@ -56,12 +55,8 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
           username: user.username,
           platform: user.platform,
           mainPosition: user.main_position,
-          playStyle: user.play_style,
-          reliabilityScore: user.reliability_score,
+          secondaryPositions: user.secondary_positions ?? [],
           plan: user.plan,
-          currentStreak: user.current_streak,
-          verifiedStats: user.verified_stats,
-          eaClubLinked: user.ea_club_linked,
           eaIdentityKind: user.ea_identity_kind,
         }}
       />
