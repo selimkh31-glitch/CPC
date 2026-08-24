@@ -39,11 +39,8 @@ import { useAuth } from "@/lib/providers/AuthProvider";
  * "CLUB"` déjà commité). Tant que ce point n'est pas ré-investigué, on
  * n'y touche pas (comportement automatique conservé tel quel) mais on
  * affiche, dès que `createdClubId` est posé, un CTA explicite indépendant
- * qui cible directement `/match` (route existante et non ambiguë : seul
- * `app/(club)/(tabs)/match.tsx` répond à ce chemin aplati par expo-router,
- * déjà emprunté ailleurs dans l'arbre Club — voir
- * components/club/MatchContextCards.tsx `router.push("/effectif")`) plutôt
- * que de dépendre de la résolution de "/".
+ * qui cible `/(club)/(tabs)` (accueil LIVE du Mode Club) plutôt que de
+ * dépendre de la résolution de "/".
  */
 export default function CreateClubScreen() {
   const { session } = useAuth();
@@ -72,7 +69,7 @@ export default function CreateClubScreen() {
               // CTA doit fonctionner seul, sans dépendre de cet état antérieur.
               setSelectedManagedClubId(createdClubId);
               setMode("CLUB");
-              router.replace("/match");
+              router.replace("/(club)/(tabs)");
             }}
           >
             Accéder à la gestion du club →

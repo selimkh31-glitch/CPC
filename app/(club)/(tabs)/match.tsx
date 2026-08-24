@@ -26,15 +26,9 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 
 /**
- * MATCH — Foundation #2.2. Fusion de l'ancien Dashboard + Composition en un
- * seul écran continu ("Préparer le match" avant LIVE, devient le "Match
- * Center" une fois live) — même contexte, même route, le contenu se
- * réorganise selon `activeSession` (aucune nouvelle route créée, conformément
- * à la consigne). Réutilise tous les composants existants tels quels
- * (LiveSessionPanel, FormationSelector, FormationPitch, MatchCheckinPanel,
- * VoiceLinkBlock, EditClubForm) — aucune logique métier dupliquée ni réécrite.
- * Remplace app/(club)/(tabs)/dashboard.tsx et composition.tsx (supprimés,
- * aucun lien externe ne pointait vers ces noms de tab — voir audit).
+ * Feuille de match — organisation (hors tab bar, `href: null`).
+ * Accessible en push depuis LIVE club ou l'onglet Club (`/match`).
+ * Foundation #2.2 : fusion Dashboard + Composition, contenu inchangé.
  */
 export default function MatchTab() {
   const { session } = useAuth();

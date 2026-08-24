@@ -26,9 +26,8 @@ import type { FormationId, FormationSlot } from "@/lib/formations";
  * check-in) vit maintenant dans l'arbre Mode Club (app/(club)/(tabs)/...),
  * qui réutilise FormationPitch/FormationSelector/MatchCheckinPanel
  * indépendamment de ce composant. Consommé par deux écrans :
- *   - app/(player)/(tabs)/clubs.tsx (cas playerMembership) : rendu
- *     directement dans l'onglet, SANS navigation — la bottom tab bar reste
- *     visible (voir audit navigation N2).
+ *   - app/(player)/(tabs)/clubs.tsx (deep link `/clubs`, hors tab bar) si
+ *     playerMembership : rendu directement, SANS navigation.
  *   - app/match-sheet.tsx : wrapper fin conservant le header natif/retour,
  *     pour les entrées externes (page publique d'un club, raccourci "Mes
  *     clubs" du profil pour une ligne MEMBER/MANAGER).
