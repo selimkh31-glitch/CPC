@@ -2,7 +2,6 @@ import { useCallback, type ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { Radio } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
@@ -20,7 +19,7 @@ import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
 
 /**
  * LIVE Mode Club — recrutement LIVE (is_live + TTL) distinct du match lancé.
- * La feuille de match reste un push `/match`, pas un onglet.
+ * Carte compacte PR #5 + mapping session PR #7. La feuille reste un push `/match`.
  */
 export default function ClubLiveTab() {
   const { session } = useAuth();
@@ -89,12 +88,9 @@ export default function ClubLiveTab() {
 
   return shell(
     <>
-      <View className="flex-row items-center gap-2">
-        <Radio size={22} color="#39ff8a" />
-        <Text className="font-display text-3xl text-fg">LIVE</Text>
-      </View>
       <View>
-        <Text className="font-display text-lg text-fg">{club.name}</Text>
+        <Text className="font-display text-2xl text-fg">Tu veux recruter maintenant ?</Text>
+        <Text className="mt-0.5 font-display text-lg text-fg">{club.name}</Text>
         <Text className="text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs — pas un coup d&apos;envoi.</Text>
       </View>
 

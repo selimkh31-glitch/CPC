@@ -59,6 +59,7 @@
     "test:club-profile": "tsx scripts/test-club-profile.ts",
     "test:session-state": "tsx scripts/test-session-state.ts",
     "test:live": "tsx scripts/test-live.ts",
+    "test:live-filters": "tsx scripts/test-live-filters.ts",
     "test:live-match": "tsx scripts/test-live-match.ts",
     "test:recruitment": "tsx scripts/test-recruitment.ts",
     "test:safety": "tsx scripts/test-safety.ts",

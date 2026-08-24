@@ -3,9 +3,9 @@
 **Produit :** ClubPro Connect = matchmaking **EA SPORTS FC 27 Pro Clubs** uniquement. Joueur = profil virtuel Pro Clubs. Club = équipe virtuelle Pro Clubs. Pas de football IRL, pas de stats EA inventées, pas d’Expo Go.
 
 **Date QA :** 24 août 2026  
-**Tip de la pile :** `cursor/club-edit-identity-fb68` (`b5a9d49`, PR **#13**)  
+**Tip de la pile :** `cursor/qa-autonomous-stack-5884` (PR **#14**) — contient **PR #5** (LIVE UX compacte) **et** PR **#6–#13**.  
 **Base d’intégration :** `social-ea-foundations-phase-2` (contient déjà PR **#2** merged — P0/P1 LIVE + safety/notifications — et PR **#3** merged — retab IA).  
-**Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone. L’agent n’applique **pas** les migrations et ne merge **pas** les PR.
+**Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone. L’agent n’applique **pas** les migrations et ne merge **pas** les PR GitHub vers la base.
 
 Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable-social-foundations`.
 
@@ -15,7 +15,7 @@ Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable
 
 ```
 social-ea-foundations-phase-2
- ├── PR #5  cursor/player-live-ux-overhaul-8a6e     LIVE UX compact     SIBLING — absent du tip #13
+ ├── PR #5  cursor/player-live-ux-overhaul-8a6e     LIVE UX compact     SŒUR de #6 — INTEGREE dans le tip #14
  ├── PR #4  (fix manager feuille / canaux)          hors pile #5–#13
  └── PR #6  cursor/player-club-profile-726b         profils
       └── PR #7  cursor/sessions-teams-0f8a         sessions / effectif
@@ -24,18 +24,21 @@ social-ea-foundations-phase-2
                      └── PR #10 cursor/dm-message-received-notify-2717  notif DM
                           └── PR #11 cursor/notify-mark-all-read-b782  tout marquer lu
                                └── PR #12 cursor/profile-edit-identity-c408  édition profil
-                                    └── PR #13 cursor/club-edit-identity-fb68  édition club  ← tip
+                                    └── PR #13 cursor/club-edit-identity-fb68  édition club
+                                         └── PR #14 cursor/qa-autonomous-stack-5884  tip = #6–#13 + merge git PR #5
 ```
 
-LIVE déjà dans le tip = PR **#2** (expiry, LIVE joueur/club, matching, apply) + PR **#3** (onglets) + PR **#7** (TTL vs feuille de match). Ce n’est **pas** la refonte UX compacte de la PR **#5** (`test:live-filters` n’existe pas sur ce tip).
+**PR #5 est dans le tip.** Merge git local `origin/cursor/player-live-ux-overhaul-8a6e` → `cursor/qa-autonomous-stack-5884` (pas un merge GitHub des PR #5–#14, pas de merge dans `social-ea-foundations-phase-2`). Conflits club LIVE : UX sheet PR #5 + mapping session PR #7 (`clubSessionSnapshot` / `canManage`). Profils / éditeurs : pile #6–#13.
+
+LIVE dans le tip = PR **#2** (expiry, LIVE joueur/club, matching, apply) + PR **#3** (onglets) + PR **#5** (UX compacte OFF/ON, sheets, filtres, `test:live-filters`) + PR **#7** (TTL vs feuille de match).
 
 ---
 
 ## 2. Ordre des PR #5–#13
 
-| Ordre | PR | Branche | Base GitHub | Dans le tip #13 ? | Rôle |
+| Ordre | PR | Branche | Base GitHub | Dans le tip #14 ? | Rôle |
 |---|---|---|---|---|---|
-| — | **#5** | `cursor/player-live-ux-overhaul-8a6e` | `social-ea-foundations-phase-2` | **Non** (sœur de #6) | UX LIVE compacte, sans fake scores |
+| — | **#5** | `cursor/player-live-ux-overhaul-8a6e` | `social-ea-foundations-phase-2` | **Oui** (merge git dans #14) | UX LIVE compacte, sans fake scores |
 | 1 | **#6** | `cursor/player-club-profile-726b` | `social-ea-foundations-phase-2` | Oui | Profil joueur + profil club (données réelles) |
 | 2 | **#7** | `cursor/sessions-teams-0f8a` | branche #6 | Oui | LIVE TTL vs feuille de match, roster réel |
 | 3 | **#8** | `cursor/social-chat-groups-89d0` | branche #7 | Oui | DM + groupes sur le stack chat existant |
@@ -43,30 +46,17 @@ LIVE déjà dans le tip = PR **#2** (expiry, LIVE joueur/club, matching, apply) 
 | 5 | **#10** | `cursor/dm-message-received-notify-2717` | branche #9 | Oui | Notif in-app `MESSAGE_RECEIVED` sur DM réel |
 | 6 | **#11** | `cursor/notify-mark-all-read-b782` | branche #10 | Oui | Tout marquer lu |
 | 7 | **#12** | `cursor/profile-edit-identity-c408` | branche #11 | Oui | Éditer son identité Pro Clubs |
-| 8 | **#13** | `cursor/club-edit-identity-fb68` | branche #12 | Oui (tip) | Éditer l’identité de son club (OWNER) |
+| 8 | **#13** | `cursor/club-edit-identity-fb68` | branche #12 | Oui | Éditer l’identité de son club (OWNER) |
 
 ---
 
 ## 3. Ce qu’il faut merger, dans l’ordre
 
-**Ne pas merger les PR en parallèle.** Chaque PR #7–#13 a pour base le **head** de la précédente.
+**Ne pas merger les PR GitHub en parallèle** vers `social-ea-foundations-phase-2`. Ne pas merger GitHub PRs #5–#14 comme merge GitHub.
 
 ### Pile du tip (à poser sur `social-ea-foundations-phase-2`)
 
-1. Merger **#6** dans `social-ea-foundations-phase-2`
-2. Puis **#7** (rebaser / retarget la base si GitHub ne l’a pas avancée)
-3. Puis **#8**
-4. Puis **#9**
-5. Puis **#10**
-6. Puis **#11**
-7. Puis **#12**
-8. Puis **#13**
-
-**Équivalent :** le tip `cursor/club-edit-identity-fb68` contient déjà les commits #6–#13. Un seul merge de ce tip dans `social-ea-foundations-phase-2` pose toute la pile. Ne pas merger #6–#12 ensuite (doublon).
-
-### PR #5 (LIVE UX compacte)
-
-**Ne pas** la merger dans `social-ea-foundations-phase-2` en même temps que #6 : même base, divergente, hors du tip. Si le fondateur la veut : rebase de `cursor/player-live-ux-overhaul-8a6e` **sur le tip #13**, PR dédiée, après la pile.
+Le tip `cursor/qa-autonomous-stack-5884` contient déjà **#5** (UX LIVE) **et** #6–#13. Un seul merge de ce tip dans `social-ea-foundations-phase-2` pose toute la pile. Ne pas merger ensuite #5 ni #6–#13 (doublon).
 
 Hors séquence : PR **#1** (env cloud), PR **#4** (fix manager). Ne pas les glisser dans cette pile.
 
@@ -89,7 +79,8 @@ L’agent **n’applique pas** le SQL en production. Le fondateur colle dans le 
 
 **0026 est obligatoire en prod** dès que le code #9+ tourne. Sans 0026 : création / liste / inscription compétition cassées. Appliquer **après** 0025.
 
-Pas de migration 0027 pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).
+Pas de migration 0027 pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
+PR **#5** : aucune migration (UX / filtres UI seulement).
 
 ---
 
@@ -133,27 +124,27 @@ Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `
 
 ---
 
-## 6. QA cloud (24 août 2026) — tip #13
+## 6. QA cloud (24 août 2026) — tip #14 (PR #5 IN)
 
-Aucune régression code sur ce passage. `test:live-filters` **absent** (PR #5 hors tip).
+`test:live-filters` **présent** (PR #5 dans le tip).
 
 | Commande | Résultat |
 |---|---|
-| `npm run typecheck` | **PASS** |
-| `npm run test:live` | **PASS** (14) |
-| `npm run test:live-filters` | **N/A** — script inexistant |
-| `npm run test:live-match` | **PASS** (15) |
-| `npm run test:recruitment` | **PASS** (5) |
-| `npm run test:safety` | **PASS** (8) |
-| `npm run test:player-card` | **PASS** (9) |
-| `npm run test:club-profile` | **PASS** (8) |
-| `npm run test:session-state` | **PASS** (9) |
-| `npm run test:social` | **PASS** (5) |
-| `npm run test:competitions` | **PASS** (9) |
-| `npm run test:ovr` | **PASS** (9) |
-| `npm run test:profile-identity` | **PASS** (7) |
-| `npm run test:notification-read` | **PASS** (3) |
-| `npm run test:club-identity` | **PASS** (7) — tip #13 |
+| `npm run typecheck` | à relancer après merge |
+| `npm run test:live` | à relancer |
+| `npm run test:live-filters` | à relancer (script PR #5) |
+| `npm run test:live-match` | à relancer |
+| `npm run test:recruitment` | PASS historique (5) |
+| `npm run test:safety` | PASS historique (8) |
+| `npm run test:player-card` | à relancer |
+| `npm run test:club-profile` | PASS historique (8) |
+| `npm run test:session-state` | à relancer |
+| `npm run test:social` | PASS historique (5) |
+| `npm run test:competitions` | PASS historique (9) |
+| `npm run test:ovr` | PASS historique (9) |
+| `npm run test:profile-identity` | PASS historique (7) |
+| `npm run test:notification-read` | PASS historique (3) |
+| `npm run test:club-identity` | PASS historique (7) |
 
 ---
 
@@ -163,11 +154,12 @@ Aucune régression code sur ce passage. `test:live-filters` **absent** (PR #5 ho
 
 Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 
-### LIVE (base #2 + #7, pas l’UX #5)
+### LIVE (base #2 + UX #5 + #7)
 
-- Joueur : Passer LIVE → countdown TTL → expire tout seul → OFF. Modifier la durée. Quitter le LIVE.
-- Trouver un club : uniquement des sessions LIVE réelles (`is_live` + `expires_at` futur). Postuler (`apply`). Empty state honnête si 0 LIVE — aucun club inventé.
-- Club (OWNER/MANAGER) : Passer le club LIVE (postes requis) → TTL → OFF.
+- Joueur **OFF** : carte compacte « Tu veux jouer maintenant ? » → PASSER LIVE → **sheet** (poste/plateforme profil + durée obligatoire, note optionnelle). Pas de formulaire géant.
+- Joueur **ON** : carte statut compacte (poste, plateforme, countdown, Modifier / Quitter le LIVE). Expire → retour OFF.
+- Trouver un club : cartes opportunité (sessions LIVE réelles), filtres compacts `[Poste ▾] [Plateforme ▾] [Niveau ▾]` + Filtres (langue). Compteur honnête. Empty : **Élargir la recherche** (modèle existant, aucun club inventé). Smart match : motifs déterministes, **pas de %**.
+- Club (OWNER/MANAGER) : carte compacte OFF/ON + sheet postes/durée. Postes **toujours requis**. Mapping session : recrutement LIVE (`is_live` + TTL) **distinct** du match lancé (check-in).
 
 ### Profils (#6)
 
@@ -215,4 +207,4 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 
 ### Hors scope à ne pas « tester comme livré »
 
-- Expo Go, CPCP, stats EA inventées, brackets / standings compétition, conversation CLUB, PR #5 UX compacte (hors tip).
+- Expo Go, CPCP, stats EA inventées, brackets / standings compétition, conversation CLUB.
