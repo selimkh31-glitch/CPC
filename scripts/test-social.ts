@@ -68,8 +68,8 @@ function direct(id: string, selfId: string, peer: UserRow): ConversationRow {
     created_by: selfId,
     created_at: "2026-01-01T00:00:00.000Z",
     members: [
-      { id: "m1", conversation_id: id, user_id: selfId, role: "MEMBER", joined_at: "2026-01-01T00:00:00.000Z" },
-      { id: "m2", conversation_id: id, user_id: peer.id, role: "MEMBER", joined_at: "2026-01-01T00:00:00.000Z", user: peer },
+      { id: "m1", conversation_id: id, user_id: selfId, role: "MEMBER", joined_at: "2026-01-01T00:00:00.000Z", last_read_at: null },
+      { id: "m2", conversation_id: id, user_id: peer.id, role: "MEMBER", joined_at: "2026-01-01T00:00:00.000Z", last_read_at: null, user: peer },
     ],
   };
 }
