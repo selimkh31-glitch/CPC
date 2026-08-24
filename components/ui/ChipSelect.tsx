@@ -40,7 +40,7 @@ export function ChipSelect({ options, value, onChange, max, single }: ChipSelect
             key={opt.value}
             onPress={() => toggle(opt.value)}
             className={cn(
-              "rounded-full border px-4 py-2.5 active:scale-95",
+              "min-h-[44px] min-w-[44px] items-center justify-center rounded-full border px-4 active:scale-95",
               active ? "border-accent bg-accent/15" : "border-border bg-bg-elevated"
             )}
           >
