@@ -17,6 +17,7 @@ import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode 
 import { toast } from "@/lib/toast";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { benchMembers, formatNeededPositionsLine } from "@/lib/sessionState";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
 /**
@@ -65,8 +66,8 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   const activeSession = findActiveLiveSession(club.sessions, now);
   // Banc — tout membre sans slot_assignment, dérivé de l'existant : aucune
   // nouvelle table/requête, réutilise club_members + slot_assignments.
-  const startingUserIds = new Set(assignments.map((a) => a.user_id));
-  const bench = (club.members ?? []).filter((m) => !startingUserIds.has(m.user_id));
+  const bench = benchMembers(club.members, assignments);
+  const neededLine = activeSession ? formatNeededPositionsLine(activeSession.needed_positions) : null;
   const owner = club.members?.find((m) => m.role === "OWNER");
   const managers = (club.members ?? []).filter((m) => m.role === "MANAGER");
 
@@ -87,7 +88,7 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
       return;
     }
     if (!activeSession) {
-      toast.info("Ce club n'est pas en live actuellement — la candidature n'est possible que pendant une session live.");
+      toast.info("Ce club n'est pas en recrutement LIVE — la candidature n'est possible que pendant une session LIVE.");
       return;
     }
     const positionLabel = POSITION_LABELS[slot.position as PositionCode] ?? slot.position;
@@ -141,29 +142,18 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
           note : mêmes données que club/[id].tsx (club_sessions.needed_positions/
           note), simple lecture, aucun nouveau moteur de matching. */}
       <Card>
-        <Text className="mb-2 font-display text-lg text-fg">Session</Text>
+        <Text className="mb-2 font-display text-lg text-fg">Recrutement LIVE</Text>
         {activeSession ? (
           <>
             <View className="mb-3 flex-row items-center gap-1.5">
               <PulseDot />
               <Text className="text-xs font-extrabold text-accent">LIVE</Text>
             </View>
-            {activeSession.needed_positions.length > 0 && (
-              <View className="mb-3">
-                <Text className="mb-1.5 text-xs font-bold uppercase tracking-wide text-fg-muted">Postes recherchés</Text>
-                <View className="flex-row flex-wrap gap-1.5">
-                  {activeSession.needed_positions.map((p) => (
-                    <Badge key={p} tone="pro">
-                      {POSITION_LABELS[p] ?? p}
-                    </Badge>
-                  ))}
-                </View>
-              </View>
-            )}
+            {neededLine ? <Text className="mb-3 text-sm text-fg">Cherche {neededLine}</Text> : null}
             {activeSession.note && <Text className="text-sm text-fg-muted">{activeSession.note}</Text>}
           </>
         ) : (
-          <Text className="text-xs text-fg-subtle">Club hors ligne actuellement — aucune recherche active.</Text>
+          <Text className="text-xs text-fg-subtle">Hors ligne — aucun recrutement LIVE actif.</Text>
         )}
       </Card>
 
@@ -202,7 +192,7 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
           </CardHeader>
           <View className="gap-1.5">
             {bench.map((m) => (
-              <Pressable key={m.user_id} onPress={() => goToProfile(m.user_id)} className="active:opacity-70">
+              <Pressable key={m.user_id} onPress={() => goToProfile(m.user_id)} className="min-h-[44px] justify-center active:opacity-70">
                 <Text numberOfLines={1} className="text-sm text-fg">
                   {m.user?.username ?? "Joueur"}
                 </Text>

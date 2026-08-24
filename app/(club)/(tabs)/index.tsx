@@ -1,93 +1,125 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, type ReactNode } from "react";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Radio } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/Screen";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { EmptyState, ErrorState } from "@/components/ui/Screen";
+import { Button } from "@/components/ui/Button";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
+import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { findActiveLiveSession } from "@/lib/live";
+import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
+import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
 
 /**
- * LIVE Mode Club — accueil. Session LIVE du club géré + joueurs LIVE à inviter.
- * La feuille de match (organisation) n'est plus cet écran : push vers /match.
+ * LIVE Mode Club — recrutement LIVE (is_live + TTL) distinct du match lancé.
+ * La feuille de match reste un push `/match`, pas un onglet.
  */
 export default function ClubLiveTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { data: club, isLoading, isError, refetch } = useManagedClub();
+  const { setMode } = useAppMode();
+  const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
+  const {
+    data: activeCheckin,
+    isLoading: checkinLoading,
+    isError: checkinError,
+    refetch: refetchCheckin,
+  } = useActiveMatchCheckin(club?.id ?? null);
 
-  if (isLoading || !club) {
-    return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-          {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : <Skeleton className="h-40" />}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
-  const activeSession = findActiveLiveSession(club.sessions, now);
-  const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
-  const canManage = myMembership?.role === "OWNER" || myMembership?.role === "MANAGER";
-  const owner = club.members?.find((m) => m.user_id === club.owner_id);
-
-  return (
+  const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
         <ModeSwitch managedClubs={managedClubs} />
-
-        <View className="flex-row items-center gap-2">
-          <Radio size={22} color="#39ff8a" />
-          <Text className="font-display text-3xl text-fg">LIVE</Text>
-          {activeSession && (
-            <View className="ml-auto flex-row items-center gap-1">
-              <PulseDot />
-              <Text className="text-xs font-extrabold text-accent">EN COURS</Text>
-            </View>
-          )}
-        </View>
-        <View>
-          <Text className="font-display text-lg text-fg">{club.name}</Text>
-          <Text className="text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs.</Text>
-        </View>
-
-        <LiveSessionPanel
-          clubId={club.id}
-          activeSession={
-            activeSession
-              ? {
-                  id: activeSession.id,
-                  needed_positions: activeSession.needed_positions,
-                  note: activeSession.note,
-                  expires_at: activeSession.expires_at,
-                }
-              : null
-          }
-        />
-
-        {canManage && (
-          <LivePlayersRecruitPanel
-            clubId={club.id}
-            members={club.members ?? []}
-            neededPositions={activeSession?.needed_positions ?? []}
-            platform={owner?.user?.platform ?? null}
-            clubLive={activeSession}
-          />
-        )}
-
-        <Pressable onPress={() => router.push("/match")} className="active:opacity-80">
-          <Text className="text-center text-sm text-accent">Feuille de match</Text>
-        </Pressable>
+        {body}
       </ScrollView>
     </SafeAreaView>
+  );
+
+  if (isLoading || (isFetching && !club && !isError)) {
+    return shell(<Skeleton className="h-40" />);
+  }
+
+  if (isError) {
+    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
+  }
+
+  if (!club) {
+    return shell(
+      <View className="gap-4">
+        <EmptyState
+          title="Aucun club géré"
+          subtitle="Crée un club EA SPORTS FC 27 Pro Clubs en mode Joueur, ou fais-toi nommer manager."
+        />
+        <Button variant="ghost" onPress={() => setMode("PLAYER")}>
+          Retour mode Joueur
+        </Button>
+      </View>
+    );
+  }
+
+  const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
+  const canManage = canMutateClub(myMembership?.role);
+  const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
+  const liveSession = snapshot.live.active
+    ? {
+        id: snapshot.live.sessionId,
+        needed_positions: snapshot.live.neededPositions,
+        note: snapshot.live.note,
+        expires_at: snapshot.live.expiresAt,
+        is_live: true as const,
+      }
+    : null;
+  const owner = club.members?.find((m) => m.user_id === club.owner_id);
+
+  return shell(
+    <>
+      <View className="flex-row items-center gap-2">
+        <Radio size={22} color="#39ff8a" />
+        <Text className="font-display text-3xl text-fg">LIVE</Text>
+      </View>
+      <View>
+        <Text className="font-display text-lg text-fg">{club.name}</Text>
+        <Text className="text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs — pas un coup d&apos;envoi.</Text>
+      </View>
+
+      <ClubSessionStatus
+        snapshot={snapshot}
+        checkinLoading={checkinLoading}
+        checkinError={checkinError}
+        onRetryCheckin={() => refetchCheckin()}
+        matchSheetCta={{
+          label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
+          onPress: () => router.push("/match"),
+        }}
+      />
+
+      <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
+
+      {canManage && (
+        <LivePlayersRecruitPanel
+          clubId={club.id}
+          members={club.members ?? []}
+          neededPositions={liveSession?.needed_positions ?? []}
+          platform={owner?.user?.platform ?? null}
+          clubLive={liveSession}
+        />
+      )}
+    </>
   );
 }
