@@ -25,8 +25,20 @@ export const NOTIFICATION_TYPES = [
   "INVITATION_RECEIVED",
   "INVITATION_ACCEPTED",
   "INVITATION_DECLINED",
+  "MESSAGE_RECEIVED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/** Labels in-app (FR, FC 27 Pro Clubs) — source unique titre / type. */
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  APPLICATION_RECEIVED: "Nouvelle candidature",
+  APPLICATION_ACCEPTED: "Candidature acceptée",
+  APPLICATION_DECLINED: "Candidature refusée",
+  INVITATION_RECEIVED: "Invitation reçue",
+  INVITATION_ACCEPTED: "Invitation acceptée",
+  INVITATION_DECLINED: "Invitation déclinée",
+  MESSAGE_RECEIVED: "Nouveau message",
+};
 
 export const EA_IDENTITY_KINDS = ["NONE", "USERNAME_EQUALITY"] as const;
 export type EaIdentityKind = (typeof EA_IDENTITY_KINDS)[number];
@@ -64,6 +76,56 @@ export function otherIdsFromBlocks(
   return [...ids];
 }
 
+export function notificationTitle(type: string, fallback: string): string {
+  return isNotificationType(type) ? NOTIFICATION_TYPE_LABELS[type] : fallback;
+}
+
+export function conversationIdFromNotificationData(
+  data: Record<string, unknown> | null | undefined
+): string | null {
+  const id = data?.conversationId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/** Autres membres d'une conversation, hors expéditeur (DIRECT = 1, GROUP = N). */
+export function otherConversationParticipantIds(
+  memberUserIds: readonly string[],
+  senderId: string
+): string[] {
+  return [...new Set(memberUserIds.filter((id) => id.length > 0 && id !== senderId))];
+}
+
+/**
+ * Un MESSAGE_RECEIVED in-app seulement pour un DM réel, destinataire ≠
+ * expéditeur, paire non bloquée, message non soft-deleted.
+ */
+export function shouldNotifyMessageReceived(input: {
+  conversationType: string;
+  senderId: string;
+  recipientId: string;
+  blocked: boolean;
+  deleted?: boolean;
+}): boolean {
+  if (input.conversationType !== "DIRECT") return false;
+  if (!input.recipientId || input.recipientId === input.senderId) return false;
+  if (input.blocked) return false;
+  if (input.deleted) return false;
+  return true;
+}
+
+export function messageReceivedCopy(senderUsername: string): {
+  type: NotificationType;
+  title: string;
+  body: string;
+} {
+  const name = senderUsername.trim() || "Un joueur";
+  return {
+    type: "MESSAGE_RECEIVED",
+    title: NOTIFICATION_TYPE_LABELS.MESSAGE_RECEIVED,
+    body: `${name} t'a écrit.`,
+  };
+}
+
 export function notificationHref(type: string, data: Record<string, unknown> | null | undefined): string {
   const clubId = typeof data?.clubId === "string" ? data.clubId : null;
   switch (type) {
@@ -77,6 +139,10 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
     case "INVITATION_ACCEPTED":
     case "INVITATION_DECLINED":
       return clubId ? `/club/${clubId}` : "/my-invitations";
+    case "MESSAGE_RECEIVED": {
+      const conversationId = conversationIdFromNotificationData(data);
+      return conversationId ? `/conversation/${conversationId}` : "/notifications";
+    }
     default:
       return "/notifications";
   }

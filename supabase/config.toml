@@ -88,6 +88,10 @@ verify_jwt = true
 [functions.register-competition-club]
 verify_jwt = true
 
+# DM réel — notif in-app MESSAGE_RECEIVED après INSERT client (JWT session).
+[functions.notify-message-received]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 
