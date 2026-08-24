@@ -63,6 +63,8 @@ npm run prisma:migrate
 # 2. supabase/migrations/0003_triggers.sql   (dépend des policies ci-dessus)
 ```
 
+**Compétitions (0026) — à appliquer manuellement, pas depuis l'agent :** coller `supabase/migrations/0026_competitions_foundation.sql` dans le SQL Editor du projet distant **après** 0025. Ne **pas** `prisma migrate deploy` (Option B, double-apply). Puis déployer les Edge `create-competition` et `register-competition-club`. Aucune table de classements : `match_results` n'a pas de `competition_id`.
+
 Tous les `id` (sauf `users.id`, toujours l'UID Supabase Auth) utilisent `@default(dbgenerated("gen_random_uuid()"))` — un vrai DEFAULT Postgres — pour que les INSERT faits hors Prisma Client (app mobile via `supabase-js`, Edge Functions) fonctionnent sans fournir `id`.
 
 Sécurité en deux couches :
@@ -88,6 +90,8 @@ supabase/functions/
   scout-report/               GET  — Scout Report IA (Pro only)
   moderate/                    POST — modération générique
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
+  create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN)
+  register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409
 ```
 
 Déploiement :
@@ -95,7 +99,7 @@ Déploiement :
 ```bash
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook
+npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook create-competition register-competition-club
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=...
 ```
 

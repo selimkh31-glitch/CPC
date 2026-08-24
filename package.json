@@ -63,6 +63,7 @@
     "test:recruitment": "tsx scripts/test-recruitment.ts",
     "test:safety": "tsx scripts/test-safety.ts",
     "test:social": "tsx scripts/test-social.ts",
+    "test:competitions": "tsx scripts/test-competitions.ts",
     "lint": "expo lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

@@ -8,6 +8,7 @@ import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
+import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
@@ -71,6 +72,9 @@ export default function ProfileTabScreen() {
         <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Réglages</Text>
         <View className="mb-6">
           <SocialShortcuts />
+          <View className="mt-2">
+            <CompetitionsLink />
+          </View>
         </View>
 
         <View className="mb-2 flex-row items-center justify-between">

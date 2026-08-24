@@ -351,3 +351,24 @@ export interface SeasonStatRow {
   updated_at: string;
   user?: UserRow;
 }
+
+/** Compétitions virtuelles EA SPORTS FC 27 Pro Clubs — fondation (0026). */
+export type CompetitionStatus = "DRAFT" | "OPEN" | "CLOSED";
+
+export interface CompetitionRow {
+  id: string;
+  name: string;
+  status: CompetitionStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  clubs?: CompetitionClubRow[];
+}
+
+export interface CompetitionClubRow {
+  id: string;
+  competition_id: string;
+  club_id: string;
+  created_at: string;
+  club?: Pick<ClubRow, "id" | "name">;
+}

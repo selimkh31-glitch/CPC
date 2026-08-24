@@ -205,6 +205,12 @@ function RootNavigator() {
           name="report/[userId]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
         />
+        {/* Compétitions virtuelles FC 27 Pro Clubs — stack, pas un onglet.
+            Ligues (`(player)/(tabs)/leagues`) reste href: null. */}
+        <Stack.Screen
+          name="competitions"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Compétitions" }}
+        />
       </Stack.Protected>
 
       {/* Hors de tout Stack.Protected : accessible sans session (deep link

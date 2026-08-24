@@ -220,6 +220,7 @@ model User {
   reportsMade              UserReport[]         @relation("ReportsMade")
   reportsReceived          UserReport[]         @relation("ReportsReceived")
   notifications            Notification[]
+  competitionsCreated      Competition[]        @relation("CompetitionsCreated")
 
   @@index([reliabilityScore])
   @@index([platform])
@@ -257,6 +258,7 @@ model Club {
   matchParticipations     MatchParticipation[]
   // Match Result Engine, Phase A.
   matchResults            MatchResult[]
+  competitionClubs        CompetitionClub[]
   // Social Foundations — au plus une conversation CLUB par club (index
   // unique partiel posé en SQL, non exprimable ici — voir migration RLS).
   // Phase 2 : aucune Edge Function ne provisionne encore cette conversation
@@ -793,4 +795,42 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+// ------------------------------------------------------------------
+// Compétitions virtuelles EA SPORTS FC 27 Pro Clubs (fondation).
+// Miroir de supabase/migrations/0026_competitions_foundation.sql —
+// NE PAS prisma migrate deploy (Option B). Pas de standings : match_results
+// n'a pas de competition_id (aucun classement remplissable sans inventer).
+// ------------------------------------------------------------------
+
+model Competition {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  // DRAFT | OPEN | CLOSED — CHECK SQL (0026), pas un enum PG (comme ea_identity_kind).
+  status    String   @default("DRAFT")
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  creator User              @relation("CompetitionsCreated", fields: [createdBy], references: [id], onDelete: Cascade)
+  clubs   CompetitionClub[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@map("competitions")
+}
+
+model CompetitionClub {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  clubId        String   @map("club_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, clubId])
+  @@index([clubId])
+  @@map("competition_clubs")
 }
