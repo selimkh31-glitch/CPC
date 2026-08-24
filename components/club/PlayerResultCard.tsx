@@ -53,7 +53,7 @@ export function PlayerResultCard({
               {player.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")}
             </Text>
           )}
-          <Button size="sm" className="mt-3" loading={inviting} onPress={onInvite}>
+          <Button className="mt-3 min-h-[44px]" loading={inviting} onPress={onInvite}>
             Inviter sur ce poste
           </Button>
         </View>

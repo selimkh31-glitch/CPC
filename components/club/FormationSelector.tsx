@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { ChevronDown, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { FORMATION_IDS, type FormationId } from "@/lib/formations";
@@ -54,11 +54,13 @@ export function FormationSelector({
   return (
     <>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={currentFormation ? `Formation ${currentFormation}` : "Choisir une formation"}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           setOpen(true);
         }}
-        className="flex-row items-center gap-1 self-start rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
+        className="min-h-[44px] flex-row items-center gap-1 self-start rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
       >
         <Text className="font-display text-base text-fg">{currentFormation ?? "Choisir une formation"}</Text>
         <ChevronDown size={16} color="#9aa0a8" />
@@ -66,26 +68,33 @@ export function FormationSelector({
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <Pressable className="flex-1 justify-end bg-black/50" onPress={() => setOpen(false)}>
-          <Pressable className="rounded-t-3xl border-t border-border bg-bg-card px-4 pb-8 pt-4" onPress={() => {}}>
+          <Pressable className="max-h-[80%] rounded-t-3xl border-t border-border bg-bg-card px-4 pb-8 pt-4" onPress={() => {}}>
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="font-display text-lg uppercase tracking-wide text-fg">Formation</Text>
-              <Pressable onPress={() => setOpen(false)} hitSlop={10}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
+                onPress={() => setOpen(false)}
+                className="h-11 w-11 items-center justify-center"
+              >
                 <X size={20} color="#9aa0a8" />
               </Pressable>
             </View>
-            <View className="gap-1.5">
-              {FORMATION_IDS.map((id) => (
-                <Pressable
-                  key={id}
-                  onPress={() => selectFormation(id)}
-                  className={`rounded-xl px-4 py-3 active:opacity-80 ${
-                    id === currentFormation ? "bg-accent/15" : "bg-bg-elevated"
-                  }`}
-                >
-                  <Text className={`font-semibold ${id === currentFormation ? "text-accent" : "text-fg"}`}>{id}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <View className="gap-1.5">
+                {FORMATION_IDS.map((id) => (
+                  <Pressable
+                    key={id}
+                    onPress={() => selectFormation(id)}
+                    className={`min-h-[44px] justify-center rounded-xl px-4 py-3 active:opacity-80 ${
+                      id === currentFormation ? "bg-accent/15" : "bg-bg-elevated"
+                    }`}
+                  >
+                    <Text className={`font-semibold ${id === currentFormation ? "text-accent" : "text-fg"}`}>{id}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>

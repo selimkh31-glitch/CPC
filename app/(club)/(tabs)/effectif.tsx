@@ -11,12 +11,15 @@ import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
 import { EditClubForm } from "@/components/club/EditClubForm";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
+import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { clubActiveLiveSession, clubOwnerPlatform, clubOwnerUsername } from "@/lib/clubProfile";
+import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
+import { clubOwnerPlatform, clubOwnerUsername } from "@/lib/clubProfile";
+import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
 
 /**
  * Club — identité, effectif réel, réglages. Feuille de match en push `/match` (secondaire).
@@ -29,6 +32,12 @@ export default function ClubTab() {
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
   const [editing, setEditing] = useState(false);
+  const {
+    data: activeCheckin,
+    isLoading: checkinLoading,
+    isError: checkinError,
+    refetch: refetchCheckin,
+  } = useActiveMatchCheckin(club?.id ?? null);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,8 +86,8 @@ export default function ClubTab() {
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
-  const canManage = myMembership?.role === "OWNER" || myMembership?.role === "MANAGER";
-  const liveSession = clubActiveLiveSession(club.sessions, now);
+  const canManage = canMutateClub(myMembership?.role);
+  const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
   const isOwner = club.owner_id === session?.user.id;
 
   return shell(
@@ -92,7 +101,6 @@ export default function ClubTab() {
             ownerUsername={clubOwnerUsername(club.members)}
             languages={club.languages}
             description={club.description}
-            liveSession={liveSession}
           />
         </View>
         {isOwner && !editing && (
@@ -110,6 +118,16 @@ export default function ClubTab() {
         <EditClubForm club={club} onDone={() => setEditing(false)} />
       ) : (
         <>
+          <ClubSessionStatus
+            snapshot={snapshot}
+            checkinLoading={checkinLoading}
+            checkinError={checkinError}
+            onRetryCheckin={() => refetchCheckin()}
+            matchSheetCta={{
+              label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
+              onPress: () => router.push("/match"),
+            }}
+          />
           <MembersPanel
             clubId={club.id}
             clubName={club.name}
@@ -117,9 +135,6 @@ export default function ClubTab() {
             canManage={canManage}
             members={club.members ?? []}
           />
-          <Button variant="secondary" onPress={() => router.push("/match")}>
-            Feuille de match
-          </Button>
           {canManage && <DeparturesPanel clubId={club.id} members={club.members ?? []} />}
           {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
         </>

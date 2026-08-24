@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
-import { PlayCircle, UserX, Users, Flag, Trophy } from "lucide-react-native";
+import { Pressable, Text, View } from "react-native";
+import { Check, PlayCircle, UserX, Users, Flag, Trophy } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ChipSelect } from "@/components/ui/ChipSelect";
 import { Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
@@ -247,13 +246,26 @@ export function MatchCheckinPanel({
             <Label>MVP (optionnel)</Label>
             {participantsLoading ? (
               <Skeleton className="h-10" />
+            ) : (participants ?? []).length === 0 ? (
+              <Text className="text-sm text-fg-muted">Aucun joueur présent à ce check-in.</Text>
             ) : (
-              <ChipSelect
-                single
-                value={mvpUserId}
-                onChange={setMvpUserId}
-                options={(participants ?? []).map((p) => ({ value: p.user_id, label: p.username }))}
-              />
+              <View className="gap-1">
+                {(participants ?? []).map((p) => {
+                  const selected = mvpUserId[0] === p.user_id;
+                  return (
+                    <Pressable
+                      key={p.user_id}
+                      onPress={() => setMvpUserId(selected ? [] : [p.user_id])}
+                      className={`min-h-[44px] flex-row items-center justify-between rounded-xl px-3 ${
+                        selected ? "bg-accent/15" : "bg-bg-elevated"
+                      }`}
+                    >
+                      <Text className={`font-semibold ${selected ? "text-accent" : "text-fg"}`}>{p.username}</Text>
+                      {selected ? <Check size={18} color="#39ff8a" /> : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
             )}
           </View>
           <View className="gap-2">
@@ -297,14 +309,34 @@ export function MatchCheckinPanel({
         <CardHeader>
           <CardTitle icon={<UserX size={18} color="#f4f5f7" />}>Qui est absent ?</CardTitle>
         </CardHeader>
-        <ChipSelect
-          value={selectedAbsentIds}
-          onChange={setSelectedAbsentIds}
-          options={titulaires.map((a) => ({
-            value: a.user_id,
-            label: a.user?.username ?? slotLabel(a.slot_id),
-          }))}
-        />
+        {titulaires.length === 0 ? (
+          <Text className="text-sm text-fg-muted">Aucun titulaire sur la feuille — le check-in partira d&apos;un 11 vide.</Text>
+        ) : (
+          <View className="gap-1">
+            {titulaires.map((a) => {
+              const selected = selectedAbsentIds.includes(a.user_id);
+              const label = a.user?.username ?? slotLabel(a.slot_id);
+              return (
+                <Pressable
+                  key={a.user_id}
+                  onPress={() =>
+                    setSelectedAbsentIds((ids) =>
+                      ids.includes(a.user_id) ? ids.filter((id) => id !== a.user_id) : [...ids, a.user_id]
+                    )
+                  }
+                  className={`min-h-[44px] flex-row items-center justify-between rounded-xl px-3 ${
+                    selected ? "bg-danger/10" : "bg-bg-elevated"
+                  }`}
+                >
+                  <Text className={`font-semibold ${selected ? "text-danger" : "text-fg"}`}>
+                    {slotLabel(a.slot_id)} — {label}
+                  </Text>
+                  {selected ? <Check size={18} color="#ff4d6a" /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         <View className="mt-4 flex-row gap-2">
           <Button variant="secondary" className="flex-1" onPress={() => setStep("confirm")}>
             Annuler
@@ -365,7 +397,7 @@ export function MatchCheckinPanel({
         <ErrorState message="Impossible de vérifier l'état du match." onRetry={() => refetchActiveCheckin()} />
       ) : !sessionId ? (
         <Text className="text-sm text-fg-muted">
-          Passe le club en LIVE pour pouvoir lancer un match — le check-in doit être rattaché à une session en cours.
+          Passe le club en recrutement LIVE pour lancer un match — le check-in doit être rattaché à une session LIVE en cours.
         </Text>
       ) : (
         <Button
