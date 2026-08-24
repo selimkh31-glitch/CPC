@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
+import { computeLiveExpiresAt, parseLiveDurationMs } from "@/lib/live";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
 
 export function useClubsList() {
@@ -9,11 +10,11 @@ export function useClubsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("*, sessions:club_sessions(is_live)")
+        .select("*, sessions:club_sessions(is_live, expires_at)")
         .order("created_at", { ascending: false })
         .limit(60);
       if (error) throw error;
-      return data as (ClubRow & { sessions: { is_live: boolean }[] })[];
+      return data as (ClubRow & { sessions: { is_live: boolean; expires_at: string | null }[] })[];
     },
   });
 }
@@ -138,11 +139,19 @@ export function useUpdateClub(clubId: string) {
 export function useCreateSession(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { neededPositions: string[]; note?: string }) => {
+    mutationFn: async (input: { neededPositions: string[]; note?: string; durationMs?: number }) => {
+      const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
+      const expiresAt = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
       await supabase.from("club_sessions").update({ is_live: false }).eq("club_id", clubId).eq("is_live", true);
       const { data, error } = await supabase
         .from("club_sessions")
-        .insert({ club_id: clubId, is_live: true, needed_positions: input.neededPositions, note: input.note ?? null })
+        .insert({
+          club_id: clubId,
+          is_live: true,
+          needed_positions: input.neededPositions,
+          note: input.note ?? null,
+          expires_at: expiresAt,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -160,11 +169,14 @@ export function useCreateSession(clubId: string) {
 export function useToggleSession(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { sessionId: string; isLive: boolean }) => {
-      const { error } = await supabase
-        .from("club_sessions")
-        .update({ is_live: !input.isLive })
-        .eq("id", input.sessionId);
+    mutationFn: async (input: { sessionId: string; isLive: boolean; durationMs?: number }) => {
+      const goingLive = !input.isLive;
+      const patch: { is_live: boolean; expires_at?: string } = { is_live: goingLive };
+      if (goingLive) {
+        const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
+        patch.expires_at = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
+      }
+      const { error } = await supabase.from("club_sessions").update(patch).eq("id", input.sessionId);
       if (error) throw error;
     },
     onSuccess: () => {

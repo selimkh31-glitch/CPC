@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
     .from("club_sessions")
     .select("*, club:clubs(*)")
     .eq("is_live", true)
+    .gt("expires_at", new Date().toISOString())
     .limit(30);
 
   const clubs = (liveSessions ?? [])

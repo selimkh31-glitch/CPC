@@ -119,6 +119,7 @@ function CompactBody({
       {rightSlot ?? (
         <View className="items-end">
           <Text className={cn("font-display text-xl", RARITY_TEXT[data.rarity])}>{data.ovr}</Text>
+          <Text className="text-[9px] uppercase tracking-wide text-fg-subtle">OVR CPC</Text>
         </View>
       )}
     </Pressable>
@@ -155,7 +156,7 @@ function StandardBody({
         {rightSlot ?? (
           <View className="items-end">
             <Text className={cn("font-display text-2xl", RARITY_TEXT[data.rarity])}>{data.ovr}</Text>
-            <Text className="text-[10px] uppercase tracking-wide text-fg-subtle">{RARITY_LABEL[data.rarity]}</Text>
+            <Text className="text-[10px] uppercase tracking-wide text-fg-subtle">OVR CPC · {RARITY_LABEL[data.rarity]}</Text>
           </View>
         )}
       </View>
@@ -209,7 +210,7 @@ function HeroBody({
             <View>
               <Text className="font-display text-6xl text-fg">{data.ovr}</Text>
               <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-                {data.mainPosition}
+                OVR CPC · {data.mainPosition}
               </Text>
             </View>
             <View className="items-end gap-1">
@@ -229,15 +230,15 @@ function HeroBody({
           {data.verified && (
             <View className="mt-3 flex-row items-center self-start gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
               <BadgeCheck size={14} color="#39ff8a" />
-              <Text className="text-xs font-bold text-accent">Verified Stats</Text>
+              <Text className="text-xs font-bold text-accent">Stats EA liées</Text>
             </View>
           )}
 
           {data.eaStats && (
             <View className="mt-4 flex-row gap-2">
-              <StatBlock label="Buts" value={data.eaStats.goals ?? "—"} />
-              <StatBlock label="Passes" value={data.eaStats.assists ?? "—"} />
-              <StatBlock label="Matchs" value={data.eaStats.matchesPlayed ?? "—"} />
+              <StatBlock label="Buts EA" value={data.eaStats.goals ?? "—"} />
+              <StatBlock label="Passes EA" value={data.eaStats.assists ?? "—"} />
+              <StatBlock label="Matchs EA" value={data.eaStats.matchesPlayed ?? "—"} />
             </View>
           )}
 

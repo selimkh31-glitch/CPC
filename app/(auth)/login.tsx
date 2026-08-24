@@ -54,7 +54,7 @@ export default function LoginScreen() {
           <Text className="font-display text-4xl text-fg">
             Club<Text className="text-accent">Pro</Text> Connect
           </Text>
-          <Text className="mt-1 text-sm text-fg-muted">Matchmaking temps réel pour Pro Clubs.</Text>
+          <Text className="mt-1 text-sm text-fg-muted">Matchmaking temps réel pour EA SPORTS FC 27 Pro Clubs.</Text>
         </View>
 
         <View className="mb-5 flex-row rounded-2xl border border-border bg-bg-elevated p-1">

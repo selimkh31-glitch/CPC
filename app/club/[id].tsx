@@ -10,6 +10,7 @@ import { ApplyForm } from "@/components/club/ApplyForm";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { findActiveLiveSession } from "@/lib/live";
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,7 +35,7 @@ export default function ClubDetailScreen() {
     );
   }
 
-  const activeSession = club.sessions?.find((s) => s.is_live) ?? null;
+  const activeSession = findActiveLiveSession(club.sessions, Date.now());
   const isMember = session ? club.members?.some((m) => m.user_id === session.user.id) : false;
 
   return (

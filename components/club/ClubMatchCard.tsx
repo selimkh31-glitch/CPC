@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { POSITION_LABELS, CLUB_LEVEL_LABELS, LANGUAGE_LABELS, type PositionCode } from "@/lib/constants";
+import { isLiveActive } from "@/lib/live";
 import type { ClubMatch } from "@/lib/hooks/useClubSearch";
 
 /**
@@ -13,7 +14,7 @@ import type { ClubMatch } from "@/lib/hooks/useClubSearch";
  */
 export function ClubMatchCard({ match }: { match: ClubMatch }) {
   const { club, formationId, openSlots } = match;
-  const isLive = club.sessions?.some((s) => s.is_live) ?? false;
+  const isLive = club.sessions?.some((s) => isLiveActive(s, Date.now())) ?? false;
 
   return (
     <Pressable onPress={() => router.push(`/match-sheet?clubId=${club.id}`)} className="active:opacity-90">

@@ -129,9 +129,22 @@ export interface ClubSessionRow {
   is_live: boolean;
   needed_positions: PositionCode[];
   note: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
   club?: ClubRow;
+}
+
+/** P0 — LIVE joueur (recrutement), distinct de la présence Realtime. */
+export interface PlayerSessionRow {
+  id: string;
+  user_id: string;
+  is_live: boolean;
+  note: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: UserRow;
 }
 
 export interface ApplicationRow {

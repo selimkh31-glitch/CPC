@@ -54,7 +54,7 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await Share.share({
-      message: `${data.username} — ${ovr} OVR sur ClubPro Connect 🎮⚽`,
+      message: `${data.username} — ${ovr} OVR CPC sur ClubPro Connect (EA SPORTS FC 27 Pro Clubs)`,
     });
   };
 
@@ -70,7 +70,7 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
           <View>
             <Text className="font-display text-6xl text-fg">{ovr}</Text>
             <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-              {data.mainPosition}
+              OVR CPC · {data.mainPosition}
             </Text>
           </View>
           <View className="items-end">
@@ -114,15 +114,19 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
         {verified && (
           <View className="mt-3 flex-row items-center self-start gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
             <BadgeCheck size={14} color="#39ff8a" />
-            <Text className="text-xs font-bold text-accent">Verified Stats</Text>
+            <Text className="text-xs font-bold text-accent">Stats EA liées</Text>
           </View>
         )}
 
-        <View className="mt-4 flex-row gap-2">
-          <StatBlock label="Buts" value={data.verifiedStats?.goals ?? "—"} />
-          <StatBlock label="Passes" value={data.verifiedStats?.assists ?? "—"} />
-          <StatBlock label="Matchs" value={data.verifiedStats?.matchesPlayed ?? "—"} />
-        </View>
+        {verified ? (
+          <View className="mt-4 flex-row gap-2">
+            <StatBlock label="Buts EA" value={data.verifiedStats?.goals ?? "—"} />
+            <StatBlock label="Passes EA" value={data.verifiedStats?.assists ?? "—"} />
+            <StatBlock label="Matchs EA" value={data.verifiedStats?.matchesPlayed ?? "—"} />
+          </View>
+        ) : (
+          <Text className="mt-4 text-xs text-fg-subtle">Pas de stats EA liées — aucun chiffre inventé.</Text>
+        )}
 
         <View className="mt-4 flex-row items-center justify-between">
           <Text className="text-xs text-fg-muted">

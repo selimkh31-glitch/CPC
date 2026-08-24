@@ -8,6 +8,7 @@ import { PulseDot } from "@/components/ui/PulseDot";
 import { Button } from "@/components/ui/Button";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
+import { LiveCountdown } from "@/components/live/LiveCountdown";
 import type { ClubSessionRow } from "@/lib/types";
 
 export function LiveClubCard({ item }: { item: ClubSessionRow }) {
@@ -54,6 +55,7 @@ export function LiveClubCard({ item }: { item: ClubSessionRow }) {
             <Text numberOfLines={1} className="text-xs text-fg-subtle shrink">
               {club.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")} · {timeAgo(item.updated_at)}
             </Text>
+            <LiveCountdown expiresAt={item.expires_at} className="ml-2" />
           </View>
           <Button size="sm" onPress={openClub}>
             Postuler

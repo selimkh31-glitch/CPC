@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/Screen";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
+import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
@@ -78,6 +79,7 @@ export default function EffectifTab() {
           canManage={canManage}
           members={club.members ?? []}
         />
+        {canManage && <LivePlayersRecruitPanel clubId={club.id} members={club.members ?? []} />}
         {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
       </ScrollView>
     </SafeAreaView>

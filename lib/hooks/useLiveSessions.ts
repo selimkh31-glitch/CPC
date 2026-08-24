@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { isLiveActive } from "@/lib/live";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
- * Fil temps réel des sessions live (section 3.C / 8). Charge l'état initial
- * via React Query puis invalide le cache sur chaque changement Postgres
- * (Supabase Realtime) pour que le feed réagisse sans pull-to-refresh.
+ * Fil temps réel des sessions LIVE club (recrutement FC 27 Pro Clubs).
+ * Filtre `is_live` + `expires_at > now` côté requête, puis `isLiveActive`
+ * côté client (horloge locale) pour ne jamais afficher un LIVE déjà expiré
+ * si le cron n'a pas encore basculé `is_live`.
  */
 export function useLiveSessions() {
   const queryClient = useQueryClient();
@@ -18,9 +20,11 @@ export function useLiveSessions() {
         .from("club_sessions")
         .select("*, club:clubs(id,name,level,languages)")
         .eq("is_live", true)
+        .gt("expires_at", new Date().toISOString())
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as ClubSessionRow[];
+      const now = Date.now();
+      return (data as ClubSessionRow[]).filter((row) => isLiveActive(row, now));
     },
   });
 

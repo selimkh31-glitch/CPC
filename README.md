@@ -1,6 +1,6 @@
 # ClubPro Connect (mobile)
 
-Application mobile native **iOS + Android** de matchmaking temps réel pour la communauté EA SPORTS FC / FIFA **Pro Clubs**. Identité compétitive vérifiée, Trust Engine, Live Feed, Ligues & Saisons. Une seule base de code cross-platform, dark mode e-sport.
+Application mobile native **iOS + Android** de matchmaking temps réel pour **EA SPORTS FC 27 Pro Clubs**. Identité compétitive vérifiée, Trust Engine, Live Feed, Ligues & Saisons. Une seule base de code cross-platform, dark mode e-sport.
 
 Stack : **React Native + Expo (SDK 57, Expo Router)** · **TypeScript strict** · **NativeWind** · **Supabase** (Auth + Postgres + Realtime + RLS + Edge Functions) · **Prisma** (schéma/outils) · **RevenueCat** (achats in-app) · **EAS Build/Submit**.
 

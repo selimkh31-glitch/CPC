@@ -5,7 +5,7 @@ import type { ClubRow } from "@/lib/types";
 import type { PositionCode } from "@/lib/constants";
 
 export interface ClubMatch {
-  club: ClubRow & { owner?: { username: string } | null; sessions?: { is_live: boolean }[] };
+  club: ClubRow & { owner?: { username: string } | null; sessions?: { is_live: boolean; expires_at: string | null }[] };
   formationId: FormationId;
   openSlots: FormationSlot[];
 }
@@ -23,7 +23,7 @@ export function useClubSearch(mainPosition: PositionCode | null, secondaryPositi
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("*, slotAssignments:slot_assignments(slot_id), owner:users(username), sessions:club_sessions(is_live)")
+        .select("*, slotAssignments:slot_assignments(slot_id), owner:users(username), sessions:club_sessions(is_live,expires_at)")
         .not("formation", "is", null)
         .order("created_at", { ascending: false })
         .limit(60);
@@ -35,7 +35,7 @@ export function useClubSearch(mainPosition: PositionCode | null, secondaryPositi
       for (const row of data as (ClubRow & {
         slotAssignments: { slot_id: string }[];
         owner: { username: string } | null;
-        sessions: { is_live: boolean }[];
+        sessions: { is_live: boolean; expires_at: string | null }[];
       })[]) {
         const formationId = row.formation as FormationId | null;
         if (!formationId || !FORMATIONS[formationId]) continue;

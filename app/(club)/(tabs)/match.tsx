@@ -17,6 +17,7 @@ import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
+import { findActiveLiveSession } from "@/lib/live";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useClubInvitations } from "@/lib/hooks/useInvitations";
@@ -64,7 +65,7 @@ export default function MatchTab() {
     );
   }
 
-  const activeSession = club.sessions?.find((s) => s.is_live) ?? null;
+  const activeSession = findActiveLiveSession(club.sessions, Date.now());
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
 
@@ -222,7 +223,12 @@ export default function MatchTab() {
                   clubId={club.id}
                   activeSession={
                     activeSession
-                      ? { id: activeSession.id, needed_positions: activeSession.needed_positions, note: activeSession.note }
+                      ? {
+                          id: activeSession.id,
+                          needed_positions: activeSession.needed_positions,
+                          note: activeSession.note,
+                          expires_at: activeSession.expires_at,
+                        }
                       : null
                   }
                 />

@@ -204,6 +204,7 @@ model User {
   messagesSent             Message[]
   groupsOwned              Group[]              @relation("GroupOwner")
   groupMemberships         GroupMember[]
+  playerSessions           PlayerSession[]
 
   @@index([reliabilityScore])
   @@index([platform])
@@ -282,6 +283,9 @@ model ClubSession {
   isLive          Boolean    @default(false) @map("is_live")
   neededPositions Position[] @map("needed_positions")
   note            String?
+  // P0 — TTL du LIVE recrutement. Obligatoire dès que is_live = true
+  // (CHECK en SQL, 0021_live_expiry_player_live.sql). Jamais de LIVE infini.
+  expiresAt       DateTime?  @map("expires_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   // @default(now()) garantit un INSERT valide même hors Prisma Client (supabase-js) ;
   // le trigger Postgres `moddatetime` (supabase/migrations/0003_triggers.sql) la
@@ -296,7 +300,28 @@ model ClubSession {
 
   @@index([isLive])
   @@index([clubId])
+  @@index([expiresAt])
   @@map("club_sessions")
+}
+
+// P0 — LIVE joueur : "je suis dispo maintenant pour rejoindre un club Pro Clubs".
+// Distinct de usePresence (en ligne dans l'app) et de ClubSession (LIVE club).
+// Une seule ligne is_live = true par user (index unique partiel en SQL).
+model PlayerSession {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  isLive    Boolean   @default(false) @map("is_live")
+  note      String?
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isLive])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("player_sessions")
 }
 
 model Application {

@@ -41,6 +41,11 @@ Deno.serve(async (req) => {
   if (!session || !session.is_live) {
     return jsonResponse({ error: "Cette session n'est plus disponible." }, 410);
   }
+  // P0 — un LIVE sans expiry ou déjà expiré n'est plus postulable, même si
+  // is_live n'a pas encore été basculé par expire_stale_live_sessions().
+  if (!session.expires_at || new Date(session.expires_at).getTime() <= Date.now()) {
+    return jsonResponse({ error: "Cette session LIVE a expiré." }, 410);
+  }
 
   if (!session.needed_positions.includes(position)) {
     return jsonResponse({ error: "Ce poste n'est pas recherché par cette session." }, 400);
@@ -84,13 +89,6 @@ Deno.serve(async (req) => {
         402
       );
     }
-    await admin
-      .from("users")
-      .update({
-        applications_today: resetNeeded ? 1 : count + 1,
-        applications_reset_at: resetNeeded ? new Date().toISOString() : profile.applications_reset_at,
-      })
-      .eq("id", user.id);
   }
 
   if (message) {
@@ -120,7 +118,25 @@ Deno.serve(async (req) => {
     .select()
     .single();
 
-  if (error) return jsonResponse({ error: error.message }, 500);
+  if (error) {
+    // 23505 = unique applications_one_pending_per_user_session (course concurrente).
+    if (error.code === "23505") return jsonResponse({ error: "Tu as déjà postulé à cette session." }, 409);
+    return jsonResponse({ error: error.message }, 500);
+  }
+
+  // Quota Free : incrémenté SEULEMENT après insert réussi (un 409/500 ne
+  // brûle plus une candidature du jour).
+  if (profile.plan === "FREE") {
+    const resetNeeded = !isSameDay(new Date(profile.applications_reset_at), new Date());
+    const count = resetNeeded ? 0 : profile.applications_today;
+    await admin
+      .from("users")
+      .update({
+        applications_today: resetNeeded ? 1 : count + 1,
+        applications_reset_at: resetNeeded ? new Date().toISOString() : profile.applications_reset_at,
+      })
+      .eq("id", user.id);
+  }
 
   // Notifie les owner/manager du club — non-bloquant.
   const { data: managers } = await admin
