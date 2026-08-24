@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { useActiveSeason, useSeasonStats } from "@/lib/hooks/useLeagues";
 
-/** Ligues & Saisons — classements (section 3.F). */
+/** Ligues & Saisons — hors tab bar (`href: null`), conservé pour deep link `/leagues`. */
 export default function LeaguesScreen() {
   const { data: season, isLoading: seasonLoading, isError: seasonError, refetch: refetchSeason } = useActiveSeason();
   const {

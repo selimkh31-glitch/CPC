@@ -9,11 +9,10 @@ import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 /**
  * Joueur -> club (phase 4 ; extrait en composant partagé à l'Étape 5) : clubs
  * dont un slot vide correspond au poste du joueur connecté. Réutilisé par la
- * route `/find-club` (inchangée) ET par l'onglet Club (contexte "sans club",
- * promu comme vue principale) — même logique, même moteur (useClubSearch,
- * déterministe, aucune IA), pas de duplication.
+ * route `/find-club` (inchangée) ET par l'onglet LIVE joueur (FindClubPanel)
+ * — même logique, même moteur (useClubSearch, déterministe, aucune IA).
  */
-export function ClubMatchmaking() {
+export function ClubMatchmaking({ compact = false }: { compact?: boolean }) {
   const { profile } = useAuth();
   const mainPosition = (profile?.main_position ?? null) as PositionCode | null;
   const secondaryPositions = (profile?.secondary_positions ?? []) as PositionCode[];
@@ -22,7 +21,7 @@ export function ClubMatchmaking() {
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 12 }}>
       <View>
-        <Text className="font-display text-2xl text-fg">Trouver un club</Text>
+        {!compact && <Text className="font-display text-2xl text-fg">Trouver un club</Text>}
         {mainPosition && (
           <Text className="text-sm text-fg-muted">Postes recherchés pour {POSITION_LABELS[mainPosition]}</Text>
         )}

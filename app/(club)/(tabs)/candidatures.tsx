@@ -13,21 +13,11 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
 
 /**
- * Candidatures — Mode Club (Foundation #1). ApplicationsPanel réutilisé tel
- * quel. Foundation #2.3 — `ModeSwitch` ajouté (voir effectif.tsx : retour
- * Mode Joueur atteignable depuis n'importe quel tab Mode Club).
- *
- * Deux blocs distincts (audit "invitations sortantes introuvables") :
- * candidatures REÇUES (joueur -> club, ApplicationsPanel, inchangé) et
- * invitations CLUB ENVOYÉES (club -> joueur, ClubInvitationsPanel, filtré
- * `slot_id === null` — jamais les invitations MATCH, gérées séparément par
- * app/(club)/(tabs)/match.tsx > PendingInvitations) — même source de données
- * que le raccourci Match Day (`useClubInvitations`, lib/hooks/useInvitations.ts)
- * mais ici jamais repliée par l'état Match Day : c'est la surface de
- * référence pour retrouver l'historique complet (PENDING/ACCEPTED/DECLINED/
- * CANCELLED) après un match.
+ * Recrutement — candidatures reçues (ApplicationsPanel) + invitations club
+ * envoyées (ClubInvitationsPanel). Ancien onglet Candidatures, relabelé.
+ * La feuille de match n'est plus un tab (`href: null` sur match.tsx).
  */
-export default function CandidaturesTab() {
+export default function RecrutementTab() {
   const { session } = useAuth();
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
@@ -49,7 +39,7 @@ export default function CandidaturesTab() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
         <ModeSwitch managedClubs={managedClubs} />
         <View className="flex-row items-center justify-between">
-          <Text className="font-display text-2xl text-fg">Candidatures</Text>
+          <Text className="font-display text-2xl text-fg">Recrutement</Text>
           <Pressable
             onPress={() => router.push("/notifications")}
             className="flex-row items-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
