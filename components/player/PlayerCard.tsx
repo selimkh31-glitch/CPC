@@ -103,7 +103,7 @@ function CompactBody({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Ouvrir le profil de ${data.username}`}
-      className="flex-row items-center gap-3 active:opacity-80"
+      className="min-h-[44px] flex-row items-center gap-3 active:opacity-80"
     >
       <Avatar username={data.username} size="md" tone={state === "mvp" ? "mvp" : state === "selected" ? "accent" : "neutral"} />
       <View className="flex-1">

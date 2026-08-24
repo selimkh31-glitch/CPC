@@ -4,10 +4,13 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PlayerCard } from "@/components/player/PlayerCard";
+import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { buildPlayerCardData } from "@/lib/playerCard";
 import { sortClubRoster } from "@/lib/clubProfile";
 import { useUpdateMember } from "@/lib/hooks/useClubs";
 import { useReleaseMember } from "@/lib/hooks/useDepartures";
+import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 import type { ClubMemberRow, ClubRole } from "@/lib/types";
 
@@ -38,6 +41,9 @@ export function MembersPanel({
   const mutation = useUpdateMember(clubId);
   const release = useReleaseMember(clubId);
   const roster = sortClubRoster(members);
+  const { session } = useAuth();
+  const selfId = session?.user.id ?? null;
+  const { data: blockedIds } = useBlockedUserIds(selfId);
 
   const updateRole = (userId: string, role: "MANAGER" | "MEMBER") =>
     mutation.mutate({ userId, role }, { onSuccess: () => toast.success("Rôle mis à jour."), onError: (e: any) => toast.error(e.message) });
@@ -68,6 +74,7 @@ export function MembersPanel({
       ) : (
         <View className="gap-2">
           {roster.map((m) => {
+            const showDm = Boolean(m.user && selfId && m.user_id !== selfId);
             const manage =
               (isOwner || canManage) && m.role !== "OWNER" ? (
                 <View className="mt-2 flex-row flex-wrap gap-1.5">
@@ -118,6 +125,12 @@ export function MembersPanel({
                     <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
                       {ROLE_LABEL[m.role]}
                     </Badge>
+                    {showDm ? (
+                      <StartDirectMessageButton
+                        otherUserId={m.user_id}
+                        blocked={Boolean(blockedIds?.includes(m.user_id))}
+                      />
+                    ) : null}
                     {manage}
                   </View>
                 }

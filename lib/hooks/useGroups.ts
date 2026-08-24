@@ -3,6 +3,8 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
 import { USER_PUBLIC_COLUMNS, type GroupMemberRow, type GroupRole, type GroupRow } from "@/lib/types";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
+import { filterVisibleGroupMembers } from "@/lib/social";
 
 /**
  * Groupes sociaux — fondation + UI (mission "GROUPES SOCIAUX", section 12).
@@ -88,7 +90,13 @@ export function useGroupMembers(groupId: string | null) {
         .eq("group_id", groupId!)
         .order("joined_at", { ascending: true });
       if (error) throw error;
-      return data as GroupMemberRow[];
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      return filterVisibleGroupMembers(data as GroupMemberRow[], blocked);
     },
   });
 }

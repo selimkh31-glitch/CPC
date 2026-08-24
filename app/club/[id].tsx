@@ -7,6 +7,7 @@ import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
+import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
@@ -96,19 +97,26 @@ export default function ClubDetailScreen() {
           <Users size={18} color="#f4f5f7" />
           <Text className="font-display text-lg text-fg">Membres ({club.members?.length ?? 0})</Text>
         </View>
-        <View className="gap-1.5">
-          {(club.members ?? []).map((m) => (
-            <View key={m.id} className="flex-row items-center justify-between">
-              <Text
-                className="text-sm text-fg"
-                onPress={() => router.push(`/profile/${m.user_id}`)}
-                suppressHighlighting
-              >
-                {m.user?.username}
-              </Text>
-              <Badge tone={m.role === "OWNER" ? "pro" : "neutral"}>{m.role}</Badge>
-            </View>
-          ))}
+        <View className="gap-3">
+          {(club.members ?? []).map((m) => {
+            const isSelf = session?.user.id === m.user_id;
+            const blocked = Boolean(blockedIds?.includes(m.user_id));
+            return (
+              <View key={m.id} className="gap-2 rounded-2xl border border-border bg-bg-elevated p-3">
+                <View className="min-h-[44px] flex-row items-center justify-between gap-2">
+                  <Text
+                    className="flex-1 text-sm text-fg"
+                    onPress={() => router.push(`/profile/${m.user_id}`)}
+                    suppressHighlighting
+                  >
+                    {m.user?.username ?? "Joueur Pro Clubs"}
+                  </Text>
+                  <Badge tone={m.role === "OWNER" ? "pro" : "neutral"}>{m.role}</Badge>
+                </View>
+                {!isSelf && session ? <StartDirectMessageButton otherUserId={m.user_id} blocked={blocked} /> : null}
+              </View>
+            );
+          })}
         </View>
       </Card>
     </ScrollView>

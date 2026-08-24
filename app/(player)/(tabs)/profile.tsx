@@ -3,10 +3,11 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Ban, Crown, LogOut, MessageCircle, Plus, Users } from "lucide-react-native";
+import { Crown, LogOut, Plus } from "lucide-react-native";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
+import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
@@ -68,30 +69,8 @@ export default function ProfileTabScreen() {
         )}
 
         <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Réglages</Text>
-        <View className="mb-2 flex-row gap-2">
-          <Pressable
-            onPress={() => router.push("/conversations")}
-            className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
-          >
-            <MessageCircle size={16} color="#f4f5f7" />
-            <Text className="font-bold text-fg">Messages</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/groups")}
-            className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
-          >
-            <Users size={16} color="#f4f5f7" />
-            <Text className="font-bold text-fg">Groupes</Text>
-          </Pressable>
-        </View>
-        <View className="mb-6 flex-row gap-2">
-          <Pressable
-            onPress={() => router.push("/blocked")}
-            className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
-          >
-            <Ban size={16} color="#f4f5f7" />
-            <Text className="font-bold text-fg">Bloqués</Text>
-          </Pressable>
+        <View className="mb-6">
+          <SocialShortcuts />
         </View>
 
         <View className="mb-2 flex-row items-center justify-between">

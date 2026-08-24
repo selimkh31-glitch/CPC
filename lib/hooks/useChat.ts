@@ -3,8 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
-import { USER_PUBLIC_COLUMNS, type ConversationRow, type MessageRow, type UserRow } from "@/lib/types";
+import { USER_PUBLIC_COLUMNS, type ConversationRow, type MessageRow } from "@/lib/types";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
+import { filterVisibleConversations } from "@/lib/social";
+
+export { getDirectConversationPeer } from "@/lib/social";
 
 /**
  * Chat — fondation (mission "CHAT — VRAIE FONDATION", section 11).
@@ -21,13 +24,6 @@ import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
  * complet d'un coup.
  */
 const MESSAGES_PAGE_SIZE = 30;
-
-/** L'autre participant d'une conversation DIRECT (ou null si non applicable/pas encore chargé). */
-export function getDirectConversationPeer(conversation: ConversationRow, selfUserId: string): UserRow | null {
-  if (conversation.type !== "DIRECT") return null;
-  const other = (conversation.members ?? []).find((m) => m.user_id !== selfUserId);
-  return other?.user ?? null;
-}
 
 /** Conversations dont l'utilisateur connecté est membre (les plus récentes en premier). */
 export function useConversations(userId: string | null) {
@@ -61,11 +57,24 @@ export function useConversations(userId: string | null) {
       } catch {
         blocked = new Set();
       }
-      return (data as ConversationRow[]).filter((c) => {
-        if (c.type !== "DIRECT") return true;
-        const peer = getDirectConversationPeer(c, userId!);
-        return !peer || !blocked.has(peer.id);
-      });
+      return filterVisibleConversations(data as ConversationRow[], userId!, blocked);
+    },
+  });
+}
+
+/** Une conversation (membres inclus) — pour titre + état bloqué du fil, sans filtrer. */
+export function useConversation(conversationId: string | null) {
+  return useQuery({
+    queryKey: ["conversation", conversationId],
+    enabled: Boolean(conversationId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select(`*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS}))`)
+        .eq("id", conversationId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ConversationRow | null) ?? null;
     },
   });
 }
@@ -78,6 +87,7 @@ export function useStartDirectConversation() {
       callEdgeFunction<{ conversation: ConversationRow }>("start-direct-conversation", { otherUserId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversation"] });
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   });
