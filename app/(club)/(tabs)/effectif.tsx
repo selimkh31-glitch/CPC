@@ -1,14 +1,14 @@
-import { useCallback, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, type ReactNode } from "react";
+import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { Pencil } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
-import { EditClubForm } from "@/components/club/EditClubForm";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
+import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { clubOwnerPlatform, clubOwnerUsername } from "@/lib/clubProfile";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
 
@@ -33,7 +34,6 @@ export default function ClubTab() {
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
-  const [editing, setEditing] = useState(false);
   const {
     data: activeCheckin,
     isLoading: checkinLoading,
@@ -91,59 +91,51 @@ export default function ClubTab() {
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = canMutateClub(myMembership?.role);
   const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
-  const isOwner = club.owner_id === session?.user.id;
+  const isOwner = canEditClubIdentity(club.owner_id, session?.user.id);
 
   return shell(
     <>
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <ClubIdentityHeader
-            name={club.name}
-            level={club.level}
-            ownerPlatform={clubOwnerPlatform(club.members)}
-            ownerUsername={clubOwnerUsername(club.members)}
-            languages={club.languages}
-            description={club.description}
-          />
-        </View>
-        {isOwner && !editing && (
-          <Pressable
-            onPress={() => setEditing(true)}
-            accessibilityLabel="Réglages du club"
-            className="min-h-[44px] items-center justify-center px-2"
-          >
-            <Text className="text-sm font-bold text-fg-muted">Réglages</Text>
-          </Pressable>
-        )}
-      </View>
+      <ClubIdentityHeader
+        name={club.name}
+        level={club.level}
+        ownerPlatform={clubOwnerPlatform(club.members)}
+        ownerUsername={clubOwnerUsername(club.members)}
+        languages={club.languages}
+        description={club.description}
+      />
+      {isOwner ? (
+        <Button
+          variant="secondary"
+          className="min-h-[44px] w-full"
+          icon={<Pencil size={15} color="#f4f5f7" />}
+          accessibilityLabel="Modifier l'identité du club"
+          onPress={() => router.push("/edit-club")}
+        >
+          Modifier l'identité du club
+        </Button>
+      ) : null}
 
-      {editing ? (
-        <EditClubForm club={club} onDone={() => setEditing(false)} />
-      ) : (
-        <>
-          <ClubSessionStatus
-            snapshot={snapshot}
-            checkinLoading={checkinLoading}
-            checkinError={checkinError}
-            onRetryCheckin={() => refetchCheckin()}
-            matchSheetCta={{
-              label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
-              onPress: () => router.push("/match"),
-            }}
-          />
-          <SocialShortcuts />
-          <CompetitionsLink />
-          <MembersPanel
-            clubId={club.id}
-            clubName={club.name}
-            isOwner={isOwner}
-            canManage={canManage}
-            members={club.members ?? []}
-          />
-          {canManage && <DeparturesPanel clubId={club.id} members={club.members ?? []} />}
-          {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
-        </>
-      )}
+      <ClubSessionStatus
+        snapshot={snapshot}
+        checkinLoading={checkinLoading}
+        checkinError={checkinError}
+        onRetryCheckin={() => refetchCheckin()}
+        matchSheetCta={{
+          label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
+          onPress: () => router.push("/match"),
+        }}
+      />
+      <SocialShortcuts />
+      <CompetitionsLink />
+      <MembersPanel
+        clubId={club.id}
+        clubName={club.name}
+        isOwner={isOwner}
+        canManage={canManage}
+        members={club.members ?? []}
+      />
+      {canManage && <DeparturesPanel clubId={club.id} members={club.members ?? []} />}
+      {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
     </>
   );
 }

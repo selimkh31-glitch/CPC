@@ -12,7 +12,6 @@ import { FormationPitch } from "@/components/club/FormationPitch";
 import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
-import { EditClubForm } from "@/components/club/EditClubForm";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
@@ -44,7 +43,6 @@ export default function MatchTab() {
   const { setMode, setSelectedManagedClubId } = useAppMode();
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
-  const [editing, setEditing] = useState(false);
   const [isMatchDay, setIsMatchDay] = useState(false);
   const [prepExpanded, setPrepExpanded] = useState(false);
 
@@ -125,15 +123,6 @@ export default function MatchTab() {
           <Text className="font-display text-2xl text-fg">{club.name}</Text>
           <Text className="mt-0.5 text-sm text-fg-muted">Feuille de match · EA SPORTS FC 27 Pro Clubs</Text>
         </View>
-        {club.owner_id === session?.user.id && !editing && (
-          <Pressable
-            onPress={() => setEditing(true)}
-            accessibilityLabel="Réglages du club"
-            className="min-h-[44px] items-center justify-center px-2"
-          >
-            <Text className="text-sm font-bold text-fg-muted">Réglages</Text>
-          </Pressable>
-        )}
       </View>
 
       <ClubSessionStatus
@@ -143,7 +132,7 @@ export default function MatchTab() {
         onRetryCheckin={() => refetchCheckin()}
       />
 
-      {isMatchDay && formationId && canManage && !editing && (
+      {isMatchDay && formationId && canManage && (
         <MatchCheckinPanel
           key="match-checkin-panel"
           clubId={club.id}
@@ -155,82 +144,76 @@ export default function MatchTab() {
         />
       )}
 
-      {editing ? (
-        <EditClubForm club={club} onDone={() => setEditing(false)} />
-      ) : (
+      {isMatchDay && (
+        <Pressable
+          onPress={() => setPrepExpanded((v) => !v)}
+          accessibilityRole="button"
+          className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
+        >
+          <Text className="text-sm font-bold text-fg-muted">Préparation</Text>
+          {prepExpanded ? <ChevronUp size={16} color="#9aa0a8" /> : <ChevronDown size={16} color="#9aa0a8" />}
+        </Pressable>
+      )}
+
+      {prepVisible && (
         <>
-          {isMatchDay && (
-            <Pressable
-              onPress={() => setPrepExpanded((v) => !v)}
-              accessibilityRole="button"
-              className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
-            >
-              <Text className="text-sm font-bold text-fg-muted">Préparation</Text>
-              {prepExpanded ? <ChevronUp size={16} color="#9aa0a8" /> : <ChevronDown size={16} color="#9aa0a8" />}
-            </Pressable>
+          <View className="flex-row items-center justify-between gap-2">
+            <View className="min-w-0 flex-1">
+              <Text className="font-display text-lg text-fg">Effectif</Text>
+              <Text className="text-sm text-fg-muted">{fill}</Text>
+            </View>
+            {canManage ? (
+              <FormationSelector clubId={club.id} currentFormation={formationId} hasAssignments={assignments.length > 0} />
+            ) : formationId ? (
+              <Text className="font-display text-base text-fg-muted">{formationId}</Text>
+            ) : null}
+          </View>
+
+          {members.length === 0 ? (
+            <EmptyState title="Aucun membre dans ce club." subtitle="L'effectif vient de club_members — rien n'est inventé." />
+          ) : !formationId ? (
+            <EmptyState title="Choisis une formation pour composer ton équipe." />
+          ) : (
+            <FormationPitch
+              formationId={formationId}
+              assignments={assignments}
+              interactive={canManage}
+              onEmptySlotPress={canManage ? onEmptySlotPress : undefined}
+              emptySlotHint="Inviter sur ce poste"
+            />
           )}
 
-          {prepVisible && (
-            <>
-              <View className="flex-row items-center justify-between gap-2">
-                <View className="min-w-0 flex-1">
-                  <Text className="font-display text-lg text-fg">Effectif</Text>
-                  <Text className="text-sm text-fg-muted">{fill}</Text>
-                </View>
-                {canManage ? (
-                  <FormationSelector clubId={club.id} currentFormation={formationId} hasAssignments={assignments.length > 0} />
-                ) : formationId ? (
-                  <Text className="font-display text-base text-fg-muted">{formationId}</Text>
-                ) : null}
+          {bench.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
+                <Text className="text-sm text-fg-muted">{bench.length}</Text>
+              </CardHeader>
+              <View className="gap-1">
+                {bench.map((m) => (
+                  <Pressable
+                    key={m.user_id}
+                    onPress={() => router.push(`/profile/${m.user_id}`)}
+                    className="min-h-[44px] justify-center active:opacity-70"
+                  >
+                    <Text numberOfLines={1} className="text-sm text-fg">
+                      {m.user?.username ?? "Joueur"}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
-
-              {members.length === 0 ? (
-                <EmptyState title="Aucun membre dans ce club." subtitle="L'effectif vient de club_members — rien n'est inventé." />
-              ) : !formationId ? (
-                <EmptyState title="Choisis une formation pour composer ton équipe." />
-              ) : (
-                <FormationPitch
-                  formationId={formationId}
-                  assignments={assignments}
-                  interactive={canManage}
-                  onEmptySlotPress={canManage ? onEmptySlotPress : undefined}
-                  emptySlotHint="Inviter sur ce poste"
-                />
-              )}
-
-              {bench.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
-                    <Text className="text-sm text-fg-muted">{bench.length}</Text>
-                  </CardHeader>
-                  <View className="gap-1">
-                    {bench.map((m) => (
-                      <Pressable
-                        key={m.user_id}
-                        onPress={() => router.push(`/profile/${m.user_id}`)}
-                        className="min-h-[44px] justify-center active:opacity-70"
-                      >
-                        <Text numberOfLines={1} className="text-sm text-fg">
-                          {m.user?.username ?? "Joueur"}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </Card>
-              )}
-
-              <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
-
-              <VoiceLinkBlock voiceLink={club.voice_link} />
-
-              <PendingInvitations clubId={club.id} formationId={formationId} />
-            </>
+            </Card>
           )}
+
+          <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
+
+          <VoiceLinkBlock voiceLink={club.voice_link} />
+
+          <PendingInvitations clubId={club.id} formationId={formationId} />
         </>
       )}
 
-      {!isMatchDay && formationId && canManage && !editing && (
+      {!isMatchDay && formationId && canManage && (
         <MatchCheckinPanel
           key="match-checkin-panel"
           clubId={club.id}

@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/lib/toast";
 
 /**
- * Bloc vocal du club — lecture + ouverture uniquement (phase 3). L'édition du
- * lien par le owner arrive dans une phase ultérieure. Aucune hypothèse sur le
- * format de l'URL (Party PlayStation ou autre) : ouverture via le mécanisme
- * de liens natif tel quel, sans validation de plateforme.
+ * Bloc vocal du club — lecture + ouverture. L'édition du lien (owner) vit
+ * dans `/edit-club`. Aucune hypothèse sur le format de l'URL (Party
+ * PlayStation ou autre) : ouverture via le mécanisme de liens natif tel
+ * quel, sans validation de plateforme.
  */
 export function VoiceLinkBlock({ voiceLink }: { voiceLink: string | null }) {
   if (!voiceLink) return null;
