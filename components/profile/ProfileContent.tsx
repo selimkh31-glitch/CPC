@@ -11,7 +11,7 @@ import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
 import { ReviewForm } from "@/components/profile/ReviewForm";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
 import { useStartDirectConversation } from "@/lib/hooks/useChat";
-import { useBlockedUserIds, useBlockUser, useUnblockUser } from "@/lib/hooks/useSafety";
+import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -23,9 +23,11 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const { data: reviews } = useUserReviews(userId);
   const startConversation = useStartDirectConversation();
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
+  const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
-  const isBlocked = Boolean(blockedIds?.includes(userId));
+  const iBlockedThem = Boolean(myBlocks?.some((row) => row.blocked_id === userId));
+  const blockedEitherWay = Boolean(blockedIds?.includes(userId));
 
   if (isError) {
     return (
@@ -66,7 +68,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
 
       {!isOwn && (
         <View className="w-full gap-2">
-          {!isBlocked && (
+          {!blockedEitherWay && (
             <Button
               variant="secondary"
               size="sm"
@@ -84,13 +86,13 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
           )}
           <View className="flex-row gap-2">
             <Button
-              variant={isBlocked ? "secondary" : "danger"}
+              variant={iBlockedThem ? "secondary" : "danger"}
               size="sm"
               className="flex-1"
-              icon={<Ban size={15} color={isBlocked ? "#f4f5f7" : "#ff5c7a"} />}
+              icon={<Ban size={15} color={iBlockedThem ? "#f4f5f7" : "#ff5c7a"} />}
               loading={blockUser.isPending || unblockUser.isPending}
               onPress={() => {
-                if (isBlocked) {
+                if (iBlockedThem) {
                   unblockUser.mutate(user.id, {
                     onSuccess: () => toast.success("Joueur débloqué."),
                     onError: (err: any) => toast.error(err.message ?? "Impossible de débloquer."),
@@ -103,7 +105,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
                 }
               }}
             >
-              {isBlocked ? "Débloquer" : "Bloquer"}
+              {iBlockedThem ? "Débloquer" : "Bloquer"}
             </Button>
             <Button
               variant="ghost"

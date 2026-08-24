@@ -86,4 +86,13 @@ test("statsSource — labels et identité EA honnête (pas verified player id)",
   }
 });
 
-console.log(`\n${passed} tests safety/statsSource OK`);
+test("masquer est bidirectionnel ; débloquer ne concerne que mes propres blocs", () => {
+  const blocks = [
+    { blocker_id: "me", blocked_id: "x" },
+    { blocker_id: "y", blocked_id: "me" },
+  ];
+  const hidden = otherIdsFromBlocks(blocks, "me");
+  assert.true(hidden.includes("x") && hidden.includes("y"), "hide both");
+  const iBlocked = blocks.filter((b) => b.blocker_id === "me").map((b) => b.blocked_id);
+  assert.equal(iBlocked.join(","), "x", "unblock only x");
+});
