@@ -11,6 +11,8 @@ import { DEFAULT_LIVE_DURATION_MS, LIVE_DURATION_OPTIONS, isLiveActive, parseLiv
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useGoPlayerLive, useGoPlayerOffline, useMyPlayerSession } from "@/lib/hooks/usePlayerLive";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/Screen";
 import { toast } from "@/lib/toast";
 
 /**
@@ -20,7 +22,7 @@ import { toast } from "@/lib/toast";
 export function PlayerLivePanel() {
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
-  const { data: mySession } = useMyPlayerSession(userId);
+  const { data: mySession, isLoading, isError, refetch } = useMyPlayerSession(userId);
   const goLive = useGoPlayerLive(userId);
   const goOffline = useGoPlayerOffline(userId);
   const [note, setNote] = useState("");
@@ -29,6 +31,7 @@ export function PlayerLivePanel() {
   const live = isLiveActive(mySession, now);
 
   const start = () => {
+    if (goLive.isPending) return;
     goLive.mutate(
       { note: note.trim() || undefined, durationMs: parseLiveDurationMs(duration[0]) },
       {
@@ -60,26 +63,34 @@ export function PlayerLivePanel() {
       <Text className="mb-3 text-xs text-fg-muted">
         Signale que tu cherches un club EA SPORTS FC 27 Pro Clubs maintenant. Expire tout seul.
       </Text>
-      {!live && (
+      {isLoading ? (
+        <Skeleton className="h-16" />
+      ) : isError ? (
+        <ErrorState message="Impossible de charger ton LIVE." onRetry={refetch} />
+      ) : (
         <>
-          <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Durée</Text>
-          <ChipSelect single value={duration} onChange={(v) => setDuration(v.length ? v : [String(DEFAULT_LIVE_DURATION_MS)])} options={[...LIVE_DURATION_OPTIONS]} />
+          {!live && (
+            <>
+              <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Durée</Text>
+              <ChipSelect single value={duration} onChange={(v) => setDuration(v.length ? v : [String(DEFAULT_LIVE_DURATION_MS)])} options={[...LIVE_DURATION_OPTIONS]} />
+              <View className="mt-3">
+                <Input value={note} onChangeText={setNote} placeholder="Note (optionnel) — ex: ST dispo ce soir" maxLength={200} />
+              </View>
+            </>
+          )}
           <View className="mt-3">
-            <Input value={note} onChangeText={setNote} placeholder="Note (optionnel) — ex: ST dispo ce soir" maxLength={200} />
+            {live ? (
+              <Button variant="danger" loading={goOffline.isPending} onPress={stop}>
+                Passer OFFLINE
+              </Button>
+            ) : (
+              <Button loading={goLive.isPending} onPress={start}>
+                Passer LIVE
+              </Button>
+            )}
           </View>
         </>
       )}
-      <View className="mt-3">
-        {live ? (
-          <Button variant="danger" loading={goOffline.isPending} onPress={stop}>
-            Passer OFFLINE
-          </Button>
-        ) : (
-          <Button loading={goLive.isPending} onPress={start}>
-            Passer LIVE
-          </Button>
-        )}
-      </View>
     </Card>
   );
 }

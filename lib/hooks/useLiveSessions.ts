@@ -23,10 +23,13 @@ export function useLiveSessions() {
         .select("*, club:clubs(id,name,level,languages,owner:users(platform,username))")
         .eq("is_live", true)
         .gt("expires_at", new Date().toISOString())
+        .not("needed_positions", "eq", "{}")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       const now = Date.now();
-      return (data as ClubSessionRow[]).filter((row) => isLiveActive(row, now));
+      return (data as ClubSessionRow[]).filter(
+        (row) => isLiveActive(row, now) && (row.needed_positions?.length ?? 0) > 0
+      );
     },
   });
 

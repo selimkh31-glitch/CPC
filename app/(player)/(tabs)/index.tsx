@@ -25,6 +25,7 @@ export default function LiveScreen() {
   const {
     data: livePlayers,
     isLoading: playersLoading,
+    isError: playersError,
     refetch: refetchPlayers,
     isRefetching: playersRefetching,
   } = useLivePlayers();
@@ -35,8 +36,10 @@ export default function LiveScreen() {
     return (items ?? []).filter((item) => {
       if (!item.club || !isLiveActive(item, now)) return false;
       if (filters.position && !item.needed_positions.includes(filters.position as any)) return false;
+      if (filters.platform && item.club.owner?.platform !== filters.platform) return false;
       if (filters.level && item.club.level !== filters.level) return false;
       if (filters.language && !item.club.languages.includes(filters.language)) return false;
+      if ((item.needed_positions?.length ?? 0) === 0) return false;
       return true;
     });
   }, [items, filters, now]);
@@ -48,9 +51,10 @@ export default function LiveScreen() {
       if (filters.position && row.user.main_position !== filters.position && !row.user.secondary_positions?.includes(filters.position as any)) {
         return false;
       }
+      if (filters.platform && row.user.platform !== filters.platform) return false;
       return true;
     });
-  }, [livePlayers, filters.position, session?.user.id, now]);
+  }, [livePlayers, filters.position, filters.platform, session?.user.id, now]);
 
   const refreshing = isRefetching || playersRefetching;
   const onRefresh = () => {
@@ -76,7 +80,11 @@ export default function LiveScreen() {
             <PlayerLivePanel />
             <SmartMatchBanner />
             <LiveFilters value={filters} onChange={setFilters} />
-            {otherLivePlayers.length > 0 && (
+            {playersError ? (
+              <View className="mt-4 mb-2">
+                <ErrorState message="Impossible de charger les joueurs LIVE." onRetry={refetchPlayers} />
+              </View>
+            ) : otherLivePlayers.length > 0 ? (
               <View className="mt-4 mb-2">
                 <Text className="mb-2 font-display text-lg text-fg">Joueurs LIVE</Text>
                 <View className="gap-3">
@@ -85,7 +93,7 @@ export default function LiveScreen() {
                   ))}
                 </View>
               </View>
-            )}
+            ) : null}
             <Text className="mt-4 mb-1 font-display text-lg text-fg">Clubs LIVE</Text>
           </View>
         }

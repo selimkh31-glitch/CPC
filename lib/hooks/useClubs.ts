@@ -140,6 +140,7 @@ export function useCreateSession(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { neededPositions: string[]; note?: string; durationMs?: number }) => {
+      if (!input.neededPositions.length) throw new Error("Sélectionne au moins un poste recherché.");
       const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
       const expiresAt = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
       await supabase.from("club_sessions").update({ is_live: false }).eq("club_id", clubId).eq("is_live", true);

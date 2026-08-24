@@ -94,13 +94,15 @@ export default function MyApplicationsScreen() {
             <Button
               variant="secondary"
               className="mt-3"
-              loading={withdraw.isPending}
-              onPress={() =>
+              loading={withdraw.isPending && withdraw.variables === app.id}
+              disabled={withdraw.isPending}
+              onPress={() => {
+                if (withdraw.isPending) return;
                 withdraw.mutate(app.id, {
                   onSuccess: () => toast.info("Candidature retirée."),
                   onError: (err: any) => toast.error(err.message ?? "Erreur"),
-                })
-              }
+                });
+              }}
             >
               Retirer ma candidature
             </Button>

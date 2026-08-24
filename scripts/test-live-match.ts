@@ -4,7 +4,7 @@
  *
  * Lancer : npx tsx scripts/test-live-match.ts
  */
-import { isPlayerCompatibleWithClubNeed, matchLivePlayerToClub, rankLiveClubsForPlayer } from "../lib/liveMatch";
+import { canApplyToLiveClub, isPlayerCompatibleWithClubNeed, matchLivePlayerToClub, rankLiveClubsForPlayer } from "../lib/liveMatch";
 
 const NOW = Date.parse("2026-08-24T12:00:00.000Z");
 
@@ -117,6 +117,26 @@ test("rank — n'inclut que les eligible, trié par score desc", () => {
 test("isPlayerCompatibleWithClubNeed — true seulement si les 4 critères tiennent", () => {
   assert.true(isPlayerCompatibleWithClubNeed(player, liveClub, NOW), "ok");
   assert.false(isPlayerCompatibleWithClubNeed(player, { ...liveClub, platform: "PC" }, NOW), "platform");
+});
+
+test("canApplyToLiveClub — OK si matching + poste visé joué et recherché", () => {
+  const r = canApplyToLiveClub(player, liveClub, "ST", NOW);
+  assert.true(r.ok, "ok");
+});
+
+test("canApplyToLiveClub — refuse poste recherché mais pas joué par le joueur", () => {
+  const r = canApplyToLiveClub(player, liveClub, "CB", NOW);
+  assert.false(r.ok, "not ok");
+});
+
+test("canApplyToLiveClub — refuse plateforme différente", () => {
+  const r = canApplyToLiveClub(player, { ...liveClub, platform: "PC" }, "ST", NOW);
+  assert.false(r.ok, "not ok");
+});
+
+test("canApplyToLiveClub — refuse LIVE expiré", () => {
+  const r = canApplyToLiveClub(player, { ...liveClub, expires_at: "2026-08-24T11:00:00.000Z" }, "ST", NOW);
+  assert.false(r.ok, "not ok");
 });
 
 test("aucun username n'entre dans le score (régression anti égalité EA)", () => {

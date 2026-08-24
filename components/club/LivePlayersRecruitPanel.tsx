@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { Radio } from "lucide-react-native";
 import { LivePlayerCard } from "@/components/live/LivePlayerCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/Screen";
 import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
 import { toast } from "@/lib/toast";
@@ -29,7 +30,7 @@ export function LivePlayersRecruitPanel({
   clubLive: LiveSessionLike | null;
 }) {
   const now = useLiveClock();
-  const { data: livePlayers, isLoading } = useLivePlayers();
+  const { data: livePlayers, isLoading, isError, refetch } = useLivePlayers();
   const { data: invitations } = useClubInvitations(clubId);
   const invite = useInvitePlayerToClub();
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function LivePlayersRecruitPanel({
   });
 
   const act = (userId: string) => {
+    if (pendingUserId || invite.isPending) return;
     setPendingUserId(userId);
     invite.mutate(
       { clubId, userId },
@@ -84,6 +86,8 @@ export function LivePlayersRecruitPanel({
       </View>
       {isLoading ? (
         <Skeleton className="h-24" />
+      ) : isError ? (
+        <ErrorState message="Impossible de charger les joueurs LIVE." onRetry={refetch} />
       ) : candidates.length === 0 ? (
         <Text className="text-sm text-fg-muted">
           {clubIsLive ? "Aucun joueur LIVE compatible (poste + plateforme)." : "Passe le club en LIVE pour voir les joueurs compatibles."}

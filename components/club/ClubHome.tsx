@@ -96,14 +96,16 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
       { text: "Annuler", style: "cancel" },
       {
         text: "Postuler",
-        onPress: () =>
+        onPress: () => {
+          if (apply.isPending) return;
           apply.mutate(
             { sessionId: activeSession.id, position: slot.position, slotId: slot.slotId },
             {
               onSuccess: () => toast.success("Candidature envoyée !"),
               onError: (err: any) => toast.error(err.message ?? "Erreur"),
             }
-          ),
+          );
+        },
       },
     ]);
   };

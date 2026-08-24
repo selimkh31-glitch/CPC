@@ -1,11 +1,12 @@
 # ClubPro Connect — Audit EA SPORTS FC 27 Pro Clubs
 
 **Date :** 24 août 2026  
-**Branche de référence :** `social-ea-foundations-phase-2` (`9e6ae11`)  
+**Branche de référence (audit initial) :** `social-ea-foundations-phase-2` (`9e6ae11`)  
+**Branche de travail :** `cursor/fc27-audit-p0-live-495d` (PR #2 — **ne pas merger**)  
 **Produit :** CPC est exclusivement le matchmaking pour **EA SPORTS FC 27 Pro Clubs**.  
 Joueur = utilisateur virtuel Pro Clubs. Club = équipe/communauté virtuelle Pro Clubs. Recrutement = remplir un roster Pro Clubs. **Pas** du football IRL.
 
-Ce document est **factuel** : chaque grade s’appuie sur des fichiers lus. Aucune note n’est gonflée.  
+Ce document est **factuel**. La matrice §1 décrit l’état **avant** P0/P1. L’état **après** P0+P1 est en **§7**.  
 Échelle : `ABSENT` | `PROTOTYPE` | `PARTIAL` | `FUNCTIONAL` | `SOLID` | `PRODUCTION READY`.
 
 ---
@@ -138,3 +139,67 @@ Le cœur de boucle bloqué aujourd’hui :
 5. **RLS + migration + tests** du slice, sans mocker la feature.
 
 Hors P0 (volontaire) : compétitions, ligues multi, tournois, block/report, RevenueCat réel, endpoints EA manquants.
+
+---
+
+## 7. État P0 + P1 (branche `cursor/fc27-audit-p0-live-495d`, PR #2)
+
+**Ne pas merger.** Qualité boucle LIVE+recrutement+discovery : **FUNCTIONAL** (prêt test iPhone Dev Client, pas PRODUCTION READY). Matching EA username equality **inchangé** (limite API EA, hors matcher LIVE).
+
+### Implémenté
+
+| Slice | Détail | Qualité |
+|---|---|---|
+| LIVE club + joueur | `expires_at`, CHECK live⇒expiry, 1 LIVE/club, 1 LIVE/user, TTL UI 30m/1h/2h | **FUNCTIONAL** |
+| Matching déterministe | `liveMatch.ts` : poste + plateforme **owner** + expiry + besoin. Pas d’égalité username. Banner + Edge `smart-match`. `canApplyToLiveClub` côté apply. | **FUNCTIONAL** |
+| Recrutement | PENDING unique ; DECLINED/CANCELLED/EXPIRED ; transitions PENDING-only ; withdraw PENDING-only ; manager ne peut plus ACCEPT en UPDATE client | **FUNCTIONAL** |
+| Expiry qui tourne | RPC `expire_stale_live_sessions` (SECURITY DEFINER, GRANT authenticated) + pg_cron SQL si dispo + Edge `expire-live-sessions` + filtre client `isLiveActive` + horloge 15s | **FUNCTIONAL** |
+| Discovery | SQL `is_live` + `expires_at > now` + besoin non vide ; horloge UI ; filtre plateforme ; Effectif seulement compatible | **FUNCTIONAL** |
+| Copy FC 27 | Login/onboarding/README/prompt ; OVR CPC ; Stats EA liées ; pas FIFA ; pas de stats inventées Scout fallback | **FUNCTIONAL** |
+
+### Tests exécutés (cette branche)
+
+```
+npm run typecheck
+npm run test:live
+npm run test:live-match
+npm run test:recruitment
+npm run test:ovr
+npm run test:reliability
+npm run test:player-card
+npm run test:ea-normalize
+npm run test:m2-player-search
+```
+
+Pas de passage device iPhone dans cet environnement (Expo native). À faire sur Dev Client.
+
+### Migrations / RLS à appliquer (ordre)
+
+| Fichier | Rôle |
+|---|---|
+| `0021_live_expiry_player_live.sql` | `expires_at`, `player_sessions` + RLS self-write / authenticated-read, unique PENDING applications, RPC expire (service_role) |
+| `0022_recruitment_status_enums.sql` | ADD VALUE DECLINED/CANCELLED/EXPIRED (applications) + EXPIRED (invitations) — transaction séparée |
+| `0023_expire_live_janitor.sql` | RPC janitor (authenticated + DEFINER), trigger LIVE off → EXPIRED/CANCELLED, pg_cron optionnel |
+| `0024_apply_live_match_rls.sql` | CHECK live⇒besoin non vide ; trigger INSERT applications (LIVE+poste+plateforme) ; RLS manager UPDATE seulement DECLINED/CANCELLED depuis PENDING |
+
+Prisma `schema.prisma` est le miroir outillage (Option B : **ne pas** `prisma migrate deploy` en double sur le distant).
+
+Edge à redéployer : `apply`, `respond-application`, `respond-invitation`, `smart-match`, `expire-live-sessions`.
+
+### P1 restant (hors boucle iPhone, ne pas faire dans ce slice)
+
+- **Safety** block/report utilisateur (ABSENT)
+- **Notifications** centre in-app ; push seulement Dev Client
+- **iOS/Android** EAS submit (placeholders) — le test iPhone se fait en Dev Client, pas un store build
+- **Realtime** invitations club (pas de canal)
+- **EA identity** au-delà de l’égalité username (limite source, P2)
+- **Club** sélecteur multi-dashboard ; conversation CLUB non provisionnée
+- Ligues / tournois = **P3**, volontairement hors scope
+
+### Prochaine priorité
+
+1. **Test iPhone** (EAS Dev Client) de la boucle : LIVE joueur → feed → postuler (poste+plateforme) → accept/decline ; LIVE club + Effectif invite ; expiry visuelle sans cron ; double Postuler → 409.
+2. Ensuite P1 **Safety (block/report)** si la boucle tient sur device — pas competitions, pas rewrite.
+
+Tags `stable-pre-social-phase` / `stable-social-foundations` : **ne pas supprimer**.
+

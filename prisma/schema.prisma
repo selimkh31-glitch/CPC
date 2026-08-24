@@ -291,7 +291,8 @@ model ClubSession {
   neededPositions Position[] @map("needed_positions")
   note            String?
   // P0 — TTL du LIVE recrutement. Obligatoire dès que is_live = true
-  // (CHECK en SQL, 0021_live_expiry_player_live.sql). Jamais de LIVE infini.
+  // (CHECK en SQL, 0021). Jamais de LIVE infini.
+  // P1 — LIVE exige aussi needed_positions non vide (0024).
   expiresAt       DateTime?  @map("expires_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   // @default(now()) garantit un INSERT valide même hors Prisma Client (supabase-js) ;

@@ -103,6 +103,21 @@ export function useGoPlayerLive(userId: string | null) {
         })
         .select()
         .single();
+      if (error?.code === "23505") {
+        await supabase.from("player_sessions").update({ is_live: false }).eq("user_id", userId).eq("is_live", true);
+        const retry = await supabase
+          .from("player_sessions")
+          .insert({
+            user_id: userId,
+            is_live: true,
+            note: input.note ?? null,
+            expires_at: expiresAt,
+          })
+          .select()
+          .single();
+        if (retry.error) throw retry.error;
+        return retry.data as PlayerSessionRow;
+      }
       if (error) throw error;
       return data as PlayerSessionRow;
     },

@@ -108,3 +108,36 @@ export function isPlayerCompatibleWithClubNeed(
 ): boolean {
   return matchLivePlayerToClub(player, { ...club, clubId: "", sessionId: "" }, nowMs).eligible;
 }
+
+export function playerPlaysPosition(player: LiveMatchPlayer, position: string): boolean {
+  if (!position) return false;
+  if (player.mainPosition === position) return true;
+  return (player.secondaryPositions ?? []).includes(position);
+}
+
+export type ApplyEligibility = { ok: true } | { ok: false; error: string };
+
+/**
+ * Candidature : les 4 critères de matching PLUS le poste visé ∈ besoin
+ * ET ∈ postes du joueur (principal ou secondaire). Pas d'égalité username.
+ */
+export function canApplyToLiveClub(
+  player: LiveMatchPlayer,
+  club: LiveMatchClub,
+  appliedPosition: string,
+  nowMs: number
+): ApplyEligibility {
+  if (!appliedPosition) return { ok: false, error: "Sélectionne un poste." };
+  const needed = club.neededPositions ?? [];
+  if (!needed.includes(appliedPosition)) {
+    return { ok: false, error: "Ce poste n'est pas recherché par cette session." };
+  }
+  if (!playerPlaysPosition(player, appliedPosition)) {
+    return { ok: false, error: "Ce poste n'est pas dans ton profil (principal ou secondaire)." };
+  }
+  const match = matchLivePlayerToClub(player, club, nowMs);
+  if (!match.eligible) {
+    return { ok: false, error: match.reason || "Session incompatible." };
+  }
+  return { ok: true };
+}
