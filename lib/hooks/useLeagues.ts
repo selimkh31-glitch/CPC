@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import type { SeasonRow, SeasonStatRow } from "@/lib/types";
 
-/** Ligues & Saisons — classements (section 3.F). */
+/**
+ * Lecture brute `seasons` / `season_stats`. `/leagues` ne les affiche PAS
+ * comme classement live : ces lignes ne viennent pas de `match_results`
+ * (voir `canShowLiveLeagueRanking` dans `lib/leagues.ts`).
+ */
 export function useActiveSeason() {
   return useQuery({
     queryKey: ["active-season"],

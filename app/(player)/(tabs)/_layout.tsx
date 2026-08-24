@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Bell, Radio, Trophy, User, Users } from "lucide-react-native";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
+import { LEAGUES_TAB_HREF } from "@/lib/leagues";
 
 const TAB_BAR_STYLE = {
   backgroundColor: "#0f1114",
@@ -48,7 +49,7 @@ export default function TabsLayout() {
         options={{ title: "Profil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
       />
       <Tabs.Screen name="clubs" options={{ href: null, title: "Clubs", tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }} />
-      <Tabs.Screen name="leagues" options={{ href: null, title: "Ligues", tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} /> }} />
+      <Tabs.Screen name="leagues" options={{ href: LEAGUES_TAB_HREF, title: "Ligues", tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} /> }} />
     </Tabs>
   );
 }
