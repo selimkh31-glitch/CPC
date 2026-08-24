@@ -42,8 +42,8 @@ const RARITY_TEXT: Record<Rarity, string> = {
 };
 
 /**
- * ClubPro Card — le hook viral du produit (section 3.A). OVR calculé, rareté
- * visuelle, badge Verified Stats, streak. Pensée pour être belle en capture
+ * ClubPro Card — le hook viral du produit (section 3.A). OVR CPC, rareté
+ * visuelle, badge stats EA liées, streak. Pensée pour être belle en capture
  * d'écran et partageable nativement (Share API).
  */
 export function ClubProCard({ data }: { data: ClubProCardData }) {

@@ -16,14 +16,20 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   PENDING: "En attente",
   ACCEPTED: "Acceptée",
   REJECTED: "Refusée",
+  DECLINED: "Refusée",
   WITHDRAWN: "Retirée",
+  CANCELLED: "Annulée",
+  EXPIRED: "Expirée",
 };
 
 const STATUS_TONES: Record<ApplicationStatus, "warn" | "accent" | "danger" | "neutral"> = {
   PENDING: "warn",
   ACCEPTED: "accent",
   REJECTED: "danger",
+  DECLINED: "danger",
   WITHDRAWN: "neutral",
+  CANCELLED: "neutral",
+  EXPIRED: "neutral",
 };
 
 /** Suivi des candidatures du joueur connecté — voir la conception "Mes candidatures" (section 5 du workflow LIVE). */
@@ -35,7 +41,9 @@ export default function MyApplicationsScreen() {
 
   const onStatusChange = useCallback((status: string) => {
     if (status === "ACCEPTED") toast.success("Une de tes candidatures a été acceptée !");
-    if (status === "REJECTED") toast.info("Une de tes candidatures a été refusée.");
+    if (status === "REJECTED" || status === "DECLINED") toast.info("Une de tes candidatures a été refusée.");
+    if (status === "EXPIRED") toast.info("Une candidature a expiré avec le LIVE.");
+    if (status === "CANCELLED") toast.info("Une candidature a été annulée (club hors LIVE).");
   }, []);
   useMyApplicationStatusUpdates(userId, onStatusChange);
 

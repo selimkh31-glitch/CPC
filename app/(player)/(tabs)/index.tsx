@@ -11,7 +11,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { isLiveActive } from "@/lib/live";
 
 /**
  * Accueil Mode Joueur : clubs LIVE qui recrutent + joueurs LIVE + ton propre LIVE.
@@ -27,27 +29,28 @@ export default function LiveScreen() {
     isRefetching: playersRefetching,
   } = useLivePlayers();
   const [filters, setFilters] = useState<LiveFiltersState>(EMPTY_LIVE_FILTERS);
+  const now = useLiveClock();
 
   const filtered = useMemo(() => {
     return (items ?? []).filter((item) => {
-      if (!item.club) return false;
+      if (!item.club || !isLiveActive(item, now)) return false;
       if (filters.position && !item.needed_positions.includes(filters.position as any)) return false;
       if (filters.level && item.club.level !== filters.level) return false;
       if (filters.language && !item.club.languages.includes(filters.language)) return false;
       return true;
     });
-  }, [items, filters]);
+  }, [items, filters, now]);
 
   const otherLivePlayers = useMemo(() => {
     const selfId = session?.user.id;
     return (livePlayers ?? []).filter((row) => {
-      if (!row.user || row.user_id === selfId) return false;
+      if (!isLiveActive(row, now) || !row.user || row.user_id === selfId) return false;
       if (filters.position && row.user.main_position !== filters.position && !row.user.secondary_positions?.includes(filters.position as any)) {
         return false;
       }
       return true;
     });
-  }, [livePlayers, filters.position, session?.user.id]);
+  }, [livePlayers, filters.position, session?.user.id, now]);
 
   const refreshing = isRefetching || playersRefetching;
   const onRefresh = () => {
@@ -69,7 +72,7 @@ export default function LiveScreen() {
               <Text className="font-display text-3xl text-fg">Live Feed</Text>
               <Text className="ml-auto text-sm text-fg-muted">{filtered.length} clubs</Text>
             </View>
-            <Text className="mb-4 text-xs text-fg-muted">EA SPORTS FC 27 Pro Clubs — recrutement roster, pas du football IRL.</Text>
+            <Text className="mb-4 text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs.</Text>
             <PlayerLivePanel />
             <SmartMatchBanner />
             <LiveFilters value={filters} onChange={setFilters} />

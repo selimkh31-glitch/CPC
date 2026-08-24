@@ -11,11 +11,13 @@ import { useClub } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { findActiveLiveSession } from "@/lib/live";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: club, isLoading, isError, refetch } = useClub(id);
   const { session } = useAuth();
+  const now = useLiveClock();
 
   if (isError) {
     return (
@@ -35,7 +37,7 @@ export default function ClubDetailScreen() {
     );
   }
 
-  const activeSession = findActiveLiveSession(club.sessions, Date.now());
+  const activeSession = findActiveLiveSession(club.sessions, now);
   const isMember = session ? club.members?.some((m) => m.user_id === session.user.id) : false;
 
   return (

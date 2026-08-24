@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { computeLiveExpiresAt, isLiveActive, parseLiveDurationMs } from "@/lib/live";
+import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
 import { USER_PUBLIC_COLUMNS, type PlayerSessionRow } from "@/lib/types";
 
 function invalidatePlayerLive(queryClient: ReturnType<typeof useQueryClient>) {
@@ -54,7 +55,9 @@ export function useLivePlayers() {
 
   const query = useQuery({
     queryKey: ["live-players"],
+    refetchInterval: 15_000,
     queryFn: async () => {
+      await invokeExpireStaleLiveSessions();
       const { data, error } = await supabase
         .from("player_sessions")
         .select(`*, user:users(${USER_PUBLIC_COLUMNS})`)

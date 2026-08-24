@@ -17,7 +17,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
 
   const pending = (applications ?? []).filter((a) => a.status === "PENDING");
 
-  const act = (applicationId: string, status: "ACCEPTED" | "REJECTED") => {
+  const act = (applicationId: string, status: "ACCEPTED" | "DECLINED") => {
     respond.mutate(
       { applicationId, status },
       {
@@ -65,7 +65,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                 <Button size="sm" variant="secondary" onPress={() => act(app.id, "ACCEPTED")} icon={<Check size={16} color="#39ff8a" />} className="px-2.5">
                   {""}
                 </Button>
-                <Button size="sm" variant="secondary" onPress={() => act(app.id, "REJECTED")} icon={<X size={16} color="#ff4d4f" />} className="px-2.5">
+                <Button size="sm" variant="secondary" onPress={() => act(app.id, "DECLINED")} icon={<X size={16} color="#ff4d4f" />} className="px-2.5">
                   {""}
                 </Button>
               </View>

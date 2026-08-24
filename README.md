@@ -83,7 +83,8 @@ supabase/functions/
   link-ea-club/             POST — lie un club EA, sync best-effort des stats
   ea-sync/                  GET  — cron quotidien, sync stats EA de tous les clubs liés
   season-ranking/           GET  — cron, recalcule divisions + badges de saison
-  smart-match/               GET  — Smart Match IA (fallback déterministe)
+  smart-match/               GET  — matching LIVE déterministe (poste + plateforme owner + expiry + besoin)
+  expire-live-sessions/      GET  — janitor LIVE (CRON_SECRET) ; alternative SQL pg_cron en 0023
   scout-report/               GET  — Scout Report IA (Pro only)
   moderate/                    POST — modération générique
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
@@ -94,7 +95,7 @@ Déploiement :
 ```bash
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match scout-report moderate revenuecat-webhook
+npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=...
 ```
 
@@ -124,8 +125,14 @@ Vérifications disponibles sans simulateur/device (utilisées pour valider ce pr
 
 ```bash
 npm run typecheck   # tsc --noEmit
-npx expo export --platform android   # bundling Metro complet (catch les erreurs d'import/JSX)
-npx expo export --platform ios
+npm run test:live
+npm run test:live-match
+npm run test:recruitment
+npm run test:ovr
+npm run test:reliability
+npm run test:player-card
+npm run test:ea-normalize
+npm run test:m2-player-search
 ```
 
 ## EAS Build & Submit
@@ -150,7 +157,26 @@ Profils disponibles dans `eas.json` : `development` (dev client), `preview` (int
 
 ## Cron jobs
 
-Supabase n'a pas d'équivalent direct des Vercel Crons : programme les Edge Functions via **pg_cron + pg_net** (SQL Editor Supabase) :
+LIVE expiry ne doit **pas** dépendre uniquement d'un cron HTTP. Trois couches :
+
+1. **SQL `expire_stale_live_sessions()`** (migrations `0021` + `0023`) — coupe `is_live` sur club + joueur périmés, et passe les candidatures PENDING de ces sessions en `EXPIRED`. `SECURITY DEFINER`, exécutable par `authenticated` (Live Feed / joueurs LIVE l'appellent au fetch).
+2. **pg_cron SQL** — migration `0023` programme `expire-live-sessions-sql` (`* * * * *`) **si** l'extension `pg_cron` est disponible. No-op sinon (pas d'échec de migration).
+3. **Edge `expire-live-sessions`** — invoke HTTP protégé par `CRON_SECRET` (même schéma que `resolve-expired-departures`). Utile si pg_cron n'est pas activé.
+
+Le client filtre aussi `expires_at` (`isLiveActive`) : un LIVE périmé disparaît du feed même si le janitor n'a pas encore tourné.
+
+Invoke manuel :
+
+```bash
+# SQL (SQL Editor Supabase) — pas de secret HTTP
+select public.expire_stale_live_sessions();
+
+# Edge (si CRON_SECRET est posé)
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://YOUR_PROJECT.supabase.co/functions/v1/expire-live-sessions
+```
+
+Autres jobs (stats EA, saison) via **pg_cron + pg_net** :
 
 ```sql
 select cron.schedule(
@@ -207,7 +233,7 @@ Le MVP livre la **structure complète** (SDK configuré, gestion de l'entitlemen
 
 | Flag | Défaut | Effet |
 |---|---|---|
-| `EXPO_PUBLIC_FEATURE_EA_STATS` | `true` | Active le module Verified Stats côté Edge Functions. |
+| `EXPO_PUBLIC_FEATURE_EA_STATS` | `true` | Active le module stats EA côté Edge Functions. |
 | `EXPO_PUBLIC_FEATURE_AI` | `true` | Active les appels IA réels (sinon fallback déterministe). |
 | `EXPO_PUBLIC_FEATURE_REVENUECAT` | `false` | Active RevenueCat (nécessite un dev build EAS + clés). |
 

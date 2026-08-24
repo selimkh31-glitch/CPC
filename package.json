@@ -57,6 +57,8 @@
     "test:reliability": "tsx scripts/test-reliability.ts",
     "test:player-card": "tsx scripts/test-player-card.ts",
     "test:live": "tsx scripts/test-live.ts",
+    "test:live-match": "tsx scripts/test-live-match.ts",
+    "test:recruitment": "tsx scripts/test-recruitment.ts",
     "lint": "expo lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

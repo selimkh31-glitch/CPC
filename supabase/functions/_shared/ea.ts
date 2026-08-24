@@ -1,5 +1,5 @@
 /**
- * Module "Verified Stats" — client défensif pour les endpoints semi-publics
+ * Client défensif pour les endpoints semi-publics EA Pro Clubs
  * EA Pro Clubs (proclubs.ea.com/api/fc/...). NON officiels : pannes, SSL
  * intermittent, rate-limiting fréquents. Isolé ici (Edge Function only),
  * jamais appelé depuis l'app mobile. Désactivable via FEATURE_EA_STATS.

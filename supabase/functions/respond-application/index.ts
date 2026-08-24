@@ -2,6 +2,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { sendPushNotification } from "../_shared/push.ts";
 import { requireEnum, requireUuid, ValidationError } from "../_shared/validate.ts";
+import { nextApplicationStatus, type ApplicationStatus } from "../_shared/recruitment.ts";
 
 /** Accepter/refuser une candidature instantanément (section 3.D) — owner/manager only. */
 Deno.serve(async (req) => {
@@ -11,11 +12,12 @@ Deno.serve(async (req) => {
   if (!user) return jsonResponse({ error: "Non authentifié" }, 401);
 
   let applicationId: string;
-  let status: "ACCEPTED" | "REJECTED";
+  let status: "ACCEPTED" | "DECLINED";
   try {
     const body = await req.json();
     applicationId = requireUuid(body.applicationId, "applicationId");
-    status = requireEnum(body.status, "status", ["ACCEPTED", "REJECTED"] as const);
+    const raw = requireEnum(body.status, "status", ["ACCEPTED", "DECLINED", "REJECTED"] as const);
+    status = raw === "REJECTED" ? "DECLINED" : raw;
   } catch (err) {
     if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
     return jsonResponse({ error: "Corps de requête invalide." }, 400);
@@ -35,6 +37,12 @@ Deno.serve(async (req) => {
 
   if (!membership || !["OWNER", "MANAGER"].includes(membership.role)) {
     return jsonResponse({ error: "Non autorisé" }, 403);
+  }
+
+  const event = status === "ACCEPTED" ? "ACCEPT" : "DECLINE";
+  const next = nextApplicationStatus(application.status as ApplicationStatus, event);
+  if (!next) {
+    return jsonResponse({ error: "Cette candidature a déjà été traitée." }, 409);
   }
 
   let updated: typeof application;
@@ -61,7 +69,7 @@ Deno.serve(async (req) => {
   } else {
     const { data: rejected, error } = await admin
       .from("applications")
-      .update({ status })
+      .update({ status: next })
       .eq("id", applicationId)
       .eq("status", "PENDING")
       .select()

@@ -7,13 +7,28 @@ import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
 import { toast } from "@/lib/toast";
 import { isLiveActive } from "@/lib/live";
+import { isPlayerCompatibleWithClubNeed } from "@/lib/liveMatch";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import type { ClubMemberRow } from "@/lib/types";
+import type { LiveSessionLike } from "@/lib/live";
 
 /**
- * Mode Club — joueurs LIVE à inviter dans le roster FC 27 Pro Clubs.
- * Réutilise invite-to-club (idempotent PENDING déjà garanti en DB).
+ * Mode Club — joueurs LIVE compatibles (poste + plateforme + expiry + besoin).
  */
-export function LivePlayersRecruitPanel({ clubId, members }: { clubId: string; members: ClubMemberRow[] }) {
+export function LivePlayersRecruitPanel({
+  clubId,
+  members,
+  neededPositions,
+  platform,
+  clubLive,
+}: {
+  clubId: string;
+  members: ClubMemberRow[];
+  neededPositions: string[];
+  platform: string | null;
+  clubLive: LiveSessionLike | null;
+}) {
+  const now = useLiveClock();
   const { data: livePlayers, isLoading } = useLivePlayers();
   const { data: invitations } = useClubInvitations(clubId);
   const invite = useInvitePlayerToClub();
@@ -28,9 +43,25 @@ export function LivePlayersRecruitPanel({ clubId, members }: { clubId: string; m
     return set;
   }, [invitations]);
 
-  const candidates = (livePlayers ?? []).filter(
-    (row) => isLiveActive(row, Date.now()) && row.user && !memberIds.has(row.user_id)
-  );
+  const clubIsLive = isLiveActive(clubLive, now);
+  const candidates = (livePlayers ?? []).filter((row) => {
+    if (!isLiveActive(row, now) || !row.user || memberIds.has(row.user_id)) return false;
+    if (!clubIsLive || !clubLive) return false;
+    return isPlayerCompatibleWithClubNeed(
+      {
+        mainPosition: row.user.main_position,
+        secondaryPositions: row.user.secondary_positions ?? [],
+        platform: row.user.platform,
+      },
+      {
+        neededPositions,
+        platform,
+        is_live: clubLive.is_live,
+        expires_at: clubLive.expires_at,
+      },
+      now
+    );
+  });
 
   const act = (userId: string) => {
     setPendingUserId(userId);
@@ -54,7 +85,9 @@ export function LivePlayersRecruitPanel({ clubId, members }: { clubId: string; m
       {isLoading ? (
         <Skeleton className="h-24" />
       ) : candidates.length === 0 ? (
-        <Text className="text-sm text-fg-muted">Aucun joueur LIVE pour le moment.</Text>
+        <Text className="text-sm text-fg-muted">
+          {clubIsLive ? "Aucun joueur LIVE compatible (poste + plateforme)." : "Passe le club en LIVE pour voir les joueurs compatibles."}
+        </Text>
       ) : (
         <View className="gap-3">
           {candidates.map((item) => {

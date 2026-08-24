@@ -2,6 +2,7 @@
 
 export interface SmartMatchResult {
   clubId: string;
+  sessionId?: string;
   score: number;
   reason: string;
 }

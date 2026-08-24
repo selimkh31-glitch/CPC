@@ -10,7 +10,7 @@ import { requireString, ValidationError } from "../_shared/validate.ts";
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (!FEATURE_EA_STATS) return jsonResponse({ error: "Module Verified Stats désactivé." }, 503);
+  if (!FEATURE_EA_STATS) return jsonResponse({ error: "Module stats EA désactivé." }, 503);
 
   const user = await getCallingUser(req);
   if (!user) return jsonResponse({ error: "Non authentifié" }, 401);

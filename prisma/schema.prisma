@@ -73,6 +73,12 @@ enum ApplicationStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+  // P1 — aligné invitations : refus club = DECLINED (REJECTED conservé en
+  // lecture pour les lignes historiques). CANCELLED = LIVE coupé à la main.
+  // EXPIRED = TTL LIVE écoulé pendant PENDING.
+  DECLINED
+  CANCELLED
+  EXPIRED
 }
 
 enum InvitationStatus {
@@ -85,6 +91,7 @@ enum InvitationStatus {
   // qu'au moment où son match libérateur chez l'ancien club est validé (voir
   // ClubDeparture). Jamais utilisée pour une invitation normale.
   RESERVED
+  EXPIRED
 }
 
 // Phase 5 — cycle de vie d'une sortie de club (demande joueur OU libération

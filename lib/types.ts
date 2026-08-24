@@ -16,8 +16,8 @@ export type Platform = PlatformCode;
 export type { PlayStyleCode, PositionCode };
 export type ClubLevel = "CASUAL" | "COMPETITIVE";
 export type ClubRole = "OWNER" | "MANAGER" | "MEMBER";
-export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
-export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "RESERVED";
+export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "DECLINED" | "CANCELLED" | "EXPIRED";
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "RESERVED" | "EXPIRED";
 export type Plan = "FREE" | "PRO";
 
 /** Phase 5 — cycle de vie d'une sortie de club (demande joueur ou libération owner/manager). */
@@ -132,7 +132,7 @@ export interface ClubSessionRow {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
-  club?: ClubRow;
+  club?: ClubRow & { owner?: { platform: Platform; username?: string } | null };
 }
 
 /** P0 — LIVE joueur (recrutement), distinct de la présence Realtime. */

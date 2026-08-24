@@ -2,9 +2,12 @@ import { jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient } from "../_shared/supabase.ts";
 
 /**
- * P0 — cron : coupe les LIVE club/joueur dont expires_at est dépassé.
+ * P0/P1 — cron HTTP : coupe les LIVE club/joueur dont expires_at est dépassé
+ * et expire les candidatures PENDING de ces sessions (via RPC SQL).
  * Protégé par CRON_SECRET (même mécanisme que resolve-expired-departures).
- * Le client filtre aussi expires_at, ce job aligne is_live en base.
+ * `verify_jwt = false` dans config.toml : l'appelant n'a pas de JWT session.
+ * Alternative sans HTTP : pg_cron SQL `expire-live-sessions-sql` (migration 0023)
+ * et invoke client `expire_stale_live_sessions` au fetch du Live Feed.
  */
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET");

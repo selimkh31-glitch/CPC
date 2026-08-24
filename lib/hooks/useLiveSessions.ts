@@ -2,23 +2,25 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { isLiveActive } from "@/lib/live";
+import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
- * Fil temps réel des sessions LIVE club (recrutement FC 27 Pro Clubs).
- * Filtre `is_live` + `expires_at > now` côté requête, puis `isLiveActive`
- * côté client (horloge locale) pour ne jamais afficher un LIVE déjà expiré
- * si le cron n'a pas encore basculé `is_live`.
+ * Fil LIVE club. Janitor RPC en tête de fetch (même sans cron) puis filtre
+ * is_live + expires_at côté SQL et isLiveActive côté client.
+ * refetchInterval : un LIVE qui expire pendant que l'écran est ouvert disparaît.
  */
 export function useLiveSessions() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["live-sessions"],
+    refetchInterval: 15_000,
     queryFn: async () => {
+      await invokeExpireStaleLiveSessions();
       const { data, error } = await supabase
         .from("club_sessions")
-        .select("*, club:clubs(id,name,level,languages)")
+        .select("*, club:clubs(id,name,level,languages,owner:users(platform,username))")
         .eq("is_live", true)
         .gt("expires_at", new Date().toISOString())
         .order("updated_at", { ascending: false });

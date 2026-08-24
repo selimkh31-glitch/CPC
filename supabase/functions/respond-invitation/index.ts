@@ -1,6 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireEnum, requireUuid, ValidationError } from "../_shared/validate.ts";
+import { nextInvitationStatus, type InvitationStatus } from "../_shared/recruitment.ts";
 
 /** Le joueur invité accepte/refuse (phase 4) — même structure que respond-application. */
 Deno.serve(async (req) => {
@@ -27,6 +28,12 @@ Deno.serve(async (req) => {
 
   if (invitation.user_id !== user.id) {
     return jsonResponse({ error: "Non autorisé" }, 403);
+  }
+
+  const event = status === "ACCEPTED" ? "ACCEPT" : "DECLINE";
+  const next = nextInvitationStatus(invitation.status as InvitationStatus, event);
+  if (!next) {
+    return jsonResponse({ error: "Cette invitation a déjà été traitée." }, 409);
   }
 
   let updated: typeof invitation;

@@ -10,6 +10,7 @@ import { LiveCountdown } from "@/components/live/LiveCountdown";
 import { DEFAULT_LIVE_DURATION_MS, LIVE_DURATION_OPTIONS, isLiveActive, parseLiveDurationMs } from "@/lib/live";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useGoPlayerLive, useGoPlayerOffline, useMyPlayerSession } from "@/lib/hooks/usePlayerLive";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { toast } from "@/lib/toast";
 
 /**
@@ -24,7 +25,8 @@ export function PlayerLivePanel() {
   const goOffline = useGoPlayerOffline(userId);
   const [note, setNote] = useState("");
   const [duration, setDuration] = useState([String(DEFAULT_LIVE_DURATION_MS)]);
-  const live = isLiveActive(mySession, Date.now());
+  const now = useLiveClock();
+  const live = isLiveActive(mySession, now);
 
   const start = () => {
     goLive.mutate(
