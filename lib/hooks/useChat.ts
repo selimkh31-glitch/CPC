@@ -218,7 +218,13 @@ export function useSendMessage(conversationId: string, senderId: string) {
         }
         throw error;
       }
-      return data as MessageRow;
+      const message = data as MessageRow;
+      // Notif in-app (RPC create_notification via Edge) : l'INSERT client
+      // reste le send path ; un échec notify ne rollback pas le message.
+      void callEdgeFunction("notify-message-received", { messageId: message.id }).catch((err) => {
+        console.warn("[notify-message-received]", err);
+      });
+      return message;
     },
     onSuccess: (message) => {
       queryClient.setQueryData<MessageRow[]>(["messages", conversationId], (old) => (old ? [...old, message] : [message]));

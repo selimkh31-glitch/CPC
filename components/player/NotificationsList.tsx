@@ -10,7 +10,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/hooks/useNotifications";
-import { notificationHref } from "@/lib/safety";
+import { notificationHref, notificationTitle } from "@/lib/safety";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationRow } from "@/lib/types";
 
@@ -45,7 +45,7 @@ export function NotificationsList() {
     return (
       <EmptyState
         title="Aucune notification pour l'instant."
-        subtitle="Candidatures, invitations et réponses apparaîtront ici."
+        subtitle="Candidatures, invitations, messages et réponses apparaîtront ici."
       />
     );
   }
@@ -70,7 +70,7 @@ export function NotificationsList() {
           <View className="flex-row items-start gap-2">
             <Bell size={16} color={item.read_at ? "#9aa0a8" : "#39ff8a"} />
             <View className="flex-1">
-              <Text className="font-bold text-fg">{item.title}</Text>
+              <Text className="font-bold text-fg">{notificationTitle(item.type, item.title)}</Text>
               <Text className="mt-0.5 text-sm text-fg-muted">{item.body}</Text>
               <Text className="mt-1 text-xs text-fg-subtle">{timeAgo(item.created_at)}</Text>
             </View>

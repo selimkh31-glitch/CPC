@@ -6,10 +6,15 @@
 import {
   isNotificationType,
   isReportReason,
+  messageReceivedCopy,
+  NOTIFICATION_TYPE_LABELS,
   notificationHref,
+  notificationTitle,
+  otherConversationParticipantIds,
   otherIdsFromBlocks,
   pairIsBlocked,
   REPORT_REASONS,
+  shouldNotifyMessageReceived,
 } from "../lib/safety";
 import { eaIdentityBadge, normalizeEaIdentityKind, statsSourceLabel } from "../lib/statsSource";
 
@@ -69,6 +74,38 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/club/c2", "inv dec");
   assert.true(isNotificationType("APPLICATION_RECEIVED"), "known type");
   assert.false(isNotificationType("RANDOM"), "unknown type");
+});
+
+test("MESSAGE_RECEIVED — type, label FR, href conversation", () => {
+  assert.true(isNotificationType("MESSAGE_RECEIVED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.MESSAGE_RECEIVED, "Nouveau message", "label");
+  assert.equal(notificationTitle("MESSAGE_RECEIVED", "x"), "Nouveau message", "title");
+  assert.equal(
+    notificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }),
+    "/conversation/conv-1",
+    "href"
+  );
+  assert.equal(notificationHref("MESSAGE_RECEIVED", {}), "/notifications", "href fallback");
+  assert.equal(notificationHref("MESSAGE_RECEIVED", { conversationId: "" }), "/notifications", "empty id");
+  assert.equal(notificationTitle("RANDOM", "Autre"), "Autre", "unknown fallback");
+  assert.equal(notificationTitle("APPLICATION_RECEIVED", "x"), "Nouvelle candidature", "apply label");
+  const copy = messageReceivedCopy("  Striker27  ");
+  assert.equal(copy.type, "MESSAGE_RECEIVED", "copy type");
+  assert.equal(copy.title, "Nouveau message", "copy title");
+  assert.equal(copy.body, "Striker27 t'a écrit.", "copy body");
+  assert.equal(messageReceivedCopy("   ").body, "Un joueur t'a écrit.", "copy fallback");
+});
+
+test("shouldNotifyMessageReceived — DIRECT only, skip self / blocked / deleted", () => {
+  const base = { conversationType: "DIRECT", senderId: "a", recipientId: "b", blocked: false };
+  assert.true(shouldNotifyMessageReceived(base), "dm ok");
+  assert.false(shouldNotifyMessageReceived({ ...base, conversationType: "GROUP" }), "group");
+  assert.false(shouldNotifyMessageReceived({ ...base, conversationType: "CLUB" }), "club");
+  assert.false(shouldNotifyMessageReceived({ ...base, recipientId: "a" }), "self");
+  assert.false(shouldNotifyMessageReceived({ ...base, blocked: true }), "blocked");
+  assert.false(shouldNotifyMessageReceived({ ...base, deleted: true }), "deleted");
+  assert.equal(otherConversationParticipantIds(["a", "b", "a"], "a").join(","), "b", "other ids");
+  assert.equal(otherConversationParticipantIds(["a"], "a").join(","), "", "solo");
 });
 
 test("statsSource — labels et identité EA honnête (pas verified player id)", () => {
