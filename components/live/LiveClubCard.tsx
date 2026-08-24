@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Button } from "@/components/ui/Button";
 import { CLUB_LEVEL_LABELS, PLATFORM_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { clubPublicHref } from "@/lib/clubProfile";
 import { LiveCountdown } from "@/components/live/LiveCountdown";
 import type { ClubSessionRow } from "@/lib/types";
 
@@ -22,7 +23,7 @@ export function LiveClubCard({ item, reason }: { item: ClubSessionRow; reason?: 
 
   const openClub = () => {
     Haptics.selectionAsync();
-    router.push(`/club/${club.id}?session=${item.id}`);
+    router.push(clubPublicHref(club.id, item.id));
   };
 
   return (

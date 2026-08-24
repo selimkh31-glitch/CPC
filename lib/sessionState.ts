@@ -129,3 +129,11 @@ export function filledSlotCount(assignments: SlotAssignmentRow[] | null | undefi
 export function rosterFillLabel(filled: number, total = MATCH_SHEET_SLOT_TOTAL): string {
   return `${filled}/${total} titulaires`;
 }
+
+/**
+ * Slot vide du terrain : tappable seulement si un handler réel existe
+ * (recherche / candidature). Sinon le "+" est une CTA morte — on le désactive.
+ */
+export function canPressEmptyFormationSlot(interactive: boolean, hasEmptySlotHandler: boolean): boolean {
+  return interactive && hasEmptySlotHandler;
+}

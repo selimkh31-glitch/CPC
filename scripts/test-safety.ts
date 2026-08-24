@@ -10,6 +10,7 @@ import {
   NOTIFICATION_TYPE_LABELS,
   notificationHref,
   notificationTitle,
+  inAppNotificationHref,
   otherConversationParticipantIds,
   otherIdsFromBlocks,
   pairIsBlocked,
@@ -74,6 +75,24 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/club/c2", "inv dec");
   assert.true(isNotificationType("APPLICATION_RECEIVED"), "known type");
   assert.false(isNotificationType("RANDOM"), "unknown type");
+});
+
+test("inAppNotificationHref — APPLICATION_RECEIVED en Mode Club va à Recrutement", () => {
+  assert.equal(
+    inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "CLUB"),
+    "/candidatures",
+    "club mode"
+  );
+  assert.equal(
+    inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "PLAYER"),
+    "/club/c1",
+    "player mode — arbre club non monté"
+  );
+  assert.equal(
+    inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
+    "/conversation/conv-1",
+    "dm inchangé"
+  );
 });
 
 test("MESSAGE_RECEIVED — type, label FR, href conversation", () => {

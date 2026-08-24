@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import { Badge } from "@/components/ui/Badge";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
-import { toast } from "@/lib/toast";
+import { canPressEmptyFormationSlot } from "@/lib/sessionState";
 import type { SlotAssignmentRow } from "@/lib/types";
 
 const SLOT_SIZE = 56;
@@ -26,8 +26,8 @@ export function FormationPitch({
   formationId: FormationId;
   assignments: SlotAssignmentRow[];
   interactive?: boolean;
-  /** Appelé au tap d'un slot vide (phase 4 : ouvre la recherche côté owner,
-   *  la candidature côté joueur). Sans callback, retombe sur un placeholder. */
+  /** Appelé au tap d'un slot vide (recherche côté owner, candidature côté joueur).
+   *  Sans callback, le slot vide n'est pas tappable. */
   onEmptySlotPress?: (slot: FormationSlot) => void;
   /** Si fourni, le slot occupé par ce user est marqué "Vous" (Phase 4.6) —
    *  purement visuel, ne change aucune permission. */
@@ -92,7 +92,9 @@ function PitchSlot({
   // `interactive` : sans ça, ClubHome (Mode Joueur, interactive=false)
   // perdrait le tap-vers-profil sur ses propres titulaires, ce qui n'est pas
   // la règle produit (seul le recrutement doit disparaître en Mode Joueur).
-  const disabled = isEmpty && !interactive;
+  // Sans handler, un slot vide n'est pas tappable (pas de toast « bientôt »).
+  const canOpenEmpty = canPressEmptyFormationSlot(interactive, Boolean(onEmptySlotPress));
+  const disabled = isEmpty && !canOpenEmpty;
 
   const onPress = () => {
     if (occupant?.user) {
@@ -100,13 +102,9 @@ function PitchSlot({
       router.push(`/profile/${occupant.user_id}`);
       return;
     }
-    if (!interactive) return; // défense en profondeur — `disabled` empêche déjà cet appel
+    if (!canOpenEmpty || !onEmptySlotPress) return;
     Haptics.selectionAsync();
-    if (onEmptySlotPress) {
-      onEmptySlotPress(slot);
-      return;
-    }
-    toast.info(`${positionLabel} — recherche de joueurs bientôt disponible ici.`);
+    onEmptySlotPress(slot);
   };
 
   return (
@@ -135,7 +133,7 @@ function PitchSlot({
           <Text className="text-[10px] text-fg-subtle">{positionLabel}</Text>
           {isYou && <Badge tone="accent" className="mt-0.5 self-center px-1.5 py-0.5">Vous</Badge>}
         </>
-      ) : interactive ? (
+      ) : canOpenEmpty ? (
         <>
           <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-white/30 bg-white/5">
             <Text className="text-lg font-bold text-white/50">+</Text>

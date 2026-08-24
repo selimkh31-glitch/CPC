@@ -5,13 +5,14 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useAppMode } from "@/lib/providers/AppModeProvider";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/hooks/useNotifications";
 import { unreadNotificationCount } from "@/lib/notificationRead";
-import { notificationHref, notificationTitle } from "@/lib/safety";
+import { inAppNotificationHref, notificationTitle } from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationRow } from "@/lib/types";
@@ -19,6 +20,7 @@ import type { NotificationRow } from "@/lib/types";
 /** Liste des notifications in-app — extraite de app/notifications.tsx pour l'onglet Activité. */
 export function NotificationsList() {
   const { session } = useAuth();
+  const { mode } = useAppMode();
   const userId = session?.user.id ?? null;
   const { data, isLoading, isError, refetch } = useNotifications(userId);
   const markRead = useMarkNotificationRead(userId);
@@ -27,7 +29,7 @@ export function NotificationsList() {
 
   const open = (item: NotificationRow) => {
     if (!item.read_at) markRead.mutate(item.id);
-    router.push(notificationHref(item.type, item.data) as any);
+    router.push(inAppNotificationHref(item.type, item.data, mode) as any);
   };
 
   if (isLoading) {

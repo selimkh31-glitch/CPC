@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from "react-native";
 import { Check, Crown } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { FEATURE_REVENUECAT, FREE_APPLICATIONS_PER_DAY, PRO_PRICE_EUR } from "@/lib/constants";
+import { FEATURE_REVENUECAT, FREE_APPLICATIONS_PER_DAY, PRO_PRICE_EUR, proPurchaseCta } from "@/lib/constants";
 import { purchasePro } from "@/lib/revenuecat";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
@@ -30,12 +30,10 @@ const PRO_FEATURES = [
 export default function PricingScreen() {
   const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const purchase = proPurchaseCta(FEATURE_REVENUECAT);
 
   const upgrade = async () => {
-    if (!FEATURE_REVENUECAT) {
-      toast.info("Paiement in-app pas encore configuré sur cet environnement (voir README).");
-      return;
-    }
+    if (!purchase.canPurchase) return;
     setLoading(true);
     try {
       const isPro = await purchasePro("pro_monthly");
@@ -85,7 +83,15 @@ export default function PricingScreen() {
             ))}
           </View>
           <View className="mt-5">
-            <Button variant="pro" loading={loading} onPress={upgrade}>
+            {purchase.disabledReason ? (
+              <Text className="mb-3 text-center text-sm text-fg-muted">{purchase.disabledReason}</Text>
+            ) : null}
+            <Button
+              variant="pro"
+              loading={loading}
+              disabled={!purchase.canPurchase}
+              onPress={upgrade}
+            >
               Passer Pro
             </Button>
           </View>
