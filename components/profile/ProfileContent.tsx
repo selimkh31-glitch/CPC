@@ -1,14 +1,14 @@
 import { Text, View } from "react-native";
 import { router } from "expo-router";
-import { Ban, Flag, MessageCircle, Star } from "lucide-react-native";
+import { Ban, Flag, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ClubProCard } from "@/components/profile/ClubProCard";
 import { LinkEaClubForm } from "@/components/profile/LinkEaClubForm";
 import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
 import { ReviewForm } from "@/components/profile/ReviewForm";
+import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
-import { useStartDirectConversation } from "@/lib/hooks/useChat";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
@@ -19,7 +19,6 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const { session } = useAuth();
   const { data: user, isLoading, isError, refetch } = useUserProfile(userId);
   const { data: reviews } = useUserReviews(userId);
-  const startConversation = useStartDirectConversation();
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
   const blockUser = useBlockUser();
@@ -69,21 +68,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
 
       {!isOwn && user && (
         <View className="w-full gap-2">
-          {!blockedEitherWay && (
-            <Button
-              variant="secondary"
-              icon={<MessageCircle size={15} color="#f4f5f7" />}
-              loading={startConversation.isPending}
-              onPress={() =>
-                startConversation.mutate(user.id, {
-                  onSuccess: (data) => router.push(`/conversation/${data.conversation.id}`),
-                  onError: (err: any) => toast.error(err.message ?? "Impossible de démarrer la conversation."),
-                })
-              }
-            >
-              Message
-            </Button>
-          )}
+          <StartDirectMessageButton otherUserId={user.id} blocked={blockedEitherWay} />
           <View className="flex-row gap-2">
             <Button
               variant={iBlockedThem ? "secondary" : "danger"}

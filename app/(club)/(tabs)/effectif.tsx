@@ -12,6 +12,7 @@ import { EditClubForm } from "@/components/club/EditClubForm";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
+import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -128,6 +129,7 @@ export default function ClubTab() {
               onPress: () => router.push("/match"),
             }}
           />
+          <SocialShortcuts />
           <MembersPanel
             clubId={club.id}
             clubName={club.name}

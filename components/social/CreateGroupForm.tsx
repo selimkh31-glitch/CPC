@@ -11,7 +11,7 @@ import type { GroupRow } from "@/lib/types";
 
 const VISIBILITY_OPTIONS = [
   { value: "PUBLIC", label: "Public (annuaire)" },
-  { value: "PRIVATE", label: "Privé (sur invitation)" },
+  { value: "PRIVATE", label: "Privé (non listé)" },
 ] as const;
 
 /** Créer un groupe social (mission section 12) — même patron que CreateClubForm.tsx, jamais dupliqué à l'identique. */
@@ -53,7 +53,7 @@ export function CreateGroupForm({ onCreated }: { onCreated?: (group: GroupRow) =
         </View>
         <View>
           <Label>Description (optionnel)</Label>
-          <Textarea value={description} onChangeText={setDescription} placeholder="De quoi parle ce groupe ?" />
+          <Textarea value={description} onChangeText={setDescription} placeholder="Groupe social — pas un club Pro Clubs." />
         </View>
         <View>
           <Label>Visibilité</Label>

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { Alert, Text, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { Alert, ScrollView, Text, View } from "react-native";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Crown, LogOut, MessageCircle, Shield, Trash2 } from "lucide-react-native";
-import { Screen, EmptyState, ErrorState } from "@/components/ui/Screen";
+import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -101,12 +101,14 @@ export default function GroupDetailScreen() {
   };
 
   return (
-    <Screen>
+    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+      <Stack.Screen options={{ title: group.name }} />
       <Card className="mb-4">
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-2">
             <Text className="font-display text-2xl text-fg">{group.name}</Text>
             {group.description && <Text className="mt-1 text-sm text-fg-muted">{group.description}</Text>}
+            <Text className="mt-2 text-xs text-fg-subtle">Groupe social — distinct d&apos;un club Pro Clubs.</Text>
           </View>
           <Badge tone="neutral">{group.visibility === "PUBLIC" ? "Public" : "Privé"}</Badge>
         </View>
@@ -114,6 +116,7 @@ export default function GroupDetailScreen() {
         <View className="mt-4 gap-2">
           {!isMember && (
             <Button
+              className="min-h-[44px]"
               loading={join.isPending}
               onPress={() =>
                 join.mutate(group.id, {
@@ -126,7 +129,12 @@ export default function GroupDetailScreen() {
           )}
 
           {isMember && conversationId && (
-            <Button variant="secondary" icon={<MessageCircle size={16} color="#f4f5f7" />} onPress={() => router.push(`/conversation/${conversationId}`)}>
+            <Button
+              variant="secondary"
+              className="min-h-[44px]"
+              icon={<MessageCircle size={16} color="#f4f5f7" />}
+              onPress={() => router.push(`/conversation/${conversationId}`)}
+            >
               Ouvrir le chat du groupe
             </Button>
           )}
@@ -146,7 +154,7 @@ export default function GroupDetailScreen() {
       </Card>
 
       <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">
-        👥 Membres{members ? ` (${members.length})` : ""}
+        Membres{members ? ` (${members.length})` : ""}
       </Text>
 
       {membersLoading ? (
@@ -157,7 +165,7 @@ export default function GroupDetailScreen() {
       ) : membersError ? (
         <ErrorState message="Impossible de charger les membres." onRetry={refetchMembers} />
       ) : !members || members.length === 0 ? (
-        <EmptyState title="Aucun membre pour l'instant." />
+        <EmptyState title="Aucun membre visible pour l'instant." subtitle="Les joueurs bloqués n'apparaissent pas dans cette liste." />
       ) : (
         <View className="gap-2">
           {members.map((member) => (
@@ -165,7 +173,7 @@ export default function GroupDetailScreen() {
           ))}
         </View>
       )}
-    </Screen>
+    </ScrollView>
   );
 }
 

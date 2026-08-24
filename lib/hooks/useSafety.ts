@@ -21,6 +21,8 @@ function invalidateAfterBlockChange(queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: ["invitable-club-players"] });
   queryClient.invalidateQueries({ queryKey: ["club-search"] });
   queryClient.invalidateQueries({ queryKey: ["conversations"] });
+  queryClient.invalidateQueries({ queryKey: ["conversation"] });
+  queryClient.invalidateQueries({ queryKey: ["group-members"] });
   queryClient.invalidateQueries({ queryKey: ["applications"] });
   queryClient.invalidateQueries({ queryKey: ["club-invitations"] });
   queryClient.invalidateQueries({ queryKey: ["my-invitations"] });
