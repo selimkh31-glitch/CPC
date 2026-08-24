@@ -3,8 +3,6 @@ import { router } from "expo-router";
 import { Ban, Flag, MessageCircle, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/Screen";
 import { ClubProCard } from "@/components/profile/ClubProCard";
 import { LinkEaClubForm } from "@/components/profile/LinkEaClubForm";
 import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
@@ -31,17 +29,16 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
 
   if (isError) {
     return (
-      <View className="w-full">
-        <ErrorState message="Impossible de charger ce profil." onRetry={refetch} />
+      <View className="w-full items-center">
+        <ClubProCard error onRetry={refetch} />
       </View>
     );
   }
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <View className="items-center gap-4">
-        <Skeleton className="h-72 w-full max-w-sm" />
-        <Skeleton className="h-32 w-full" />
+        <ClubProCard loading />
       </View>
     );
   }
@@ -52,26 +49,29 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   return (
     <View className="items-center gap-4">
       <ClubProCard
-        data={{
-          username: user.username,
-          platform: user.platform,
-          mainPosition: user.main_position,
-          playStyle: user.play_style,
-          reliabilityScore: user.reliability_score,
-          plan: user.plan,
-          currentStreak: user.current_streak,
-          verifiedStats: user.verified_stats,
-          eaClubLinked: user.ea_club_linked,
-          eaIdentityKind: user.ea_identity_kind,
-        }}
+        data={
+          user
+            ? {
+                username: user.username,
+                platform: user.platform,
+                mainPosition: user.main_position,
+                secondaryPositions: user.secondary_positions ?? [],
+                playStyle: user.play_style,
+                reliabilityScore: user.reliability_score,
+                plan: user.plan,
+                currentStreak: user.current_streak,
+                verifiedStats: user.verified_stats,
+                eaIdentityKind: user.ea_identity_kind,
+              }
+            : null
+        }
       />
 
-      {!isOwn && (
+      {!isOwn && user && (
         <View className="w-full gap-2">
           {!blockedEitherWay && (
             <Button
               variant="secondary"
-              size="sm"
               icon={<MessageCircle size={15} color="#f4f5f7" />}
               loading={startConversation.isPending}
               onPress={() =>
@@ -87,8 +87,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
           <View className="flex-row gap-2">
             <Button
               variant={iBlockedThem ? "secondary" : "danger"}
-              size="sm"
-              className="flex-1"
+              className="min-h-[44px] flex-1"
               icon={<Ban size={15} color={iBlockedThem ? "#f4f5f7" : "#ff5c7a"} />}
               loading={blockUser.isPending || unblockUser.isPending}
               onPress={() => {
@@ -109,8 +108,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
             </Button>
             <Button
               variant="ghost"
-              size="sm"
-              className="flex-1"
+              className="min-h-[44px] flex-1"
               icon={<Flag size={15} color="#9aa0a8" />}
               onPress={() => router.push(`/report/${user.id}`)}
             >
@@ -120,8 +118,8 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
         </View>
       )}
 
-      {isOwn && !user.ea_club_linked && <LinkEaClubForm />}
-      {isOwn && <ScoutReportPanel isPro={user.plan === "PRO"} />}
+      {isOwn && user && !user.ea_club_linked && <LinkEaClubForm />}
+      {isOwn && user && <ScoutReportPanel isPro={user.plan === "PRO"} />}
 
       <Card className="w-full">
         <Text className="mb-3 font-display text-lg text-fg">Reviews reçues</Text>
@@ -159,7 +157,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
         </View>
       </Card>
 
-      {!isOwn && <ReviewForm targetUserId={user.id} />}
+      {!isOwn && user && <ReviewForm targetUserId={user.id} />}
     </View>
   );
 }

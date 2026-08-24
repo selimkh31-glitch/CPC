@@ -56,6 +56,7 @@
     "test:ovr": "tsx scripts/test-ovr.ts",
     "test:reliability": "tsx scripts/test-reliability.ts",
     "test:player-card": "tsx scripts/test-player-card.ts",
+    "test:club-profile": "tsx scripts/test-club-profile.ts",
     "test:live": "tsx scripts/test-live.ts",
     "test:live-match": "tsx scripts/test-live-match.ts",
     "test:recruitment": "tsx scripts/test-recruitment.ts",

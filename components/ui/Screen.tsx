@@ -56,7 +56,7 @@ export function ErrorState({ message = "Une erreur est survenue.", onRetry }: { 
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onRetry();
           }}
-          className="mt-3 rounded-xl border border-border bg-bg-elevated px-4 py-2 active:opacity-80"
+          className="mt-3 min-h-[44px] items-center justify-center rounded-xl border border-border bg-bg-elevated px-4 active:opacity-80"
         >
           <Text className="text-sm font-bold text-fg">Réessayer</Text>
         </Pressable>
