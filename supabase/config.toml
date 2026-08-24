@@ -81,6 +81,13 @@ verify_jwt = true
 [functions.report-user]
 verify_jwt = true
 
+# Compétitions virtuelles FC 27 Pro Clubs — création + inscription (JWT session).
+[functions.create-competition]
+verify_jwt = true
+
+[functions.register-competition-club]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 

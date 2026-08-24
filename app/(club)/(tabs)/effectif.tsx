@@ -13,6 +13,7 @@ import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
+import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -82,6 +83,7 @@ export default function ClubTab() {
         <Button variant="ghost" onPress={() => setMode("PLAYER")}>
           Retour mode Joueur
         </Button>
+        <CompetitionsLink />
       </View>
     );
   }
@@ -130,6 +132,7 @@ export default function ClubTab() {
             }}
           />
           <SocialShortcuts />
+          <CompetitionsLink />
           <MembersPanel
             clubId={club.id}
             clubName={club.name}
