@@ -10,6 +10,7 @@ import { RARITY_BORDER, RARITY_GRADIENT, RARITY_TEXT } from "@/lib/theme";
 import { RARITY_LABEL } from "@/lib/ovr";
 import type { PlayerCardData, PlayerCardState, PlayerCardVariant } from "@/lib/playerCard";
 import { POSITION_LABELS, PLATFORM_LABELS } from "@/lib/constants";
+import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
 
 /**
@@ -119,6 +120,7 @@ function CompactBody({
       {rightSlot ?? (
         <View className="items-end">
           <Text className={cn("font-display text-xl", RARITY_TEXT[data.rarity])}>{data.ovr}</Text>
+          <Text className="text-[9px] uppercase tracking-wide text-fg-subtle">OVR CPC</Text>
         </View>
       )}
     </Pressable>
@@ -155,7 +157,7 @@ function StandardBody({
         {rightSlot ?? (
           <View className="items-end">
             <Text className={cn("font-display text-2xl", RARITY_TEXT[data.rarity])}>{data.ovr}</Text>
-            <Text className="text-[10px] uppercase tracking-wide text-fg-subtle">{RARITY_LABEL[data.rarity]}</Text>
+            <Text className="text-[10px] uppercase tracking-wide text-fg-subtle">OVR CPC · {RARITY_LABEL[data.rarity]}</Text>
           </View>
         )}
       </View>
@@ -165,7 +167,7 @@ function StandardBody({
           {data.verified && (
             <View className="flex-row items-center gap-1">
               <BadgeCheck size={13} color="#39ff8a" />
-              <Text className="text-[11px] font-bold text-accent">Verified</Text>
+              <Text className="text-[11px] font-bold text-accent">{eaIdentityBadge(data.eaIdentityKind).label || "Club EA lié"}</Text>
             </View>
           )}
           {data.currentStreak > 0 && (
@@ -209,7 +211,7 @@ function HeroBody({
             <View>
               <Text className="font-display text-6xl text-fg">{data.ovr}</Text>
               <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-                {data.mainPosition}
+                OVR CPC · {data.mainPosition}
               </Text>
             </View>
             <View className="items-end gap-1">
@@ -227,17 +229,20 @@ function HeroBody({
           </View>
 
           {data.verified && (
-            <View className="mt-3 flex-row items-center self-start gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
-              <BadgeCheck size={14} color="#39ff8a" />
-              <Text className="text-xs font-bold text-accent">Verified Stats</Text>
+            <View className="mt-3 self-start rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
+              <View className="flex-row items-center gap-1.5">
+                <BadgeCheck size={14} color="#39ff8a" />
+                <Text className="text-xs font-bold text-accent">{eaIdentityBadge(data.eaIdentityKind).label || "Stats club EA liées"}</Text>
+              </View>
+              <Text className="mt-0.5 text-[10px] text-fg-muted">{eaIdentityBadge(data.eaIdentityKind).hint}</Text>
             </View>
           )}
 
           {data.eaStats && (
             <View className="mt-4 flex-row gap-2">
-              <StatBlock label="Buts" value={data.eaStats.goals ?? "—"} />
-              <StatBlock label="Passes" value={data.eaStats.assists ?? "—"} />
-              <StatBlock label="Matchs" value={data.eaStats.matchesPlayed ?? "—"} />
+              <StatBlock label="Buts EA" value={data.eaStats.goals ?? "—"} />
+              <StatBlock label="Passes EA" value={data.eaStats.assists ?? "—"} />
+              <StatBlock label="Matchs EA" value={data.eaStats.matchesPlayed ?? "—"} />
             </View>
           )}
 

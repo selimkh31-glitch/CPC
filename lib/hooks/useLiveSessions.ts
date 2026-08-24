@@ -1,26 +1,46 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { isLiveActive } from "@/lib/live";
+import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
- * Fil temps réel des sessions live (section 3.C / 8). Charge l'état initial
- * via React Query puis invalide le cache sur chaque changement Postgres
- * (Supabase Realtime) pour que le feed réagisse sans pull-to-refresh.
+ * Fil LIVE club. Janitor RPC en tête de fetch (même sans cron) puis filtre
+ * is_live + expires_at côté SQL et isLiveActive côté client.
+ * refetchInterval : un LIVE qui expire pendant que l'écran est ouvert disparaît.
  */
 export function useLiveSessions() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["live-sessions"],
+    refetchInterval: 15_000,
     queryFn: async () => {
+      await invokeExpireStaleLiveSessions();
       const { data, error } = await supabase
         .from("club_sessions")
-        .select("*, club:clubs(id,name,level,languages)")
+        .select("*, club:clubs(id,name,level,languages,owner_id, owner:users(id,platform,username))")
         .eq("is_live", true)
+        .gt("expires_at", new Date().toISOString())
+        .not("needed_positions", "eq", "{}")
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as ClubSessionRow[];
+      const now = Date.now();
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      return (data as ClubSessionRow[]).filter(
+        (row) =>
+          isLiveActive(row, now) &&
+          (row.needed_positions?.length ?? 0) > 0 &&
+          !blocked.has(row.club?.owner_id ?? "") &&
+          !blocked.has(row.club?.owner?.id ?? "")
+      );
     },
   });
 

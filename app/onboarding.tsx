@@ -100,13 +100,13 @@ export default function OnboardingScreen() {
       <View className="flex-1 justify-center">
         <MotiView key={step} from={{ opacity: 0, translateX: 12 }} animate={{ opacity: 1, translateX: 0 }} transition={{ type: "timing", duration: 250 }}>
           {step === 0 && (
-            <Step title="Choisis ton username" subtitle="Ton identité compétitive sur ClubPro Connect.">
+            <Step title="Choisis ton username" subtitle="Ton pseudo Pro Clubs sur ClubPro Connect (EA SPORTS FC 27).">
               <Label>Username</Label>
               <Input autoFocus autoCapitalize="none" value={username} onChangeText={setUsername} placeholder="ex: xX_Striker_Xx" />
             </Step>
           )}
           {step === 1 && (
-            <Step title="Ta plateforme" subtitle="Là où tu joues à FC Pro Clubs.">
+            <Step title="Ta plateforme" subtitle="Là où tu joues à EA SPORTS FC 27 Pro Clubs.">
               <ChipSelect single value={platform ? [platform] : []} onChange={(v) => setPlatform(v[0])} options={PLATFORMS.map((p) => ({ value: p, label: PLATFORM_LABELS[p] }))} />
             </Step>
           )}
@@ -119,7 +119,7 @@ export default function OnboardingScreen() {
             </Step>
           )}
           {step === 3 && (
-            <Step title="Ton style de jeu" subtitle="Comment tu joues sur le terrain.">
+            <Step title="Ton style de jeu" subtitle="Comment tu joues en Pro Clubs FC 27.">
               <ChipSelect single value={playStyle ? [playStyle] : []} onChange={(v) => setPlayStyle(v[0])} options={PLAY_STYLES.map((p) => ({ value: p, label: PLAY_STYLE_LABELS[p] }))} />
             </Step>
           )}
@@ -129,7 +129,7 @@ export default function OnboardingScreen() {
             </Step>
           )}
           {step === 5 && (
-            <Step title="Tes disponibilités" subtitle="Quand tu es dispo pour jouer (optionnel).">
+            <Step title="Tes disponibilités" subtitle="Quand tu es dispo pour une session Pro Clubs (optionnel).">
               <ChipSelect value={availability} onChange={setAvailability} options={AVAILABILITY_OPTIONS} />
             </Step>
           )}

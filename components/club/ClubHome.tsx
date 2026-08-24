@@ -15,6 +15,8 @@ import { useApply } from "@/lib/hooks/useApply";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { toast } from "@/lib/toast";
+import { findActiveLiveSession } from "@/lib/live";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
 /**
@@ -37,6 +39,7 @@ import type { FormationId, FormationSlot } from "@/lib/formations";
  */
 export function ClubHome({ clubId }: { clubId: string | null }) {
   const { session } = useAuth();
+  const now = useLiveClock();
   const { data: club, isLoading, isError, refetch } = useClub(clubId);
   const apply = useApply();
 
@@ -60,7 +63,7 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   const isMember = Boolean(myMembership);
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
-  const activeSession = club.sessions?.find((s) => s.is_live) ?? null;
+  const activeSession = findActiveLiveSession(club.sessions, now);
   // Banc — tout membre sans slot_assignment, dérivé de l'existant : aucune
   // nouvelle table/requête, réutilise club_members + slot_assignments.
   const startingUserIds = new Set(assignments.map((a) => a.user_id));
@@ -93,14 +96,16 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
       { text: "Annuler", style: "cancel" },
       {
         text: "Postuler",
-        onPress: () =>
+        onPress: () => {
+          if (apply.isPending) return;
           apply.mutate(
             { sessionId: activeSession.id, position: slot.position, slotId: slot.slotId },
             {
               onSuccess: () => toast.success("Candidature envoyée !"),
               onError: (err: any) => toast.error(err.message ?? "Erreur"),
             }
-          ),
+          );
+        },
       },
     ]);
   };

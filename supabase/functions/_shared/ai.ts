@@ -136,13 +136,24 @@ export interface ScoutReport {
 
 function fallbackScoutReport(reviews: any[], stats: any): ScoutReport {
   const positive = reviews.filter((r) => r.showedUp ?? r.showed_up).length;
+  const hasEa = Boolean(stats && ((stats.goals ?? 0) > 0 || (stats.assists ?? 0) > 0 || (stats.matchesPlayed ?? 0) > 0));
+  const strengths: string[] = [];
+  if ((stats?.goals ?? 0) > 0) strengths.push("Buts enregistrés côté stats EA du club lié");
+  if ((stats?.assists ?? 0) > 0) strengths.push("Passes enregistrées côté stats EA du club lié");
+  if (reviews.length === 0 && !hasEa) {
+    return {
+      summary: "Pas encore assez de reviews CPC ni de stats EA liées pour un rapport. Rien n'est inventé.",
+      strengths: [],
+      to_improve: [],
+    };
+  }
   return {
     summary:
       reviews.length > 0
-        ? `${positive}/${reviews.length} sessions honorées récemment. Continue comme ça.`
-        : "Pas encore assez de données pour un rapport détaillé.",
-    strengths: (stats?.goals ?? 0) > (stats?.assists ?? 0) ? ["Finition"] : ["Vision de jeu"],
-    to_improve: ["Régularité des présences"],
+        ? `${positive}/${reviews.length} sessions honorées récemment (reviews CPC).`
+        : "Stats EA liées disponibles ; trop peu de reviews CPC pour un résumé de fiabilité.",
+    strengths,
+    to_improve: reviews.length > 0 && positive < reviews.length ? ["Présence sur les sessions notées"] : [],
   };
 }
 

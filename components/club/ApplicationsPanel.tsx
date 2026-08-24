@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
 import { Check, Inbox, X } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -8,21 +9,35 @@ import { ErrorState } from "@/components/ui/Screen";
 import { POSITION_LABELS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import { useApplications, useRespondApplication } from "@/lib/hooks/useApplications";
+import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 
 /** Candidatures entrantes en temps réel, triées par fiabilité (section 3.B/D). */
 export function ApplicationsPanel({ clubId }: { clubId: string }) {
+  const { session } = useAuth();
   const { data: applications, isLoading, isError, refetch } = useApplications(clubId);
+  const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const respond = useRespondApplication(clubId);
 
-  const pending = (applications ?? []).filter((a) => a.status === "PENDING");
+  const blocked = new Set(blockedIds ?? []);
+  const pending = (applications ?? []).filter((a) => a.status === "PENDING" && !blocked.has(a.user_id));
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [actingStatus, setActingStatus] = useState<"ACCEPTED" | "DECLINED" | null>(null);
 
-  const act = (applicationId: string, status: "ACCEPTED" | "REJECTED") => {
+  const act = (applicationId: string, status: "ACCEPTED" | "DECLINED") => {
+    if (actingId || respond.isPending) return;
+    setActingId(applicationId);
+    setActingStatus(status);
     respond.mutate(
       { applicationId, status },
       {
         onSuccess: () => toast.success(status === "ACCEPTED" ? "Candidat accepté." : "Candidature refusée."),
         onError: (err: any) => toast.error(err.message ?? "Erreur"),
+        onSettled: () => {
+          setActingId(null);
+          setActingStatus(null);
+        },
       }
     );
   };
@@ -62,10 +77,26 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                 )}
               </View>
               <View className="flex-row gap-1.5">
-                <Button size="sm" variant="secondary" onPress={() => act(app.id, "ACCEPTED")} icon={<Check size={16} color="#39ff8a" />} className="px-2.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={actingId === app.id && actingStatus === "ACCEPTED"}
+                  disabled={Boolean(actingId)}
+                  onPress={() => act(app.id, "ACCEPTED")}
+                  icon={<Check size={16} color="#39ff8a" />}
+                  className="px-2.5"
+                >
                   {""}
                 </Button>
-                <Button size="sm" variant="secondary" onPress={() => act(app.id, "REJECTED")} icon={<X size={16} color="#ff4d4f" />} className="px-2.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={actingId === app.id && actingStatus === "DECLINED"}
+                  disabled={Boolean(actingId)}
+                  onPress={() => act(app.id, "DECLINED")}
+                  icon={<X size={16} color="#ff4d4f" />}
+                  className="px-2.5"
+                >
                   {""}
                 </Button>
               </View>

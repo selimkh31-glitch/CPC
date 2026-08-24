@@ -7,10 +7,13 @@ import { ErrorState } from "@/components/ui/Screen";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
+import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { findActiveLiveSession } from "@/lib/live";
 
 /**
  * Effectif — Mode Club (Foundation #1). Regroupe MembersPanel (rôles,
@@ -43,6 +46,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
  */
 export default function EffectifTab() {
   const { session } = useAuth();
+  const now = useLiveClock();
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
@@ -65,6 +69,8 @@ export default function EffectifTab() {
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = myMembership?.role === "OWNER" || myMembership?.role === "MANAGER";
+  const clubLive = findActiveLiveSession(club.sessions, now);
+  const owner = club.members?.find((m) => m.user_id === club.owner_id);
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -78,6 +84,15 @@ export default function EffectifTab() {
           canManage={canManage}
           members={club.members ?? []}
         />
+        {canManage && (
+          <LivePlayersRecruitPanel
+            clubId={club.id}
+            members={club.members ?? []}
+            neededPositions={clubLive?.needed_positions ?? []}
+            platform={owner?.user?.platform ?? null}
+            clubLive={clubLive}
+          />
+        )}
         {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
       </ScrollView>
     </SafeAreaView>

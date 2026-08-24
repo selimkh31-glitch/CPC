@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
 import { USER_PUBLIC_COLUMNS, type ConversationRow, type MessageRow, type UserRow } from "@/lib/types";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 
 /**
  * Chat — fondation (mission "CHAT — VRAIE FONDATION", section 11).
@@ -54,7 +55,17 @@ export function useConversations(userId: string | null) {
         .in("id", conversationIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as ConversationRow[];
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      return (data as ConversationRow[]).filter((c) => {
+        if (c.type !== "DIRECT") return true;
+        const peer = getDirectConversationPeer(c, userId!);
+        return !peer || !blocked.has(peer.id);
+      });
     },
   });
 }
@@ -191,7 +202,12 @@ export function useSendMessage(conversationId: string, senderId: string) {
         .insert({ conversation_id: conversationId, sender_id: senderId, body })
         .select(`*, sender:users(${USER_PUBLIC_COLUMNS})`)
         .single();
-      if (error) throw error;
+      if (error) {
+        if (typeof error.message === "string" && error.message.includes("users_blocked")) {
+          throw new Error("Tu ne peux pas interagir avec ce joueur.");
+        }
+        throw error;
+      }
       return data as MessageRow;
     },
     onSuccess: (message) => {

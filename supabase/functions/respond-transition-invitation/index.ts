@@ -1,7 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
-import { sendPushNotification } from "../_shared/push.ts";
 import { requireEnum, requireUuid, ValidationError } from "../_shared/validate.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 function mapTransitionError(message: string): { text: string; status: number } {
   if (message.includes("invitation_not_found")) return { text: "Invitation introuvable.", status: 404 };
@@ -44,6 +44,12 @@ Deno.serve(async (req) => {
 
   const admin = getAdminClient();
 
+  const { data: existing } = await admin.from("invitations").select("*").eq("id", invitationId).maybeSingle();
+  if (!existing) return jsonResponse({ error: "Invitation introuvable." }, 404);
+  if (existing.user_id !== user.id) return jsonResponse({ error: "Non autorisé" }, 403);
+
+  let updated = existing;
+
   if (status === "DECLINED") {
     const { data: declined, error } = await admin
       .from("invitations")
@@ -54,27 +60,38 @@ Deno.serve(async (req) => {
       .select()
       .single();
     if (error) return jsonResponse({ error: "Cette invitation a déjà été traitée." }, 409);
-    return jsonResponse({ invitation: declined });
+    updated = declined;
+  } else {
+    const { data: invitation, error } = await admin.rpc("accept_transition_invitation", {
+      p_invitation_id: invitationId,
+      p_actor_id: user.id,
+    });
+
+    if (error) {
+      const { text, status: httpStatus } = mapTransitionError(error.message);
+      return jsonResponse({ error: text }, httpStatus);
+    }
+    updated = invitation;
   }
 
-  const { data: invitation, error } = await admin.rpc("accept_transition_invitation", {
-    p_invitation_id: invitationId,
-    p_actor_id: user.id,
+  const { data: inviter } = await admin
+    .from("users")
+    .select("id, push_token")
+    .eq("id", existing.invited_by)
+    .maybeSingle();
+  const { data: club } = await admin.from("clubs").select("name").eq("id", existing.club_id).maybeSingle();
+  const { data: player } = await admin.from("users").select("username").eq("id", user.id).maybeSingle();
+  await notifyUser(admin, {
+    userId: existing.invited_by,
+    type: status === "ACCEPTED" ? "INVITATION_ACCEPTED" : "INVITATION_DECLINED",
+    title: status === "ACCEPTED" ? "Invitation acceptée" : "Invitation refusée",
+    body:
+      status === "ACCEPTED"
+        ? `${player?.username ?? "Un joueur"} a accepté l'invitation${club?.name ? ` pour ${club.name}` : ""} (transition).`
+        : `${player?.username ?? "Un joueur"} a refusé l'invitation${club?.name ? ` pour ${club.name}` : ""}.`,
+    data: { clubId: existing.club_id, invitationId, status },
+    pushToken: inviter?.push_token,
   });
 
-  if (error) {
-    const { text, status: httpStatus } = mapTransitionError(error.message);
-    return jsonResponse({ error: text }, httpStatus);
-  }
-
-  const { data: club } = await admin.from("clubs").select("name").eq("id", invitation.club_id).maybeSingle();
-  const { data: player } = await admin.from("users").select("push_token").eq("id", user.id).maybeSingle();
-  await sendPushNotification(
-    player?.push_token,
-    "Transition confirmée 🔜",
-    `Ta place chez ${club?.name ?? "ton nouveau club"} est réservée — finalisée après ton dernier match.`,
-    { type: "transition_reserved", clubId: invitation.club_id }
-  );
-
-  return jsonResponse({ invitation });
+  return jsonResponse({ invitation: updated });
 });

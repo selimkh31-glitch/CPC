@@ -10,15 +10,18 @@ import type { PlatformCode, PlayStyleCode, PositionCode } from "@/lib/constants"
  * échouerait (permission denied) puisque push_token n'est plus lisible.
  */
 export const USER_PUBLIC_COLUMNS =
-  "id,username,platform,main_position,secondary_positions,play_style,languages,availability,reliability_score,verified_stats,ea_club_linked,plan,current_streak,best_streak,badges,applications_today,applications_reset_at,created_at";
+  "id,username,platform,main_position,secondary_positions,play_style,languages,availability,reliability_score,verified_stats,ea_club_linked,ea_identity_kind,plan,current_streak,best_streak,badges,applications_today,applications_reset_at,created_at";
 
 export type Platform = PlatformCode;
 export type { PlayStyleCode, PositionCode };
 export type ClubLevel = "CASUAL" | "COMPETITIVE";
 export type ClubRole = "OWNER" | "MANAGER" | "MEMBER";
-export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
-export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "RESERVED";
+export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "DECLINED" | "CANCELLED" | "EXPIRED";
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "RESERVED" | "EXPIRED";
 export type Plan = "FREE" | "PRO";
+export type EaIdentityKind = "NONE" | "USERNAME_EQUALITY";
+export type ReportReason = "HARASSMENT" | "CHEATING" | "FAKE_IDENTITY" | "SPAM" | "OTHER";
+export type ReportStatus = "OPEN" | "REVIEWED" | "DISMISSED";
 
 /** Phase 5 — cycle de vie d'une sortie de club (demande joueur ou libération owner/manager). */
 export type DepartureStatus =
@@ -54,6 +57,7 @@ export interface UserRow {
   reliability_score: number;
   verified_stats: VerifiedStats | null;
   ea_club_linked: string | null;
+  ea_identity_kind: EaIdentityKind;
   plan: Plan;
   current_streak: number;
   best_streak: number;
@@ -129,9 +133,22 @@ export interface ClubSessionRow {
   is_live: boolean;
   needed_positions: PositionCode[];
   note: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
-  club?: ClubRow;
+  club?: ClubRow & { owner?: { id?: string; platform: Platform; username?: string } | null };
+}
+
+/** P0 — LIVE joueur (recrutement), distinct de la présence Realtime. */
+export interface PlayerSessionRow {
+  id: string;
+  user_id: string;
+  is_live: boolean;
+  note: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: UserRow;
 }
 
 export interface ApplicationRow {
@@ -288,6 +305,36 @@ export interface GroupMemberRow {
   role: GroupRole;
   joined_at: string;
   user?: UserRow;
+}
+
+export interface UserBlockRow {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
+  blocked?: UserRow;
+}
+
+export interface UserReportRow {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: ReportReason;
+  details: string | null;
+  status: ReportStatus;
+  created_at: string;
+  reported?: UserRow;
+}
+
+export interface NotificationRow {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
 }
 
 export interface SeasonStatRow {

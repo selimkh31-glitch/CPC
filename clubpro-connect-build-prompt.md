@@ -10,7 +10,7 @@ Tu es un ingénieur mobile senior (React Native / Expo) doublé d'un solide baga
 
 ## LE PROJET : ClubPro Connect
 
-La première plateforme de matchmaking **en temps réel** pour la communauté EA SPORTS FC / FIFA **Pro Clubs**. Elle règle trois douleurs du marché : trouver une équipe/des joueurs est fragmenté (Discord, Reddit), les no-shows plombent les sessions, et il n'existe aucune identité compétitive vérifiée.
+La première plateforme de matchmaking **en temps réel** pour la communauté **EA SPORTS FC 27 Pro Clubs**. Elle règle trois douleurs du marché : trouver une équipe/des joueurs est fragmenté (Discord, Reddit), les no-shows plombent les sessions, et il n'existe aucune identité compétitive vérifiée.
 
 **Le produit ne vend pas un annuaire — il vend une identité compétitive vérifiée + de la progression.** Le modèle est freemium à 5€/mois.
 
@@ -77,7 +77,7 @@ Ajoute les relations, index et policies RLS appropriées (un user édite son pro
 
 ### A. Profil joueur — "ClubPro Card"
 - Page profil éditable.
-- **Composant carte animée type FIFA** (signature du produit) : OVR calculé, poste, style, forme, badge de rareté visuelle (bronze / argent / or / icon selon le score), badge "✓ Verified Stats" si stats EA liées.
+- **ClubPro Card** (signature du produit) : OVR **CPC** calculé, poste, style, forme, badge de rareté visuelle (bronze / argent / or / icon selon le score), badge "Stats EA liées" uniquement si stats EA réellement liées.
 - Affichage des reviews reçues + moyennes skill/comportement.
 - La carte doit être belle, screenshotable, partageable. C'est le hook viral.
 
@@ -111,7 +111,7 @@ Ajoute les relations, index et policies RLS appropriées (un user édite son pro
 - Récompenses = badges de saison affichés sur la ClubPro Card.
 - Job de calcul de classement (Supabase Edge Function planifiée via cron).
 
-## 4. INTÉGRATION STATS EA (module "Verified Stats")
+## 4. INTÉGRATION STATS EA (module "Stats EA liées")
 
 **Important : ce n'est PAS une API officielle EA.** Ce sont des endpoints semi-publics découverts par la communauté (`proclubs.ea.com/api/fc/...`). Ils sont fonctionnels mais **instables** (pannes, SSL expiré par intermittence, rate-limiting).
 
@@ -124,7 +124,7 @@ Implémente donc une couche **défensive et mise en cache**, jamais un appel dir
   (aussi `matchType=friendlyMatch`)
 - Prévois une abstraction propre (un module `ea/` dans le backend / Edge Function) avec : headers navigateur réalistes, retries avec backoff, timeout, et **fallback silencieux** vers les stats déclaratives si l'API est down.
 - Un **job planifié** (Supabase Edge Function + cron) récupère une fois par jour les stats des clubs liés et les stocke dans Supabase (`users.verified_stats` / `season_stats`). L'app cliente ne lit QUE cette copie en cache.
-- Quand un joueur a lié son club, sa ClubPro Card affiche le badge "✓ Verified Stats" et ses vrais chiffres (buts, passes, matchs, notes).
+- Quand un joueur a lié son club, sa ClubPro Card affiche le badge "Stats EA liées" et ses vrais chiffres (buts, passes, matchs, notes). Jamais de chiffres inventés.
 - Le score de fiabilité devient **hybride** : comportement (reviews) + performance vérifiée (data EA) + régularité (matchs récents détectés).
 
 Isole ce module proprement pour qu'on puisse le désactiver via un feature flag si les endpoints EA cassent.
@@ -144,7 +144,7 @@ Prévois une couche d'abstraction `lib/ai/` avec un provider unique et des promp
 Implémente la logique de gating (champ `plan` sur users) :
 
 - **Free** : profil de base, voir le feed, candidatures limitées (ex. 3/jour), carte basique.
-- **Pro (5€/mois)** : candidatures illimitées, carte animée premium + raretés, filtres avancés, priorité dans les candidatures, Scout Report IA, ligues classées, badges de saison, Verified Stats.
+- **Pro (5€/mois)** : candidatures illimitées, carte animée premium + raretés, filtres avancés, priorité dans les candidatures, Scout Report IA, saison CPC, badges de saison, stats EA liées.
 
 Prépare l'intégration paiement mobile. **Important** : sur iOS et Android, la vente d'abonnements numériques doit passer par les achats in-app des stores (App Store / Google Play), pas par Stripe directement. Utilise donc **RevenueCat** (par-dessus StoreKit / Google Play Billing) pour gérer l'abonnement Pro à 5€/mois de façon cross-platform. Structure l'intégration (SDK, gestion de l'entitlement `pro`, restauration d'achats, webhook RevenueCat → Supabase pour synchroniser le champ `plan`), mets des placeholders clairs pour les clés, et documente le branchement dans le README. Ne code pas de logique de facturation complexe au-delà du MVP.
 
@@ -198,7 +198,7 @@ Génère des données mock réalistes : 30 users (postes/plateformes/langues var
 
 **Phase 1 (le cœur — must be perfect)** : setup projet + stack, schéma Prisma + RLS, auth + onboarding, Live Feed temps réel, candidature 1 clic, ClubPro Card, Trust Engine basique, seed. → C'est le MVP payable.
 
-**Phase 2** : module Verified Stats EA (avec cache + fallback), Smart Match IA, Scout Report, filtres avancés, notifications.
+**Phase 2** : module stats EA (avec cache + fallback), matching LIVE déterministe, Scout Report, filtres avancés, notifications.
 
 **Phase 3** : Ligues, saisons, classements, récompenses, gating freemium + placeholders Stripe.
 

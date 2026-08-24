@@ -72,6 +72,15 @@ verify_jwt = true
 [functions.create-group]
 verify_jwt = true
 
+[functions.block-user]
+verify_jwt = true
+
+[functions.unblock-user]
+verify_jwt = true
+
+[functions.report-user]
+verify_jwt = true
+
 [functions.ea-sync]
 verify_jwt = false
 
@@ -79,6 +88,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.resolve-expired-departures]
+verify_jwt = false
+
+# P0/P1 — janitor LIVE. Auth = CRON_SECRET (comme ea-sync), pas un JWT session.
+# Le SQL pg_cron `expire-live-sessions-sql` (migration 0023) n'a pas besoin
+# de cette Edge ; elle reste l'invoke HTTP documenté.
+[functions.expire-live-sessions]
 verify_jwt = false
 
 [functions.revenuecat-webhook]

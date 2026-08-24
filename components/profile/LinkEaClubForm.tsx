@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useLinkEaClub } from "@/lib/hooks/useProfile";
 import { toast } from "@/lib/toast";
 
-/** Module "Verified Stats" (section 4) — lien vers le club EA côté joueur. */
+/** Lien vers le club EA SPORTS FC (stats affichées seulement si liées). */
 export function LinkEaClubForm() {
   const [eaClubName, setEaClubName] = useState("");
   const mutation = useLinkEaClub();
@@ -23,7 +23,7 @@ export function LinkEaClubForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>Verified Stats</CardTitle>
+        <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>Stats EA liées</CardTitle>
       </CardHeader>
       <Text className="mb-3 text-sm text-fg-muted">
         Lie ton club EA SPORTS FC pour afficher tes vraies stats sur ta ClubPro Card.

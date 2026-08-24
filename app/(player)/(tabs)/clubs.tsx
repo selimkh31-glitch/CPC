@@ -17,6 +17,8 @@ import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS } from "@/lib/constants";
 import { useClubsList, useMyMemberships } from "@/lib/hooks/useClubs";
 import { useMyDepartureUpdates } from "@/lib/hooks/useDepartures";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { isLiveActive } from "@/lib/live";
+import { useLiveClock } from "@/lib/hooks/useLiveClock";
 
 /**
  * Onglet Club — Mode Joueur (Foundation #1, déplacé depuis app/(tabs)/clubs.tsx).
@@ -119,6 +121,7 @@ export default function ClubsScreen() {
 
 /** Annuaire complet (préexistant, inchangé) — vue secondaire de l'onglet Club. */
 function ClubsDirectory() {
+  const now = useLiveClock();
   const { data: clubs, isLoading, isError, refetch, isRefetching } = useClubsList();
 
   return (
@@ -147,7 +150,7 @@ function ClubsDirectory() {
         )
       }
       renderItem={({ item: club }) => {
-        const isLive = club.sessions?.some((s) => s.is_live);
+        const isLive = club.sessions?.some((s) => isLiveActive(s, now));
         return (
           <Pressable onPress={() => router.push(`/club/${club.id}`)} className="active:opacity-90">
             <Card>

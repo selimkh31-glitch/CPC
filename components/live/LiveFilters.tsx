@@ -1,18 +1,19 @@
 import { ScrollView, Text, View } from "react-native";
 import { ChipSelect } from "@/components/ui/ChipSelect";
 import {
-  CLUB_LEVELS, CLUB_LEVEL_LABELS, LANGUAGES, LANGUAGE_LABELS, POSITIONS, POSITION_LABELS,
+  CLUB_LEVELS, CLUB_LEVEL_LABELS, LANGUAGES, LANGUAGE_LABELS, PLATFORMS, PLATFORM_LABELS, POSITIONS, POSITION_LABELS,
 } from "@/lib/constants";
 
 export interface LiveFiltersState {
   position: string;
   level: string;
   language: string;
+  platform: string;
 }
 
-export const EMPTY_LIVE_FILTERS: LiveFiltersState = { position: "", level: "", language: "" };
+export const EMPTY_LIVE_FILTERS: LiveFiltersState = { position: "", level: "", language: "", platform: "" };
 
-/** Filtres du Live Feed (section 3.C) — poste, niveau, langue. Chips tactiles, une ligne par catégorie. */
+/** Filtres du Live Feed — poste, plateforme, niveau, langue. */
 export function LiveFilters({
   value,
   onChange,
@@ -28,6 +29,14 @@ export function LiveFilters({
           value={value.position ? [value.position] : []}
           onChange={(v) => onChange({ ...value, position: v[0] ?? "" })}
           options={POSITIONS.map((p) => ({ value: p, label: POSITION_LABELS[p] }))}
+        />
+      </FilterRow>
+      <FilterRow label="Plateforme">
+        <ChipSelect
+          single
+          value={value.platform ? [value.platform] : []}
+          onChange={(v) => onChange({ ...value, platform: v[0] ?? "" })}
+          options={PLATFORMS.map((p) => ({ value: p, label: PLATFORM_LABELS[p] }))}
         />
       </FilterRow>
       <FilterRow label="Niveau">

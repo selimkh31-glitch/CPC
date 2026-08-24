@@ -103,6 +103,7 @@ async function main() {
       data: {
         clubId,
         isLive: true,
+        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
         neededPositions: sample(POSITIONS, faker.number.int({ min: 1, max: 3 })),
         note: faker.helpers.maybe(() => faker.lorem.sentence({ min: 4, max: 10 }), { probability: 0.6 }) ?? null,
       },

@@ -21,9 +21,9 @@ const PRO_FEATURES = [
   "Filtres avancés",
   "Priorité dans les candidatures",
   "Scout Report IA",
-  "Ligues classées",
+  "Saison CPC",
   "Badges de saison",
-  "Verified Stats EA",
+  "Stats EA liées",
 ];
 
 /** Paywall Pro (section 6) — achat in-app via RevenueCat (StoreKit / Play Billing). */

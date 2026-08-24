@@ -1,6 +1,8 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireUuid, ValidationError } from "../_shared/validate.ts";
+import { rejectIfBlocked } from "../_shared/blocked.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 /**
  * Club -> joueur, invitation GÉNÉRALE (pas de slot/match visé) — miroir
@@ -48,7 +50,17 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Non autorisé" }, 403);
   }
 
-  const { data: targetUser } = await admin.from("users").select("id").eq("id", userId).maybeSingle();
+  const blocked = await rejectIfBlocked(admin, user.id, userId);
+  if (blocked) return blocked;
+
+  const { data: club } = await admin.from("clubs").select("id, name, owner_id").eq("id", clubId).maybeSingle();
+  if (!club) return jsonResponse({ error: "Club introuvable." }, 404);
+  if (club.owner_id !== user.id) {
+    const ownerBlocked = await rejectIfBlocked(admin, club.owner_id, userId);
+    if (ownerBlocked) return ownerBlocked;
+  }
+
+  const { data: targetUser } = await admin.from("users").select("id, push_token").eq("id", userId).maybeSingle();
   if (!targetUser) {
     return jsonResponse({ error: "Joueur introuvable." }, 404);
   }
@@ -138,8 +150,20 @@ Deno.serve(async (req) => {
     if (error.message.includes("invitations_one_pending_transition_per_departure")) {
       return jsonResponse({ error: "Ce joueur a déjà une offre de transition en attente d'un autre club." }, 409);
     }
+    if (error.message.includes("users_blocked")) {
+      return jsonResponse({ error: "Tu ne peux pas interagir avec ce joueur." }, 403);
+    }
     return jsonResponse({ error: error.message }, 500);
   }
+
+  await notifyUser(admin, {
+    userId,
+    type: "INVITATION_RECEIVED",
+    title: "Invitation reçue",
+    body: `${club.name} t'invite à rejoindre le club.`,
+    data: { clubId, invitationId: invitation.id },
+    pushToken: (targetUser as any).push_token,
+  });
 
   return jsonResponse({ invitation });
 });

@@ -10,7 +10,7 @@ import { requireString, ValidationError } from "../_shared/validate.ts";
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (!FEATURE_EA_STATS) return jsonResponse({ error: "Module Verified Stats désactivé." }, 503);
+  if (!FEATURE_EA_STATS) return jsonResponse({ error: "Module stats EA désactivé." }, 503);
 
   const user = await getCallingUser(req);
   if (!user) return jsonResponse({ error: "Non authentifié" }, 401);
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  await admin.from("users").update({ ea_club_linked: eaClubId }).eq("id", user.id);
+  await admin.from("users").update({ ea_club_linked: eaClubId, ea_identity_kind: "USERNAME_EQUALITY" }).eq("id", user.id);
 
   const statsByName = await fetchVerifiedClubStats(eaClubId);
   const mine = statsByName?.[profile.username.trim().toLowerCase()] ?? null;

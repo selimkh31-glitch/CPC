@@ -43,6 +43,7 @@ function baseUser(overrides: Partial<UserRow> = {}): UserRow {
     reliability_score: 50,
     verified_stats: null,
     ea_club_linked: null,
+    ea_identity_kind: "NONE",
     plan: "FREE",
     current_streak: 0,
     best_streak: 0,
@@ -110,4 +111,9 @@ test("verified_stats avec champs partiels (rating/matchesPlayed absents) -> ne c
   if (data.ovr < 40 || data.ovr > 99) throw new Error(`OVR hors bornes : ${data.ovr}`);
 });
 
-console.log(`\n${passed} test(s) passés.`);
+test("eaIdentityKind NONE par défaut ; USERNAME_EQUALITY si club lié avec kind posé", () => {
+  assert.equal(buildPlayerCardData(baseUser()).eaIdentityKind, "NONE", "default");
+  const data = buildPlayerCardData(baseUser({ ea_club_linked: "123", ea_identity_kind: "USERNAME_EQUALITY" }));
+  assert.equal(data.eaIdentityKind, "USERNAME_EQUALITY", "kind");
+  assert.equal(data.verified, true, "verified = club lié, pas id joueur EA");
+});

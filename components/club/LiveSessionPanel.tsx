@@ -6,19 +6,22 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ChipSelect } from "@/components/ui/ChipSelect";
 import { PulseDot } from "@/components/ui/PulseDot";
+import { LiveCountdown } from "@/components/live/LiveCountdown";
 import { POSITIONS, POSITION_LABELS } from "@/lib/constants";
+import { DEFAULT_LIVE_DURATION_MS, LIVE_DURATION_OPTIONS, parseLiveDurationMs } from "@/lib/live";
 import { useCreateSession, useToggleSession } from "@/lib/hooks/useClubs";
 import { toast } from "@/lib/toast";
 
 interface LiveSessionPanelProps {
   clubId: string;
-  activeSession: { id: string; needed_positions: string[]; note: string | null } | null;
+  activeSession: { id: string; needed_positions: string[]; note: string | null; expires_at?: string | null } | null;
 }
 
 /** Toggle session LIVE ON/OFF + postes recherchés (section 3.B). */
 export function LiveSessionPanel({ clubId, activeSession }: LiveSessionPanelProps) {
   const [positions, setPositions] = useState<string[]>(activeSession?.needed_positions ?? []);
   const [note, setNote] = useState(activeSession?.note ?? "");
+  const [duration, setDuration] = useState([String(DEFAULT_LIVE_DURATION_MS)]);
   const createSession = useCreateSession(clubId);
   const toggleSession = useToggleSession(clubId);
 
@@ -28,9 +31,9 @@ export function LiveSessionPanel({ clubId, activeSession }: LiveSessionPanelProp
       return;
     }
     createSession.mutate(
-      { neededPositions: positions, note: note.trim() || undefined },
+      { neededPositions: positions, note: note.trim() || undefined, durationMs: parseLiveDurationMs(duration[0]) },
       {
-        onSuccess: () => toast.success("Club LIVE ! Visible dans le feed."),
+        onSuccess: () => toast.success("Club LIVE ! Visible dans le feed FC 27 Pro Clubs."),
         onError: (err: any) => toast.error(err.message ?? "Erreur"),
       }
     );
@@ -52,12 +55,20 @@ export function LiveSessionPanel({ clubId, activeSession }: LiveSessionPanelProp
           <View className="flex-row items-center gap-1.5">
             <PulseDot />
             <Text className="text-xs font-extrabold text-accent">LIVE</Text>
+            <LiveCountdown expiresAt={activeSession.expires_at ?? null} />
           </View>
         )}
       </CardHeader>
 
-      <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Postes recherchés</Text>
+      <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Postes recherchés (roster FC 27)</Text>
       <ChipSelect value={positions} onChange={setPositions} options={POSITIONS.map((p) => ({ value: p, label: POSITION_LABELS[p] }))} />
+
+      {!activeSession && (
+        <View className="mt-3">
+          <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Durée du LIVE</Text>
+          <ChipSelect single value={duration} onChange={(v) => setDuration(v.length ? v : [String(DEFAULT_LIVE_DURATION_MS)])} options={[...LIVE_DURATION_OPTIONS]} />
+        </View>
+      )}
 
       <View className="mt-3">
         <Input value={note} onChangeText={setNote} placeholder="Note (optionnel) — ex: 'On lance dans 10 min'" maxLength={200} />

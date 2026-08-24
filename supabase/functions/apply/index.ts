@@ -1,8 +1,10 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { moderateText } from "../_shared/ai.ts";
-import { sendPushNotification } from "../_shared/push.ts";
 import { optionalString, requireString, requireUuid, ValidationError } from "../_shared/validate.ts";
+import { canApplyToLiveClub } from "../_shared/liveMatch.ts";
+import { rejectIfBlocked } from "../_shared/blocked.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 const FREE_APPLICATIONS_PER_DAY = 3;
 
@@ -37,13 +39,41 @@ Deno.serve(async (req) => {
   const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
   if (!profile) return jsonResponse({ error: "Profil introuvable, termine l'onboarding." }, 404);
 
-  const { data: session } = await admin.from("club_sessions").select("*").eq("id", sessionId).single();
+  const { data: session } = await admin
+    .from("club_sessions")
+    .select("*, club:clubs(id, owner_id, owner:users(platform))")
+    .eq("id", sessionId)
+    .single();
   if (!session || !session.is_live) {
     return jsonResponse({ error: "Cette session n'est plus disponible." }, 410);
   }
 
-  if (!session.needed_positions.includes(position)) {
-    return jsonResponse({ error: "Ce poste n'est pas recherché par cette session." }, 400);
+  const ownerId = (session as any).club?.owner_id as string | undefined;
+  if (ownerId) {
+    const blocked = await rejectIfBlocked(admin, user.id, ownerId);
+    if (blocked) return blocked;
+  }
+
+  const eligibility = canApplyToLiveClub(
+    {
+      mainPosition: profile.main_position,
+      secondaryPositions: profile.secondary_positions ?? [],
+      platform: profile.platform,
+    },
+    {
+      clubId: session.club_id,
+      sessionId: session.id,
+      neededPositions: session.needed_positions ?? [],
+      platform: (session as any).club?.owner?.platform ?? null,
+      is_live: Boolean(session.is_live),
+      expires_at: session.expires_at ?? null,
+    },
+    position,
+    Date.now()
+  );
+  if (!eligibility.ok) {
+    const expired = eligibility.error.includes("expiré") || eligibility.error.includes("LIVE club");
+    return jsonResponse({ error: eligibility.error }, expired ? 410 : 400);
   }
 
   // Candidature sur un slot précis (phase 4, feuille de match) — vérification
@@ -84,13 +114,6 @@ Deno.serve(async (req) => {
         402
       );
     }
-    await admin
-      .from("users")
-      .update({
-        applications_today: resetNeeded ? 1 : count + 1,
-        applications_reset_at: resetNeeded ? new Date().toISOString() : profile.applications_reset_at,
-      })
-      .eq("id", user.id);
   }
 
   if (message) {
@@ -120,21 +143,53 @@ Deno.serve(async (req) => {
     .select()
     .single();
 
-  if (error) return jsonResponse({ error: error.message }, 500);
+  if (error) {
+    // 23505 = unique applications_one_pending_per_user_session (course concurrente).
+    if (error.code === "23505") return jsonResponse({ error: "Tu as déjà postulé à cette session." }, 409);
+    const msg = error.message ?? "";
+    if (msg.includes("session_not_live")) return jsonResponse({ error: "Cette session LIVE a expiré." }, 410);
+    if (msg.includes("platform_mismatch") || msg.includes("platform_unknown")) {
+      return jsonResponse({ error: "Plateforme différente de celle du club." }, 400);
+    }
+    if (msg.includes("position_not_played") || msg.includes("position_not_needed") || msg.includes("session_no_need")) {
+      return jsonResponse({ error: "Ce poste n'est pas compatible avec cette session." }, 400);
+    }
+    if (msg.includes("users_blocked")) {
+      return jsonResponse({ error: "Tu ne peux pas interagir avec ce joueur." }, 403);
+    }
+    return jsonResponse({ error: error.message }, 500);
+  }
 
-  // Notifie les owner/manager du club — non-bloquant.
+  // Quota Free : incrémenté SEULEMENT après insert réussi (un 409/500 ne
+  // brûle plus une candidature du jour).
+  if (profile.plan === "FREE") {
+    const resetNeeded = !isSameDay(new Date(profile.applications_reset_at), new Date());
+    const count = resetNeeded ? 0 : profile.applications_today;
+    await admin
+      .from("users")
+      .update({
+        applications_today: resetNeeded ? 1 : count + 1,
+        applications_reset_at: resetNeeded ? new Date().toISOString() : profile.applications_reset_at,
+      })
+      .eq("id", user.id);
+  }
+
   const { data: managers } = await admin
     .from("club_members")
-    .select("user:users(push_token)")
+    .select("user_id, user:users(id, push_token)")
     .eq("club_id", session.club_id)
     .in("role", ["OWNER", "MANAGER"]);
   for (const m of managers ?? []) {
-    await sendPushNotification(
-      (m as any).user?.push_token,
-      "Nouvelle candidature 📥",
-      `${profile.username} veut rejoindre ta session.`,
-      { type: "application", clubId: session.club_id }
-    );
+    const managerId = (m as any).user_id ?? (m as any).user?.id;
+    if (!managerId) continue;
+    await notifyUser(admin, {
+      userId: managerId,
+      type: "APPLICATION_RECEIVED",
+      title: "Nouvelle candidature",
+      body: `${profile.username} veut rejoindre ta session LIVE.`,
+      data: { clubId: session.club_id, applicationId: application.id },
+      pushToken: (m as any).user?.push_token,
+    });
   }
 
   return jsonResponse({ application });

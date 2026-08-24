@@ -15,6 +15,8 @@
  */
 import { computeOvr, rarityForOvr, type Rarity } from "@/lib/ovr";
 import type { Plan, Platform, PlayStyleCode, PositionCode, UserRow, VerifiedStats } from "@/lib/types";
+import type { EaIdentityKind } from "@/lib/statsSource";
+import { normalizeEaIdentityKind } from "@/lib/statsSource";
 
 export type PlayerCardVariant = "compact" | "standard" | "hero";
 export type PlayerCardState = "normal" | "featured" | "mvp" | "winner" | "selected";
@@ -36,8 +38,9 @@ export interface PlayerCardData {
   currentStreak: number;
   badges: string[];
 
-  /** --- EA STATS (source externe, affichées seulement si `verified`) --- */
+  /** Club EA lié (stats éventuelles). ≠ identité joueur EA vérifiée. */
   verified: boolean;
+  eaIdentityKind: EaIdentityKind;
   eaStats: VerifiedStats | null;
 }
 
@@ -60,6 +63,7 @@ export function buildPlayerCardData(user: UserRow, opts: { clubName?: string | n
     badges: user.badges ?? [],
 
     verified: Boolean(user.ea_club_linked),
+    eaIdentityKind: normalizeEaIdentityKind(user.ea_identity_kind),
     eaStats: user.verified_stats ?? null,
   };
 }

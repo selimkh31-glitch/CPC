@@ -15,6 +15,7 @@ const STATUS_LABELS: Record<InvitationStatus, string> = {
   DECLINED: "Refusée",
   CANCELLED: "Annulée",
   RESERVED: "Réservée",
+  EXPIRED: "Expirée",
 };
 
 const STATUS_TONES: Record<InvitationStatus, "warn" | "accent" | "danger" | "neutral"> = {
@@ -23,6 +24,7 @@ const STATUS_TONES: Record<InvitationStatus, "warn" | "accent" | "danger" | "neu
   DECLINED: "danger",
   CANCELLED: "neutral",
   RESERVED: "neutral",
+  EXPIRED: "neutral",
 };
 
 /**

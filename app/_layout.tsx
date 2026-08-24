@@ -17,8 +17,19 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider, useAuth } from "@/lib/providers/AuthProvider";
 import { AppModeProvider, useAppMode } from "@/lib/providers/AppModeProvider";
 import { ToastHost } from "@/components/ui/ToastHost";
+import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { useNotifications } from "@/lib/hooks/useNotifications";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Canaux Realtime block/notifications (ref-countés) dès qu'une session existe. */
+function SafetyRealtimeBridge() {
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
+  useBlockedUserIds(userId);
+  useNotifications(userId);
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -46,6 +57,7 @@ export default function RootLayout() {
           <AppModeProvider>
             <SafeAreaProvider>
               <StatusBar style="light" />
+              <SafetyRealtimeBridge />
               <RootNavigator />
               <ToastHost />
             </SafeAreaProvider>
@@ -180,6 +192,18 @@ function RootNavigator() {
         <Stack.Screen
           name="group/[id]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Notifications" }}
+        />
+        <Stack.Screen
+          name="blocked"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Bloqués" }}
+        />
+        <Stack.Screen
+          name="report/[userId]"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
         />
       </Stack.Protected>
 

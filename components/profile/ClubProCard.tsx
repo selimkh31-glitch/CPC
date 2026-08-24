@@ -6,6 +6,8 @@ import { BadgeCheck, Flame, Share2 } from "lucide-react-native";
 import { POSITION_LABELS, PLATFORM_LABELS, PLAY_STYLE_LABELS } from "@/lib/constants";
 import { computeOvr, rarityForOvr, RARITY_LABEL, type Rarity } from "@/lib/ovr";
 import type { Platform, PlayStyleCode, PositionCode, VerifiedStats } from "@/lib/types";
+import type { EaIdentityKind } from "@/lib/statsSource";
+import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
 
 export interface ClubProCardData {
@@ -18,6 +20,7 @@ export interface ClubProCardData {
   currentStreak: number;
   verifiedStats?: VerifiedStats | null;
   eaClubLinked?: string | null;
+  eaIdentityKind?: EaIdentityKind | null;
 }
 
 const RARITY_GRADIENT: Record<Rarity, [string, string]> = {
@@ -42,19 +45,20 @@ const RARITY_TEXT: Record<Rarity, string> = {
 };
 
 /**
- * ClubPro Card — le hook viral du produit (section 3.A). OVR calculé, rareté
- * visuelle, badge Verified Stats, streak. Pensée pour être belle en capture
+ * ClubPro Card — le hook viral du produit (section 3.A). OVR CPC, rareté
+ * visuelle, badge stats EA liées, streak. Pensée pour être belle en capture
  * d'écran et partageable nativement (Share API).
  */
 export function ClubProCard({ data }: { data: ClubProCardData }) {
   const ovr = computeOvr({ reliabilityScore: data.reliabilityScore, verifiedStats: data.verifiedStats });
   const rarity = rarityForOvr(ovr);
-  const verified = Boolean(data.eaClubLinked);
+  const identity = eaIdentityBadge(data.eaIdentityKind);
+  const verified = Boolean(data.eaClubLinked) || identity.show;
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await Share.share({
-      message: `${data.username} — ${ovr} OVR sur ClubPro Connect 🎮⚽`,
+      message: `${data.username} — ${ovr} OVR CPC sur ClubPro Connect (EA SPORTS FC 27 Pro Clubs)`,
     });
   };
 
@@ -70,7 +74,7 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
           <View>
             <Text className="font-display text-6xl text-fg">{ovr}</Text>
             <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-              {data.mainPosition}
+              OVR CPC · {data.mainPosition}
             </Text>
           </View>
           <View className="items-end">
@@ -112,17 +116,26 @@ export function ClubProCard({ data }: { data: ClubProCardData }) {
         </View>
 
         {verified && (
-          <View className="mt-3 flex-row items-center self-start gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
-            <BadgeCheck size={14} color="#39ff8a" />
-            <Text className="text-xs font-bold text-accent">Verified Stats</Text>
+          <View className="mt-3 self-start rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1">
+            <View className="flex-row items-center gap-1.5">
+              <BadgeCheck size={14} color="#39ff8a" />
+              <Text className="text-xs font-bold text-accent">{identity.label || "Stats club EA liées"}</Text>
+            </View>
+            <Text className="mt-0.5 text-[10px] text-fg-muted">
+              {identity.hint || "Rapprochement par pseudo — pas un id joueur EA vérifié."}
+            </Text>
           </View>
         )}
 
-        <View className="mt-4 flex-row gap-2">
-          <StatBlock label="Buts" value={data.verifiedStats?.goals ?? "—"} />
-          <StatBlock label="Passes" value={data.verifiedStats?.assists ?? "—"} />
-          <StatBlock label="Matchs" value={data.verifiedStats?.matchesPlayed ?? "—"} />
-        </View>
+        {verified ? (
+          <View className="mt-4 flex-row gap-2">
+            <StatBlock label="Buts EA" value={data.verifiedStats?.goals ?? "—"} />
+            <StatBlock label="Passes EA" value={data.verifiedStats?.assists ?? "—"} />
+            <StatBlock label="Matchs EA" value={data.verifiedStats?.matchesPlayed ?? "—"} />
+          </View>
+        ) : (
+          <Text className="mt-4 text-xs text-fg-subtle">Pas de stats EA liées — aucun chiffre inventé.</Text>
+        )}
 
         <View className="mt-4 flex-row items-center justify-between">
           <Text className="text-xs text-fg-muted">

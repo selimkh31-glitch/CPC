@@ -3,9 +3,10 @@ import { supabase } from "@/lib/supabase/client";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import type { ClubRow } from "@/lib/types";
 import type { PositionCode } from "@/lib/constants";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 
 export interface ClubMatch {
-  club: ClubRow & { owner?: { username: string } | null; sessions?: { is_live: boolean }[] };
+  club: ClubRow & { owner?: { id?: string; username: string } | null; sessions?: { is_live: boolean; expires_at: string | null }[] };
   formationId: FormationId;
   openSlots: FormationSlot[];
 }
@@ -23,20 +24,28 @@ export function useClubSearch(mainPosition: PositionCode | null, secondaryPositi
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("*, slotAssignments:slot_assignments(slot_id), owner:users(username), sessions:club_sessions(is_live)")
+        .select("*, slotAssignments:slot_assignments(slot_id), owner:users(id,username), sessions:club_sessions(is_live,expires_at)")
         .not("formation", "is", null)
         .order("created_at", { ascending: false })
         .limit(60);
       if (error) throw error;
+
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
 
       const wanted = new Set<string>([mainPosition!, ...secondaryPositions]);
       const results: ClubMatch[] = [];
 
       for (const row of data as (ClubRow & {
         slotAssignments: { slot_id: string }[];
-        owner: { username: string } | null;
-        sessions: { is_live: boolean }[];
+        owner: { id?: string; username: string } | null;
+        sessions: { is_live: boolean; expires_at: string | null }[];
       })[]) {
+        if (blocked.has(row.owner_id) || (row.owner?.id && blocked.has(row.owner.id))) continue;
         const formationId = row.formation as FormationId | null;
         if (!formationId || !FORMATIONS[formationId]) continue;
 

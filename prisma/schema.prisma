@@ -73,6 +73,12 @@ enum ApplicationStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+  // P1 — aligné invitations : refus club = DECLINED (REJECTED conservé en
+  // lecture pour les lignes historiques). CANCELLED = LIVE coupé à la main.
+  // EXPIRED = TTL LIVE écoulé pendant PENDING.
+  DECLINED
+  CANCELLED
+  EXPIRED
 }
 
 enum InvitationStatus {
@@ -85,6 +91,7 @@ enum InvitationStatus {
   // qu'au moment où son match libérateur chez l'ancien club est validé (voir
   // ClubDeparture). Jamais utilisée pour une invitation normale.
   RESERVED
+  EXPIRED
 }
 
 // Phase 5 — cycle de vie d'une sortie de club (demande joueur OU libération
@@ -169,6 +176,9 @@ model User {
   reliabilityScore    Float       @default(0) @map("reliability_score")
   verifiedStats       Json?       @map("verified_stats")
   eaClubLinked        String?     @map("ea_club_linked")
+  // NONE = pas de lien EA. USERNAME_EQUALITY = club EA lié, rapprochement
+  // joueur par pseudo uniquement (aucun id joueur EA stable n'existe).
+  eaIdentityKind      String      @default("NONE") @map("ea_identity_kind")
   plan                Plan        @default(FREE)
   // Trust Engine — streak de sessions honorées consécutives.
   currentStreak       Int         @default(0) @map("current_streak")
@@ -204,6 +214,12 @@ model User {
   messagesSent             Message[]
   groupsOwned              Group[]              @relation("GroupOwner")
   groupMemberships         GroupMember[]
+  playerSessions           PlayerSession[]
+  blocksMade               UserBlock[]          @relation("BlocksMade")
+  blocksReceived           UserBlock[]          @relation("BlocksReceived")
+  reportsMade              UserReport[]         @relation("ReportsMade")
+  reportsReceived          UserReport[]         @relation("ReportsReceived")
+  notifications            Notification[]
 
   @@index([reliabilityScore])
   @@index([platform])
@@ -282,6 +298,10 @@ model ClubSession {
   isLive          Boolean    @default(false) @map("is_live")
   neededPositions Position[] @map("needed_positions")
   note            String?
+  // P0 — TTL du LIVE recrutement. Obligatoire dès que is_live = true
+  // (CHECK en SQL, 0021). Jamais de LIVE infini.
+  // P1 — LIVE exige aussi needed_positions non vide (0024).
+  expiresAt       DateTime?  @map("expires_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   // @default(now()) garantit un INSERT valide même hors Prisma Client (supabase-js) ;
   // le trigger Postgres `moddatetime` (supabase/migrations/0003_triggers.sql) la
@@ -296,7 +316,28 @@ model ClubSession {
 
   @@index([isLive])
   @@index([clubId])
+  @@index([expiresAt])
   @@map("club_sessions")
+}
+
+// P0 — LIVE joueur : "je suis dispo maintenant pour rejoindre un club Pro Clubs".
+// Distinct de usePresence (en ligne dans l'app) et de ClubSession (LIVE club).
+// Une seule ligne is_live = true par user (index unique partiel en SQL).
+model PlayerSession {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  isLive    Boolean   @default(false) @map("is_live")
+  note      String?
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isLive])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("player_sessions")
 }
 
 model Application {
@@ -701,4 +742,55 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_members")
+}
+
+// ------------------------------------------------------------------
+// Safety — block / report (écritures Edge) + notifications in-app.
+// Voir supabase/migrations/0025_safety_notifications.sql.
+// ------------------------------------------------------------------
+
+model UserBlock {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model UserReport {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId String   @map("reporter_id") @db.Uuid
+  reportedId String   @map("reported_id") @db.Uuid
+  reason     String
+  details    String?
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  reporter User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("ReportsReceived", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([reportedId, status])
+  @@map("user_reports")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String
+  data      Json      @default("{}")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

@@ -95,8 +95,11 @@ export function useApplications(clubId: string | null) {
 export function useRespondApplication(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { applicationId: string; status: "ACCEPTED" | "REJECTED" }) =>
-      callEdgeFunction("respond-application", vars),
+    mutationFn: (vars: { applicationId: string; status: "ACCEPTED" | "DECLINED" | "REJECTED" }) =>
+      callEdgeFunction("respond-application", {
+        applicationId: vars.applicationId,
+        status: vars.status === "REJECTED" ? "DECLINED" : vars.status,
+      }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["applications", clubId] });
@@ -150,9 +153,10 @@ export function useWithdrawApplication() {
         .from("applications")
         .update({ status: "WITHDRAWN" })
         .eq("id", applicationId)
+        .eq("status", "PENDING")
         .select()
         .single();
-      if (error) throw error;
+      if (error) throw new Error("Cette candidature a déjà été traitée.");
       return data as ApplicationRow;
     },
     onSuccess: (_, applicationId) => {

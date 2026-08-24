@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { router } from "expo-router";
-import { MessageCircle, Star } from "lucide-react-native";
+import { Ban, Flag, MessageCircle, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -11,14 +11,23 @@ import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
 import { ReviewForm } from "@/components/profile/ReviewForm";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
 import { useStartDirectConversation } from "@/lib/hooks/useChat";
+import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
+import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
 /** Contenu de la page profil, réutilisé pour le profil perso (tab) et /profile/[id]. */
 export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boolean }) {
+  const { session } = useAuth();
   const { data: user, isLoading, isError, refetch } = useUserProfile(userId);
   const { data: reviews } = useUserReviews(userId);
   const startConversation = useStartDirectConversation();
+  const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
+  const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
+  const blockUser = useBlockUser();
+  const unblockUser = useUnblockUser();
+  const iBlockedThem = Boolean(myBlocks?.some((row) => row.blocked_id === userId));
+  const blockedEitherWay = Boolean(blockedIds?.includes(userId));
 
   if (isError) {
     return (
@@ -53,24 +62,62 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
           currentStreak: user.current_streak,
           verifiedStats: user.verified_stats,
           eaClubLinked: user.ea_club_linked,
+          eaIdentityKind: user.ea_identity_kind,
         }}
       />
 
       {!isOwn && (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<MessageCircle size={15} color="#f4f5f7" />}
-          loading={startConversation.isPending}
-          onPress={() =>
-            startConversation.mutate(user.id, {
-              onSuccess: (data) => router.push(`/conversation/${data.conversation.id}`),
-              onError: (err: any) => toast.error(err.message ?? "Impossible de démarrer la conversation."),
-            })
-          }
-        >
-          Message
-        </Button>
+        <View className="w-full gap-2">
+          {!blockedEitherWay && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<MessageCircle size={15} color="#f4f5f7" />}
+              loading={startConversation.isPending}
+              onPress={() =>
+                startConversation.mutate(user.id, {
+                  onSuccess: (data) => router.push(`/conversation/${data.conversation.id}`),
+                  onError: (err: any) => toast.error(err.message ?? "Impossible de démarrer la conversation."),
+                })
+              }
+            >
+              Message
+            </Button>
+          )}
+          <View className="flex-row gap-2">
+            <Button
+              variant={iBlockedThem ? "secondary" : "danger"}
+              size="sm"
+              className="flex-1"
+              icon={<Ban size={15} color={iBlockedThem ? "#f4f5f7" : "#ff5c7a"} />}
+              loading={blockUser.isPending || unblockUser.isPending}
+              onPress={() => {
+                if (iBlockedThem) {
+                  unblockUser.mutate(user.id, {
+                    onSuccess: () => toast.success("Joueur débloqué."),
+                    onError: (err: any) => toast.error(err.message ?? "Impossible de débloquer."),
+                  });
+                } else {
+                  blockUser.mutate(user.id, {
+                    onSuccess: () => toast.success("Joueur bloqué — il disparaît du LIVE, du matching et des messages."),
+                    onError: (err: any) => toast.error(err.message ?? "Impossible de bloquer."),
+                  });
+                }
+              }}
+            >
+              {iBlockedThem ? "Débloquer" : "Bloquer"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1"
+              icon={<Flag size={15} color="#9aa0a8" />}
+              onPress={() => router.push(`/report/${user.id}`)}
+            >
+              Signaler
+            </Button>
+          </View>
+        </View>
       )}
 
       {isOwn && !user.ea_club_linked && <LinkEaClubForm />}

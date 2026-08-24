@@ -1,6 +1,8 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireEnum, requireUuid, ValidationError } from "../_shared/validate.ts";
+import { nextInvitationStatus, type InvitationStatus } from "../_shared/recruitment.ts";
+import { notifyUser } from "../_shared/notify.ts";
 
 /** Le joueur invité accepte/refuse (phase 4) — même structure que respond-application. */
 Deno.serve(async (req) => {
@@ -27,6 +29,12 @@ Deno.serve(async (req) => {
 
   if (invitation.user_id !== user.id) {
     return jsonResponse({ error: "Non autorisé" }, 403);
+  }
+
+  const event = status === "ACCEPTED" ? "ACCEPT" : "DECLINE";
+  const next = nextInvitationStatus(invitation.status as InvitationStatus, event);
+  if (!next) {
+    return jsonResponse({ error: "Cette invitation a déjà été traitée." }, 409);
   }
 
   let updated: typeof invitation;
@@ -58,6 +66,25 @@ Deno.serve(async (req) => {
     if (error) return jsonResponse({ error: "Cette invitation a déjà été traitée." }, 409);
     updated = declined;
   }
+
+  const { data: inviter } = await admin
+    .from("users")
+    .select("id, push_token")
+    .eq("id", invitation.invited_by)
+    .maybeSingle();
+  const { data: club } = await admin.from("clubs").select("name").eq("id", invitation.club_id).maybeSingle();
+  const { data: player } = await admin.from("users").select("username").eq("id", user.id).maybeSingle();
+  await notifyUser(admin, {
+    userId: invitation.invited_by,
+    type: status === "ACCEPTED" ? "INVITATION_ACCEPTED" : "INVITATION_DECLINED",
+    title: status === "ACCEPTED" ? "Invitation acceptée" : "Invitation refusée",
+    body:
+      status === "ACCEPTED"
+        ? `${player?.username ?? "Un joueur"} a accepté l'invitation${club?.name ? ` pour ${club.name}` : ""}.`
+        : `${player?.username ?? "Un joueur"} a refusé l'invitation${club?.name ? ` pour ${club.name}` : ""}.`,
+    data: { clubId: invitation.club_id, invitationId: invitation.id, status },
+    pushToken: inviter?.push_token,
+  });
 
   return jsonResponse({ invitation: updated });
 });
