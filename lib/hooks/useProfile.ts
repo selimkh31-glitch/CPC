@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
+import { validateProfileIdentity } from "@/lib/profileIdentity";
+import { useAuth } from "@/lib/providers/AuthProvider";
 import { USER_PUBLIC_COLUMNS, type ReviewRow, type UserRow } from "@/lib/types";
 import type { ScoutReport, SmartMatchResult } from "@/lib/ai-types";
 
@@ -47,6 +49,37 @@ export function useSubmitReview(targetUserId: string) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["reviews", targetUserId] });
       queryClient.invalidateQueries({ queryKey: ["profile", targetUserId] });
+    },
+  });
+}
+
+/**
+ * Mise à jour de sa propre identité Pro Clubs via RLS `users_update_self`.
+ * Le payload passe par l'allowlist : reliability_score, verified_stats,
+ * ea_identity_kind et plan ne sont jamais envoyés.
+ */
+export function useUpdateOwnProfile() {
+  const queryClient = useQueryClient();
+  const { session, refreshProfile } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: Record<string, unknown>) => {
+      if (!session) throw new Error("Session requise.");
+      const validated = validateProfileIdentity(input);
+      if (!validated.ok) throw new Error(validated.message);
+      const { data, error } = await supabase
+        .from("users")
+        .update(validated.patch)
+        .eq("id", session.user.id)
+        .select(USER_PUBLIC_COLUMNS)
+        .single();
+      if (error) throw error;
+      return data as unknown as UserRow;
+    },
+    onSuccess: async (_row, _vars) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }

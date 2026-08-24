@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { router } from "expo-router";
-import { Ban, Flag, Star } from "lucide-react-native";
+import { Ban, Flag, Pencil, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ClubProCard } from "@/components/profile/ClubProCard";
@@ -65,6 +65,19 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
             : null
         }
       />
+
+      {isOwn && user && (
+        <View className="w-full">
+          <Button
+            variant="secondary"
+            className="min-h-[44px] w-full"
+            icon={<Pencil size={15} color="#f4f5f7" />}
+            onPress={() => router.push("/edit-profile")}
+          >
+            Modifier mon identité Pro Clubs
+          </Button>
+        </View>
+      )}
 
       {!isOwn && user && (
         <View className="w-full gap-2">

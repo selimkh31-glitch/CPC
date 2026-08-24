@@ -64,6 +64,7 @@
     "test:safety": "tsx scripts/test-safety.ts",
     "test:social": "tsx scripts/test-social.ts",
     "test:notification-read": "tsx scripts/test-notification-read.ts",
+    "test:profile-identity": "tsx scripts/test-profile-identity.ts",
     "test:competitions": "tsx scripts/test-competitions.ts",
     "lint": "expo lint",
     "prisma:generate": "prisma generate",
