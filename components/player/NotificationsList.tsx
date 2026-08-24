@@ -10,7 +10,9 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/hooks/useNotifications";
+import { unreadNotificationCount } from "@/lib/notificationRead";
 import { notificationHref, notificationTitle } from "@/lib/safety";
+import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationRow } from "@/lib/types";
 
@@ -21,7 +23,7 @@ export function NotificationsList() {
   const { data, isLoading, isError, refetch } = useNotifications(userId);
   const markRead = useMarkNotificationRead(userId);
   const markAll = useMarkAllNotificationsRead(userId);
-  const unread = (data ?? []).filter((n) => !n.read_at).length;
+  const unread = unreadNotificationCount(data ?? []);
 
   const open = (item: NotificationRow) => {
     if (!item.read_at) markRead.mutate(item.id);
@@ -53,11 +55,21 @@ export function NotificationsList() {
   return (
     <View className="gap-2">
       {unread > 0 && (
-        <View className="mb-1 flex-row justify-end">
-          <Button variant="ghost" size="sm" loading={markAll.isPending} onPress={() => markAll.mutate()}>
-            Tout lu
-          </Button>
-        </View>
+        <Button
+          variant="secondary"
+          className="mb-1 min-h-[44px]"
+          loading={markAll.isPending}
+          accessibilityLabel="Tout marquer lu"
+          onPress={() => {
+            toast.info("Marquage en cours…");
+            markAll.mutate(undefined, {
+              onSuccess: () => toast.success("Toutes tes notifications sont lues."),
+              onError: (err: Error) => toast.error(err.message || "Impossible de tout marquer lu."),
+            });
+          }}
+        >
+          Tout marquer lu
+        </Button>
       )}
       {data.map((item) => (
         <Pressable

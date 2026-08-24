@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { unreadNotificationCount, withAllNotificationsRead } from "@/lib/notificationRead";
 import { supabase } from "@/lib/supabase/client";
 import type { NotificationRow } from "@/lib/types";
+
+export const notificationsQueryKey = (userId: string | null) => ["notifications", userId] as const;
 
 const notificationChannels = new Map<
   string,
@@ -42,7 +45,7 @@ export function useNotifications(userId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["notifications", userId],
+    queryKey: notificationsQueryKey(userId),
     enabled: Boolean(userId),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -58,7 +61,7 @@ export function useNotifications(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return;
-    const listener = () => queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
+    const listener = () => queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) });
     const entry = acquireNotificationsChannel(userId);
     entry.listeners.add(listener);
     return () => releaseNotificationsChannel(userId, listener);
@@ -69,7 +72,7 @@ export function useNotifications(userId: string | null) {
 
 export function useUnreadNotificationCount(userId: string | null) {
   const { data } = useNotifications(userId);
-  return (data ?? []).filter((n) => !n.read_at).length;
+  return unreadNotificationCount(data ?? []);
 }
 
 export function useMarkNotificationRead(userId: string | null) {
@@ -85,25 +88,35 @@ export function useMarkNotificationRead(userId: string | null) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
+      queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) });
     },
   });
 }
 
+/**
+ * Pose `read_at` sur toutes les non-lues du user courant.
+ * Pas de RPC dédié (0025 n'en a pas) — UPDATE colonne `read_at` via RLS
+ * `notifications_update_read_own` (ses lignes uniquement, grant restreint).
+ */
 export function useMarkAllNotificationsRead(userId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error("Non authentifié");
+      const readAt = new Date().toISOString();
       const { error } = await supabase
         .from("notifications")
-        .update({ read_at: new Date().toISOString() })
+        .update({ read_at: readAt })
         .eq("user_id", userId)
         .is("read_at", null);
       if (error) throw error;
+      return readAt;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
+    onSuccess: (readAt) => {
+      queryClient.setQueryData<NotificationRow[]>(notificationsQueryKey(userId), (prev) =>
+        prev ? withAllNotificationsRead(prev, readAt) : prev
+      );
+      queryClient.invalidateQueries({ queryKey: notificationsQueryKey(userId) });
     },
   });
 }
