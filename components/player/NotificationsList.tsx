@@ -14,7 +14,11 @@ import {
 } from "@/lib/hooks/useNotifications";
 import { unreadNotificationCount } from "@/lib/notificationRead";
 import { recruitmentNotificationNav } from "@/lib/recruitment";
-import { inAppNotificationHref, notificationTitle } from "@/lib/safety";
+import {
+  inAppNotificationHref,
+  matchFinalizedNotificationNav,
+  notificationTitle,
+} from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationRow } from "@/lib/types";
@@ -46,6 +50,13 @@ export function NotificationsList() {
       if (recruitment.selectClubId) setSelectedManagedClubId(recruitment.selectClubId);
       if (recruitment.requireClubMode) setMode("CLUB");
       setPendingNav({ href: recruitment.href, requireClubMode: recruitment.requireClubMode });
+      return;
+    }
+    const matchNav = matchFinalizedNotificationNav(item.type, item.data, mode);
+    if (matchNav) {
+      if (matchNav.selectClubId) setSelectedManagedClubId(matchNav.selectClubId);
+      if (matchNav.requireClubMode) setMode("CLUB");
+      setPendingNav({ href: matchNav.href, requireClubMode: matchNav.requireClubMode });
       return;
     }
     router.push(inAppNotificationHref(item.type, item.data, mode) as any);

@@ -26,6 +26,7 @@ export const NOTIFICATION_TYPES = [
   "INVITATION_ACCEPTED",
   "INVITATION_DECLINED",
   "MESSAGE_RECEIVED",
+  "MATCH_FINALIZED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -38,6 +39,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   INVITATION_ACCEPTED: "Invitation acceptée",
   INVITATION_DECLINED: "Invitation déclinée",
   MESSAGE_RECEIVED: "Nouveau message",
+  MATCH_FINALIZED: "Résultat de match",
 };
 
 export const EA_IDENTITY_KINDS = ["NONE", "USERNAME_EQUALITY"] as const;
@@ -87,6 +89,20 @@ export function conversationIdFromNotificationData(
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
+export function clubIdFromNotificationData(
+  data: Record<string, unknown> | null | undefined
+): string | null {
+  const id = data?.clubId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+export function competitionIdFromNotificationData(
+  data: Record<string, unknown> | null | undefined
+): string | null {
+  const id = data?.competitionId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 /** Autres membres d'une conversation, hors expéditeur (DIRECT = 1, GROUP = N). */
 export function otherConversationParticipantIds(
   memberUserIds: readonly string[],
@@ -126,6 +142,100 @@ export function messageReceivedCopy(senderUsername: string): {
   };
 }
 
+/**
+ * MATCH_FINALIZED — notif in-app après un vrai finalize_match (Edge).
+ * Destinataires : membres du club enregistreur + membres du club adverse
+ * si opponent_club_id. Le recorder (recorded_by) est exclu : il voit déjà
+ * le résultat à l'écran (même doctrine que MESSAGE_RECEIVED / skip self).
+ * Pas de notif chat GROUP/CLUB ici.
+ */
+export function matchFinalizedRecipientIds(input: {
+  recordingClubMemberIds: readonly string[];
+  opponentClubMemberIds?: readonly string[];
+  recorderId: string;
+}): string[] {
+  const ids = new Set<string>();
+  for (const id of input.recordingClubMemberIds) {
+    if (id.length > 0) ids.add(id);
+  }
+  for (const id of input.opponentClubMemberIds ?? []) {
+    if (id.length > 0) ids.add(id);
+  }
+  ids.delete(input.recorderId);
+  return [...ids];
+}
+
+export function matchFinalizedCopy(input: {
+  clubName: string;
+  opponentClubName?: string | null;
+  ourScore: number;
+  opponentScore: number;
+}): {
+  type: NotificationType;
+  title: string;
+  body: string;
+} {
+  const home = input.clubName.trim() || "Ton club";
+  const away = input.opponentClubName?.trim() ?? "";
+  const score = `${input.ourScore} — ${input.opponentScore}`;
+  return {
+    type: "MATCH_FINALIZED",
+    title: NOTIFICATION_TYPE_LABELS.MATCH_FINALIZED,
+    body: away ? `${home} ${score} ${away}.` : `${home} ${score}.`,
+  };
+}
+
+export function matchFinalizedNotificationData(input: {
+  clubId: string;
+  matchResultId: string;
+  matchCheckinId: string;
+  opponentClubId: string | null;
+  competitionId: string | null;
+}): Record<string, unknown> {
+  return {
+    clubId: input.clubId,
+    matchResultId: input.matchResultId,
+    matchCheckinId: input.matchCheckinId,
+    opponentClubId: input.opponentClubId,
+    competitionId: input.competitionId,
+  };
+}
+
+export type MatchFinalizedNotificationNav = {
+  href: string;
+  selectClubId: string | null;
+  requireClubMode: boolean;
+};
+
+/**
+ * Deep link MATCH_FINALIZED : `/competitions` si competition_id réel,
+ * sinon `/match` (Mode Club, feuille). Jamais `/notifications`.
+ */
+export function matchFinalizedHref(
+  data: Record<string, unknown> | null | undefined,
+  _mode: "PLAYER" | "CLUB" = "CLUB"
+): string {
+  if (competitionIdFromNotificationData(data)) return "/competitions";
+  return "/match";
+}
+
+export function matchFinalizedNotificationNav(
+  type: string,
+  data: Record<string, unknown> | null | undefined,
+  mode: "PLAYER" | "CLUB" = "CLUB"
+): MatchFinalizedNotificationNav | null {
+  if (type !== "MATCH_FINALIZED") return null;
+  const href = matchFinalizedHref(data, mode);
+  if (href === "/competitions") {
+    return { href, selectClubId: null, requireClubMode: false };
+  }
+  return {
+    href: "/match",
+    selectClubId: clubIdFromNotificationData(data),
+    requireClubMode: true,
+  };
+}
+
 export function notificationHref(type: string, data: Record<string, unknown> | null | undefined): string {
   const clubId = typeof data?.clubId === "string" ? data.clubId : null;
   switch (type) {
@@ -143,6 +253,8 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
       const conversationId = conversationIdFromNotificationData(data);
       return conversationId ? `/conversation/${conversationId}` : "/notifications";
     }
+    case "MATCH_FINALIZED":
+      return matchFinalizedHref(data, "CLUB");
     default:
       return "/notifications";
   }

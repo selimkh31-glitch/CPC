@@ -6,6 +6,10 @@
 import {
   isNotificationType,
   isReportReason,
+  matchFinalizedCopy,
+  matchFinalizedHref,
+  matchFinalizedNotificationNav,
+  matchFinalizedRecipientIds,
   messageReceivedCopy,
   NOTIFICATION_TYPE_LABELS,
   notificationHref,
@@ -92,6 +96,77 @@ test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter
     inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
     "/conversation/conv-1",
     "dm inchangé"
+  );
+});
+
+test("MATCH_FINALIZED — type, label FR, href /match ou /competitions", () => {
+  assert.true(isNotificationType("MATCH_FINALIZED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.MATCH_FINALIZED, "Résultat de match", "label");
+  assert.equal(notificationTitle("MATCH_FINALIZED", "x"), "Résultat de match", "title");
+  assert.equal(notificationHref("MATCH_FINALIZED", { clubId: "c1" }), "/match", "href club");
+  assert.equal(
+    notificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }),
+    "/competitions",
+    "href competition"
+  );
+  assert.equal(notificationHref("MATCH_FINALIZED", { competitionId: "" }), "/match", "empty competition");
+  assert.equal(inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1" }, "CLUB"), "/match", "in-app club");
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1" }, "PLAYER"),
+    "/match",
+    "in-app player — même feuille, l'appelant passe en Mode Club"
+  );
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }, "CLUB"),
+    "/competitions",
+    "in-app club + compétition"
+  );
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }, "PLAYER"),
+    "/competitions",
+    "in-app player + compétition"
+  );
+  assert.equal(matchFinalizedHref({ clubId: "c1" }, "CLUB"), "/match", "helper club");
+  assert.equal(matchFinalizedHref({ competitionId: "comp-1" }, "PLAYER"), "/competitions", "helper competition");
+  const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: "c1" }, "CLUB");
+  assert.equal(navMatch?.href, "/match", "nav href");
+  assert.equal(navMatch?.requireClubMode, true, "nav club mode");
+  assert.equal(navMatch?.selectClubId, "c1", "nav clubId");
+  const navComp = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: "comp-1" }, "PLAYER");
+  assert.equal(navComp?.href, "/competitions", "nav competitions");
+  assert.equal(navComp?.requireClubMode, false, "nav competitions no club mode");
+  assert.equal(matchFinalizedNotificationNav("MESSAGE_RECEIVED", { clubId: "c1" }, "CLUB"), null, "not match");
+  const copy = matchFinalizedCopy({ clubName: "  CPC United  ", opponentClubName: " Rival FC ", ourScore: 3, opponentScore: 1 });
+  assert.equal(copy.type, "MATCH_FINALIZED", "copy type");
+  assert.equal(copy.title, "Résultat de match", "copy title");
+  assert.equal(copy.body, "CPC United 3 — 1 Rival FC.", "copy body");
+  assert.equal(
+    matchFinalizedCopy({ clubName: "   ", ourScore: 0, opponentScore: 0 }).body,
+    "Ton club 0 — 0.",
+    "copy fallback"
+  );
+});
+
+test("matchFinalizedRecipientIds — membres des deux clubs, pas le recorder", () => {
+  const ids = matchFinalizedRecipientIds({
+    recordingClubMemberIds: ["recorder", "a", "a", ""],
+    opponentClubMemberIds: ["b", "recorder", "c"],
+    recorderId: "recorder",
+  }).sort();
+  assert.equal(ids.join(","), "a,b,c", "union minus recorder");
+  assert.equal(
+    matchFinalizedRecipientIds({ recordingClubMemberIds: ["recorder"], recorderId: "recorder" }).join(","),
+    "",
+    "recorder only"
+  );
+  assert.equal(
+    matchFinalizedRecipientIds({
+      recordingClubMemberIds: ["a"],
+      opponentClubMemberIds: [],
+      recorderId: "recorder",
+    }).join(","),
+    "a",
+    "no opponent"
   );
 });
 
