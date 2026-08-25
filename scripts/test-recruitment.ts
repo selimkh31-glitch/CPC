@@ -69,6 +69,22 @@ test("APPLICATION_RECEIVED → Recrutement + clubId (pas /club/[id])", () => {
   assert.equal(recruitmentNotificationNav("APPLICATION_RECEIVED", {})?.selectClubId, null, "no club");
 });
 
+test("INVITATION_ACCEPTED/DECLINED → Recrutement + clubId (pas /club/[id])", () => {
+  const accepted = recruitmentNotificationNav("INVITATION_ACCEPTED", { clubId: "c2" });
+  assert.equal(accepted?.href, "/candidatures", "accepted href");
+  assert.equal(accepted?.selectClubId, "c2", "accepted club");
+  assert.equal(accepted?.requireClubMode, true, "accepted club mode");
+  const declined = recruitmentNotificationNav("INVITATION_DECLINED", { clubId: "c2" });
+  assert.equal(declined?.href, "/candidatures", "declined href");
+  assert.equal(declined?.selectClubId, "c2", "declined club");
+  assert.equal(declined?.requireClubMode, true, "declined club mode");
+  assert.equal(recruitmentNotificationNav("INVITATION_ACCEPTED", {})?.selectClubId, null, "accepted no club");
+  assert.equal(recruitmentNotificationNav("INVITATION_ACCEPTED", {})?.href, "/candidatures", "accepted missing club href");
+  assert.equal(recruitmentNotificationNav("INVITATION_DECLINED", {})?.selectClubId, null, "declined no club");
+  assert.equal(recruitmentNotificationNav("INVITATION_DECLINED", {})?.href, "/candidatures", "declined missing club href");
+  assert.equal(recruitmentNotificationNav("INVITATION_ACCEPTED", { clubId: "" })?.selectClubId, null, "empty clubId");
+});
+
 test("INVITATION_RECEIVED → Mes invitations (Accepter côté joueur)", () => {
   const nav = recruitmentNotificationNav("INVITATION_RECEIVED", { clubId: "c1", invitationId: "i1" });
   assert.equal(nav?.href, "/my-invitations", "href");

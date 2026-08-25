@@ -87,8 +87,11 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.equal(notificationHref("APPLICATION_ACCEPTED", {}), "/my-applications", "accepted");
   assert.equal(notificationHref("APPLICATION_DECLINED", {}), "/my-applications", "declined");
   assert.equal(notificationHref("INVITATION_RECEIVED", {}), "/my-invitations", "inv recv");
-  assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "c2" }), "/club/c2", "inv acc");
-  assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/club/c2", "inv dec");
+  assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "c2" }), "/candidatures", "inv acc");
+  assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/candidatures", "inv dec");
+  assert.equal(notificationHref("INVITATION_ACCEPTED", {}), "/candidatures", "inv acc no club");
+  assert.equal(notificationHref("INVITATION_DECLINED", {}), "/candidatures", "inv dec no club");
+  assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "" }), "/candidatures", "inv acc empty club");
   assert.true(isNotificationType("APPLICATION_RECEIVED"), "known type");
   assert.false(isNotificationType("RANDOM"), "unknown type");
 });
@@ -108,6 +111,29 @@ test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter
     inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
     "/conversation/conv-1",
     "dm inchangé"
+  );
+});
+
+test("inAppNotificationHref — INVITATION_ACCEPTED/DECLINED va à Recrutement (pas /club/[id])", () => {
+  assert.equal(
+    inAppNotificationHref("INVITATION_ACCEPTED", { clubId: "c2" }, "CLUB"),
+    "/candidatures",
+    "accepted club mode"
+  );
+  assert.equal(
+    inAppNotificationHref("INVITATION_ACCEPTED", { clubId: "c2" }, "PLAYER"),
+    "/candidatures",
+    "accepted player mode — même cible, l'appelant passe en Mode Club"
+  );
+  assert.equal(
+    inAppNotificationHref("INVITATION_DECLINED", { clubId: "c2" }, "CLUB"),
+    "/candidatures",
+    "declined club mode"
+  );
+  assert.equal(
+    inAppNotificationHref("INVITATION_DECLINED", {}, "PLAYER"),
+    "/candidatures",
+    "declined missing clubId"
   );
 });
 
