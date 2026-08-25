@@ -70,6 +70,7 @@
     "test:competitions": "tsx scripts/test-competitions.ts",
     "test:tournaments": "tsx scripts/test-tournaments.ts",
     "test:leagues": "tsx scripts/test-leagues.ts",
+    "test:leagues-link": "tsx scripts/test-leagues-link.ts",
     "test:rankings": "tsx scripts/test-rankings.ts",
     "test:match-history": "tsx scripts/test-match-history.ts",
     "test:finalize-match": "tsx scripts/test-finalize-match.ts",

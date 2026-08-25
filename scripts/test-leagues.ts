@@ -5,6 +5,7 @@
 import {
   canShowLiveLeagueRanking,
   LEAGUE_COPY,
+  LEAGUES_STACK_HREF,
   LEAGUES_TAB_HREF,
   SEASON_STATS_WRITTEN_FROM_MATCH_RESULTS,
 } from "../lib/leagues";
@@ -82,6 +83,10 @@ test("copy FR honnête : classement saison vide (pas seed/EA), distinct du table
 
 test("Ligues reste hors tab bar (href: null)", () => {
   assert.equal(LEAGUES_TAB_HREF, null, "href");
+});
+
+test("stack /leagues via LeaguesLink (pas un onglet)", () => {
+  assert.equal(LEAGUES_STACK_HREF, "/leagues", "stack href");
 });
 
 console.log(`\n${passed} tests OK`);

@@ -23,6 +23,14 @@ export const LEAGUE_COPY = {
 /** Tab bar joueur : Ligues reste hors onglets (deep link `/leagues` seulement). */
 export const LEAGUES_TAB_HREF: null = null;
 
+/** Stack `/leagues` — Profil / Effectif y arrivent via `LeaguesLink`. Pas un 4e onglet. */
+export const LEAGUES_STACK_HREF = "/leagues" as const;
+
+/** Cible unique de `LeaguesLink` (`router.push`). Tab `href` reste `null`. */
+export function pushLeaguesScreen(push: (href: typeof LEAGUES_STACK_HREF) => unknown): void {
+  push(LEAGUES_STACK_HREF);
+}
+
 /** `season_stats` n'est pas alimenté par `finalize_match` / `match_results`. */
 export const SEASON_STATS_WRITTEN_FROM_MATCH_RESULTS = false;
 
