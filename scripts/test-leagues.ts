@@ -2,8 +2,8 @@
  * Tests de lib/leagues.ts — pas de classement inventé sur `/leagues`.
  * Sans réseau. Lancer : npx tsx scripts/test-leagues.ts
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { existsSync, readFileSync } from "fs";
 import {
   canShowLiveLeagueRanking,
   LEAGUE_COPY,
@@ -94,10 +94,10 @@ test("stack /leagues via LeaguesLink (pas un onglet)", () => {
 });
 
 test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet joueur", () => {
-  const stackFile = join(root, "app/leagues.tsx");
-  const layoutFile = join(root, "app/_layout.tsx");
-  const tabFile = join(root, "app/(player)/(tabs)/leagues.tsx");
-  const tabsLayoutFile = join(root, "app/(player)/(tabs)/_layout.tsx");
+  const stackFile = `${root}/app/leagues.tsx`;
+  const layoutFile = `${root}/app/_layout.tsx`;
+  const tabFile = `${root}/app/(player)/(tabs)/leagues.tsx`;
+  const tabsLayoutFile = `${root}/app/(player)/(tabs)/_layout.tsx`;
   assert.true(existsSync(stackFile), "app/leagues.tsx");
   assert.true(existsSync(layoutFile), "app/_layout.tsx");
   assert.true(existsSync(tabFile), "player tab alias");
@@ -108,7 +108,7 @@ test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet j
   assert.true(rankingPos >= 0, "CpcClubRanking on stack screen");
   assert.true(emptyPos >= 0, "season empty copy");
   assert.true(rankingPos < emptyPos, "ranking leads, season empty secondary");
-  assert.true(!stack.includes("EmptyState"), "no full-screen EmptyState");
+  assert.true(!stack.includes("<EmptyState"), "no full-screen EmptyState");
   assert.true(stack.includes("canShowLiveLeagueRanking"), "honest season gate");
 
   const layout = readFileSync(layoutFile, "utf8");

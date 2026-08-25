@@ -2,8 +2,8 @@
  * Tests de LeaguesLink — pousse `/leagues`, pas un 4e onglet.
  * Sans réseau / sans Expo. Lancer : npx tsx scripts/test-leagues-link.ts
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { existsSync, readFileSync } from "fs";
 import {
   LEAGUES_STACK_HREF,
   LEAGUES_TAB_HREF,
@@ -58,10 +58,9 @@ test("Ligues reste hors tab bar (href: null)", () => {
 });
 
 test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), pas seulement l'onglet joueur", () => {
-  const stackFile = join(root, "app/leagues.tsx");
-  const layoutFile = join(root, "app/_layout.tsx");
+  const stackFile = `${root}/app/leagues.tsx`;
   assert.true(existsSync(stackFile), "app/leagues.tsx");
-  const layout = readFileSync(layoutFile, "utf8");
+  const layout = readFileSync(`${root}/app/_layout.tsx`, "utf8");
   const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
   const playerGuard = layout.indexOf('mode === "PLAYER"');
   const leaguesName = layout.indexOf('name="leagues"');
