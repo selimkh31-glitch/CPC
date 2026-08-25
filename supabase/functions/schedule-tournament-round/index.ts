@@ -2,6 +2,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireUuid, ValidationError } from "../_shared/validate.ts";
 import { uniqueViolationHttpStatus } from "../_shared/competitions.ts";
+import { notifyUser } from "../_shared/notify.ts";
 import {
   canScheduleRound,
   MIN_CLUBS_TO_SCHEDULE,
@@ -9,15 +10,28 @@ import {
   scheduleBlockMessage,
   scheduleRoundFromClubIds,
   TOURNAMENT_COPY,
+  type ScheduledPairing,
   type TournamentLinkedResultInput,
   type TournamentMatchInput,
   type TournamentRoundClubInput,
 } from "../_shared/tournaments.ts";
+import {
+  tournamentRoundScheduledClubIds,
+  tournamentRoundScheduledCopy,
+  tournamentRoundScheduledNotificationData,
+  tournamentRoundScheduledRecipientIds,
+} from "../_shared/safety.ts";
 
 /**
  * Génère un tour persisté (1er ou suivant) depuis des clubs réels.
  * 1er tour : competition_clubs (≥2). Tours suivants : vainqueurs PLAYED
  * du tour courant + clubs du pool sans match. Jamais un bracket UI-only.
+ *
+ * Après INSERT réussi : notif in-app TOURNAMENT_ROUND_SCHEDULED
+ * (create_notification via notifyUser) aux OWNER/MANAGER des clubs des
+ * nouvelles paires, hors acteur. Échec notify : log seulement, jamais de
+ * rollback de tournament_matches. Realtime = canal existant
+ * notifications-${userId} ; pas de second canal.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -39,7 +53,7 @@ Deno.serve(async (req) => {
 
   const { data: tournament, error: tournamentError } = await admin
     .from("competitions")
-    .select("id, status, kind, created_by")
+    .select("id, status, kind, created_by, name")
     .eq("id", tournamentId)
     .maybeSingle();
   if (tournamentError) return jsonResponse({ error: tournamentError.message }, 500);
@@ -129,6 +143,18 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: error.message }, 500);
   }
 
+  try {
+    await notifyTournamentRoundScheduled(admin, {
+      competitionId: tournamentId,
+      competitionName: typeof tournament.name === "string" ? tournament.name : "",
+      round: gate.round,
+      pairings: scheduled.pairings,
+      actorId: user.id,
+    });
+  } catch (err) {
+    console.warn("[schedule-tournament-round] notify exception:", err);
+  }
+
   return jsonResponse({
     matches: data ?? [],
     unpairedClubIds: scheduled.unpairedClubIds,
@@ -138,3 +164,62 @@ Deno.serve(async (req) => {
     minClubs: MIN_CLUBS_TO_SCHEDULE,
   });
 });
+
+async function notifyTournamentRoundScheduled(
+  admin: ReturnType<typeof getAdminClient>,
+  input: {
+    competitionId: string;
+    competitionName: string;
+    round: number;
+    pairings: ScheduledPairing[];
+    actorId: string;
+  }
+): Promise<void> {
+  const clubIds = tournamentRoundScheduledClubIds(input.pairings);
+  if (clubIds.length === 0) return;
+
+  const copy = tournamentRoundScheduledCopy({
+    tournamentName: input.competitionName,
+    round: input.round,
+  });
+  const data = tournamentRoundScheduledNotificationData({
+    competitionId: input.competitionId,
+    round: input.round,
+  });
+
+  const { data: members, error: membersError } = await admin
+    .from("club_members")
+    .select("user_id, role, user:users(id, push_token)")
+    .in("club_id", clubIds)
+    .in("role", ["OWNER", "MANAGER"]);
+  if (membersError) {
+    console.warn("[schedule-tournament-round] notify members:", membersError.message);
+  }
+
+  const rows = members ?? [];
+  const recipientIds = tournamentRoundScheduledRecipientIds({
+    actorId: input.actorId,
+    clubMembers: rows.map((row) => ({ userId: row.user_id, role: row.role })),
+  });
+  if (recipientIds.length === 0) return;
+
+  const tokenByUser = new Map<string, string | null>();
+  for (const row of rows) {
+    if (tokenByUser.has(row.user_id)) continue;
+    tokenByUser.set(
+      row.user_id,
+      (row.user as { push_token?: string | null } | null)?.push_token ?? null
+    );
+  }
+
+  for (const userId of recipientIds) {
+    await notifyUser(admin, {
+      userId,
+      type: copy.type,
+      title: copy.title,
+      body: copy.body,
+      data,
+      pushToken: tokenByUser.get(userId),
+    });
+  }
+}

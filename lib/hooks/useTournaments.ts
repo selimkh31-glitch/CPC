@@ -46,6 +46,7 @@ function invalidateTournamentQueries(queryClient: ReturnType<typeof useQueryClie
   queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
   queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
   queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
+  queryClient.invalidateQueries({ queryKey: ["scheduled-tournament-pairings"] });
   if (tournamentId) {
     queryClient.invalidateQueries({ queryKey: ["tournament", tournamentId] });
     queryClient.invalidateQueries({ queryKey: ["tournament-matches", tournamentId] });
@@ -104,6 +105,28 @@ export function useTournamentMatches(tournamentId: string | null) {
         .order("slot", { ascending: true });
       if (error) throw error;
       return (data ?? []).map((row) => normalizeMatch(row as unknown as TournamentMatchRow));
+    },
+  });
+}
+
+/**
+ * Paires SCHEDULED persistées entre deux clubs CPC. Jamais une paire inventée
+ * côté client — lecture RLS `tournament_matches` uniquement.
+ */
+export function useScheduledTournamentPairings(clubId: string | null, opponentClubId: string | null) {
+  return useQuery({
+    queryKey: ["scheduled-tournament-pairings", clubId, opponentClubId],
+    enabled: Boolean(clubId && opponentClubId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tournament_matches")
+        .select("id, competition_id, club_a_id, club_b_id, status")
+        .eq("status", "SCHEDULED")
+        .or(
+          `and(club_a_id.eq.${clubId},club_b_id.eq.${opponentClubId}),and(club_a_id.eq.${opponentClubId},club_b_id.eq.${clubId})`
+        );
+      if (error) throw error;
+      return (data ?? []) as Pick<TournamentMatchRow, "id" | "competition_id" | "club_a_id" | "club_b_id" | "status">[];
     },
   });
 }

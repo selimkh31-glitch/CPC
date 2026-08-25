@@ -6,6 +6,7 @@ import {
   competitionClubRegisteredHref,
   matchFinalizedHref,
   notificationHref,
+  tournamentRoundScheduledHref,
 } from "../supabase/functions/_shared/safety";
 import { recruitmentNotificationNav } from "../supabase/functions/_shared/recruitment";
 
@@ -18,7 +19,8 @@ export * from "../supabase/functions/_shared/safety";
  * en Mode Club et sélectionner `data.clubId` (voir recruitmentNotificationNav).
  * MATCH_FINALIZED → `/tournaments/[id]` si kind TOURNAMENT, sinon
  * `/competitions/[id]` si `competitionId`, sinon `/match` (feuille Mode Club).
- * COMPETITION_CLUB_REGISTERED → même stack selon kind. Pas d'écran mort.
+ * COMPETITION_CLUB_REGISTERED → même stack selon kind.
+ * TOURNAMENT_ROUND_SCHEDULED → `/tournaments/[id]`. Pas d'écran mort.
  */
 export function inAppNotificationHref(
   type: string,
@@ -29,5 +31,6 @@ export function inAppNotificationHref(
   if (recruitment) return recruitment.href;
   if (type === "MATCH_FINALIZED") return matchFinalizedHref(data, mode);
   if (type === "COMPETITION_CLUB_REGISTERED") return competitionClubRegisteredHref(data);
+  if (type === "TOURNAMENT_ROUND_SCHEDULED") return tournamentRoundScheduledHref(data);
   return notificationHref(type, data);
 }

@@ -178,6 +178,7 @@ export function useFinalizeMatch(clubId: string) {
       queryClient.invalidateQueries({ queryKey: ["tournament"] });
       queryClient.invalidateQueries({ queryKey: ["tournament-matches"] });
       queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduled-tournament-pairings"] });
       queryClient.invalidateQueries({ queryKey: ["player-match-history"] });
       queryClient.invalidateQueries({ queryKey: ["club-match-history"] });
       queryClient.invalidateQueries({ queryKey: ["cpc-club-ranking-results"] });

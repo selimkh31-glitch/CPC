@@ -28,6 +28,7 @@ export const NOTIFICATION_TYPES = [
   "MESSAGE_RECEIVED",
   "MATCH_FINALIZED",
   "COMPETITION_CLUB_REGISTERED",
+  "TOURNAMENT_ROUND_SCHEDULED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -42,6 +43,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   MESSAGE_RECEIVED: "Nouveau message",
   MATCH_FINALIZED: "Résultat de match",
   COMPETITION_CLUB_REGISTERED: "Club inscrit",
+  TOURNAMENT_ROUND_SCHEDULED: "Tour programmé",
 };
 
 export const EA_IDENTITY_KINDS = ["NONE", "USERNAME_EQUALITY"] as const;
@@ -380,6 +382,86 @@ export function competitionClubRegisteredHref(
   return linkedCompetitionStackHref(competitionId, kind);
 }
 
+/**
+ * TOURNAMENT_ROUND_SCHEDULED — notif in-app après INSERT réel
+ * tournament_matches (Edge schedule-tournament-round). Destinataires :
+ * OWNER/MANAGER de chaque club des NOUVELLES paires, hors acteur.
+ * Clubs unpaired : pas destinataires. Échec notify ≠ rollback des matchs.
+ */
+export function tournamentRoundScheduledClubIds(
+  pairings: readonly { clubAId: string; clubBId: string }[]
+): string[] {
+  const ids = new Set<string>();
+  for (const pairing of pairings) {
+    if (pairing.clubAId) ids.add(pairing.clubAId);
+    if (pairing.clubBId) ids.add(pairing.clubBId);
+  }
+  return [...ids];
+}
+
+export function tournamentRoundScheduledRecipientIds(input: {
+  actorId: string;
+  clubMembers: readonly { userId: string; role: string }[];
+}): string[] {
+  const ids = new Set<string>();
+  for (const member of input.clubMembers) {
+    if (!member.userId || member.userId === input.actorId) continue;
+    if (member.role !== "OWNER" && member.role !== "MANAGER") continue;
+    ids.add(member.userId);
+  }
+  return [...ids];
+}
+
+export function tournamentRoundScheduledCopy(input: {
+  tournamentName: string;
+  round: number;
+}): {
+  type: NotificationType;
+  title: string;
+  body: string;
+} {
+  const name = input.tournamentName.trim() || "ce tournoi";
+  const round = Number.isInteger(input.round) && input.round >= 1 ? input.round : null;
+  return {
+    type: "TOURNAMENT_ROUND_SCHEDULED",
+    title: NOTIFICATION_TYPE_LABELS.TOURNAMENT_ROUND_SCHEDULED,
+    body: round ? `Le tour ${round} de ${name} est programmé.` : `Un tour de ${name} est programmé.`,
+  };
+}
+
+export function tournamentRoundScheduledNotificationData(input: {
+  competitionId: string;
+  round: number;
+}): Record<string, unknown> {
+  return {
+    competitionId: input.competitionId,
+    kind: "TOURNAMENT",
+    round: input.round,
+  };
+}
+
+/** Deep link TOURNAMENT_ROUND_SCHEDULED : `/tournaments/[id]`, jamais `/notifications`. */
+export function tournamentRoundScheduledHref(
+  data?: Record<string, unknown> | null
+): string {
+  const competitionId = competitionIdFromNotificationData(data);
+  if (!competitionId) return "/tournaments";
+  return `/tournaments/${competitionId}`;
+}
+
+export function tournamentRoundScheduledNotificationNav(
+  type: string,
+  data: Record<string, unknown> | null | undefined,
+  _mode: "PLAYER" | "CLUB" = "CLUB"
+): MatchFinalizedNotificationNav | null {
+  if (type !== "TOURNAMENT_ROUND_SCHEDULED") return null;
+  return {
+    href: tournamentRoundScheduledHref(data),
+    selectClubId: null,
+    requireClubMode: false,
+  };
+}
+
 export function notificationHref(type: string, data: Record<string, unknown> | null | undefined): string {
   const clubId = typeof data?.clubId === "string" ? data.clubId : null;
   switch (type) {
@@ -401,6 +483,8 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
       return matchFinalizedHref(data, "CLUB");
     case "COMPETITION_CLUB_REGISTERED":
       return competitionClubRegisteredHref(data);
+    case "TOURNAMENT_ROUND_SCHEDULED":
+      return tournamentRoundScheduledHref(data);
     default:
       return "/notifications";
   }
