@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { LiveMatchScreen } from "@/components/club/LiveMatchScreen";
 import { OpponentClubPicker, OptionalCompetitionPicker } from "@/components/club/FinalizeMatchLinkFields";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId } from "@/lib/formations";
 import {
@@ -22,6 +23,7 @@ import {
 import { toast } from "@/lib/toast";
 import { COMPETITION_COPY, competitionOrTournamentHref } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY, parseUiMatchScore } from "@/lib/finalizeMatch";
+import { buildPlayerCardData } from "@/lib/playerCard";
 import { TOURNAMENT_COPY } from "@/lib/tournaments";
 import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import type { ClubMemberRow, MatchOutcome, MatchResultRow, SlotAssignmentRow } from "@/lib/types";
@@ -386,27 +388,50 @@ export function MatchCheckinPanel({
         {titulaires.length === 0 ? (
           <Text className="text-sm text-fg-muted">Aucun titulaire sur la feuille — le check-in partira d&apos;un 11 vide.</Text>
         ) : (
-          <View className="gap-1">
+          <View className="gap-2">
             {titulaires.map((a) => {
               const selected = selectedAbsentIds.includes(a.user_id);
-              const label = a.user?.username ?? slotLabel(a.slot_id);
+              const toggle = () =>
+                setSelectedAbsentIds((ids) =>
+                  ids.includes(a.user_id) ? ids.filter((id) => id !== a.user_id) : [...ids, a.user_id]
+                );
+              const footer = (
+                <View className="mt-1 gap-1">
+                  <Text className="text-xs text-fg-subtle">{slotLabel(a.slot_id)}</Text>
+                  <Pressable
+                    onPress={toggle}
+                    accessibilityRole="button"
+                    accessibilityLabel={selected ? "Annuler l'absence" : "Signaler une absence"}
+                    className="min-h-[44px] flex-row items-center justify-between rounded-xl px-1 active:opacity-80"
+                  >
+                    <Text className={`font-semibold ${selected ? "text-danger" : "text-fg-muted"}`}>
+                      {selected ? "Marqué absent" : "Signaler une absence"}
+                    </Text>
+                    {selected ? <Check size={18} color="#ff4d6a" /> : null}
+                  </Pressable>
+                </View>
+              );
+              if (!a.user) {
+                return (
+                  <View
+                    key={a.user_id}
+                    className={`rounded-xl px-3 py-2 ${selected ? "bg-danger/10" : "bg-bg-elevated"}`}
+                  >
+                    <Text className={`font-semibold ${selected ? "text-danger" : "text-fg"}`}>
+                      {slotLabel(a.slot_id)} — Joueur
+                    </Text>
+                    {footer}
+                  </View>
+                );
+              }
               return (
-                <Pressable
+                <PlayerCard
                   key={a.user_id}
-                  onPress={() =>
-                    setSelectedAbsentIds((ids) =>
-                      ids.includes(a.user_id) ? ids.filter((id) => id !== a.user_id) : [...ids, a.user_id]
-                    )
-                  }
-                  className={`min-h-[44px] flex-row items-center justify-between rounded-xl px-3 ${
-                    selected ? "bg-danger/10" : "bg-bg-elevated"
-                  }`}
-                >
-                  <Text className={`font-semibold ${selected ? "text-danger" : "text-fg"}`}>
-                    {slotLabel(a.slot_id)} — {label}
-                  </Text>
-                  {selected ? <Check size={18} color="#ff4d6a" /> : null}
-                </Pressable>
+                  data={buildPlayerCardData(a.user)}
+                  variant="mini"
+                  state={selected ? "selected" : "normal"}
+                  footer={footer}
+                />
               );
             })}
           </View>
@@ -437,12 +462,28 @@ export function MatchCheckinPanel({
           <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Prêt à lancer ?</CardTitle>
           <Text className="text-sm text-fg-muted">{titulaires.length}/11</Text>
         </CardHeader>
-        <View className="mb-4 gap-1">
-          {titulaires.map((a) => (
-            <Text key={a.slot_id} numberOfLines={1} className="text-sm text-fg">
-              {slotLabel(a.slot_id)} — {a.user?.username ?? "Joueur"}
-            </Text>
-          ))}
+        <View className="mb-4 gap-2">
+          {titulaires.map((a) => {
+            const footer = <Text className="mt-1 text-xs text-fg-subtle">{slotLabel(a.slot_id)}</Text>;
+            if (!a.user) {
+              return (
+                <View key={a.slot_id} className="rounded-2xl border border-border bg-bg-elevated px-3 py-2">
+                  <Text numberOfLines={1} className="text-sm text-fg-muted">
+                    Joueur
+                  </Text>
+                  {footer}
+                </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={a.slot_id}
+                data={buildPlayerCardData(a.user)}
+                variant="mini"
+                footer={footer}
+              />
+            );
+          })}
         </View>
         <View className="gap-2">
           <Button loading={launch.isPending} onPress={() => doLaunch([])}>

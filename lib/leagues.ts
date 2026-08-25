@@ -1,5 +1,5 @@
 /**
- * Ligues (`/leagues`) — stack partagé `app/leagues.tsx`, hors tab bar (`href: null`).
+ * Ligues (`/leagues`) — stack partagé `app/leagues.tsx`, hors tab bar.
  *
  * Deux surfaces distinctes :
  * 1) Classement clubs CPC (`lib/rankings.ts`) — surface principale, depuis
@@ -25,7 +25,7 @@ export const LEAGUE_COPY = {
   emptyHint: "Pas de points, divisions, buteurs ou MVP inventés. Les stats saison (seed / sync EA) ne remplissent pas ce tableau.",
 } as const;
 
-/** Tab bar joueur : Ligues reste hors onglets (`href: null`, Redirect vers le stack). */
+/** Ligues n'est pas un onglet joueur. Stack partagé `/leagues` uniquement. */
 export const LEAGUES_TAB_HREF: null = null;
 
 /** Stack partagé `/leagues` (`app/leagues.tsx`) — Profil / Effectif via `LeaguesLink`. Pas un 4e onglet. */

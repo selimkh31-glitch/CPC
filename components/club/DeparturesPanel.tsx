@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { DepartureCountdown } from "@/components/club/DepartureCountdown";
 import { useClubDepartures, useRespondDeparture } from "@/lib/hooks/useDepartures";
+import { buildPlayerCardData } from "@/lib/playerCard";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { ClubMemberRow } from "@/lib/types";
@@ -52,17 +54,12 @@ export function DeparturesPanel({ clubId, members }: { clubId: string; members: 
         <View className="gap-2">
           {departures.map((d) => {
             const strikeCount = members.find((m) => m.user_id === d.user_id)?.strike_count ?? 0;
-            return (
-              <View key={d.id} className="gap-2 rounded-xl border border-border bg-bg-elevated p-3">
-                <View className="flex-row items-center justify-between">
-                  <Text numberOfLines={1} className="shrink font-bold text-fg">
-                    {d.user?.username ?? "Joueur"}
-                  </Text>
-                  {d.expires_at && <DepartureCountdown expiresAt={d.expires_at} />}
-                </View>
+            const countdown = d.expires_at ? <DepartureCountdown expiresAt={d.expires_at} /> : null;
+            const footer = (
+              <View className="mt-2 gap-2">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-xs text-fg-subtle">Demandé {timeAgo(d.requested_at)}</Text>
-                  {strikeCount > 0 && <Badge tone="warn">{`${strikeCount} strike(s)`}</Badge>}
+                  {strikeCount > 0 ? <Badge tone="warn">{`${strikeCount} strike(s)`}</Badge> : null}
                 </View>
                 <View className="flex-row flex-wrap gap-1.5">
                   <Button size="sm" onPress={() => act(d.id, "NOW")} loading={respond.isPending}>
@@ -76,6 +73,28 @@ export function DeparturesPanel({ clubId, members }: { clubId: string; members: 
                   </Button>
                 </View>
               </View>
+            );
+            if (!d.user) {
+              return (
+                <View key={d.id} className="gap-2 rounded-xl border border-border bg-bg-elevated p-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text numberOfLines={1} className="shrink font-bold text-fg-muted">
+                      Joueur
+                    </Text>
+                    {countdown}
+                  </View>
+                  {footer}
+                </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={d.id}
+                data={buildPlayerCardData(d.user)}
+                variant="mini"
+                rightSlot={countdown}
+                footer={footer}
+              />
             );
           })}
         </View>

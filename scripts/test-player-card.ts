@@ -203,6 +203,13 @@ test("formatPositionsLine — principal seul, puis secondaires uniques sans mur 
   );
 });
 
+test("cpcMatchesPlayed omis -> null (pas la longueur d'une liste d'historique)", () => {
+  const data = buildPlayerCardData(baseUser());
+  assert.equal(data.cpcMatchesPlayed, null, "omit");
+  assert.equal(formatCpcMatchCount(undefined), null, "undefined");
+  assert.equal(formatCpcMatchCount(null), null, "null");
+});
+
 test("LIVE context flag + note, sans inventer un statut", () => {
   const off = buildPlayerCardData(baseUser());
   assert.equal(off.live, false, "default");

@@ -228,7 +228,7 @@ function RootNavigator() {
         />
         {/* Ligues + Compétitions + Tournois — stack partagé, pas un onglet.
             `/leagues` = app/leagues.tsx (Mode Club n'a pas (player)).
-            Tab joueur `leagues` reste href: null (Redirect / deep link).
+            Ligues n'est pas un onglet joueur — ne pas recréer app/(player)/(tabs)/leagues.tsx.
             Détail `/competitions/[id]` (deep link notifs), pas de tab dédié. */}
         <Stack.Screen
           name="leagues"

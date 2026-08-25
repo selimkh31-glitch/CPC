@@ -1,12 +1,11 @@
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
-import { router } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { Globe2, Users } from "lucide-react-native";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { MyDepartureStatusCard } from "@/components/club/MyDepartureStatusCard";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
@@ -18,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { benchMembers, formatNeededPositionsLine } from "@/lib/sessionState";
+import { buildPlayerCardData } from "@/lib/playerCard";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
 /**
@@ -110,11 +110,6 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
     ]);
   };
 
-  const goToProfile = (userId: string) => {
-    Haptics.selectionAsync();
-    router.push(`/profile/${userId}`);
-  };
-
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
       {/* 1. Header club */}
@@ -190,14 +185,22 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
             <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
             <Text className="text-sm text-fg-muted">{bench.length}</Text>
           </CardHeader>
-          <View className="gap-1.5">
-            {bench.map((m) => (
-              <Pressable key={m.user_id} onPress={() => goToProfile(m.user_id)} className="min-h-[44px] justify-center active:opacity-70">
-                <Text numberOfLines={1} className="text-sm text-fg">
-                  {m.user?.username ?? "Joueur"}
-                </Text>
-              </Pressable>
-            ))}
+          <View className="gap-2">
+            {bench.map((m) =>
+              m.user ? (
+                <PlayerCard
+                  key={m.user_id}
+                  data={buildPlayerCardData(m.user, { clubName: club.name })}
+                  variant="mini"
+                />
+              ) : (
+                <View key={m.user_id} className="min-h-[44px] justify-center rounded-2xl border border-border bg-bg-elevated px-3 py-2">
+                  <Text numberOfLines={1} className="text-sm text-fg-muted">
+                    Joueur
+                  </Text>
+                </View>
+              )
+            )}
           </View>
         </Card>
       )}

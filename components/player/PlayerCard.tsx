@@ -111,7 +111,7 @@ function MiniBody({
   onPress?: () => void;
   rightSlot?: React.ReactNode;
 }) {
-  const inner = (
+  const identity = (
     <>
       <Avatar username={data.username} size="sm" tone={data.live ? "accent" : "neutral"} />
       <View className="min-w-0 flex-1">
@@ -127,23 +127,25 @@ function MiniBody({
         </Text>
       </View>
       <Text className="font-display text-xl text-accent">{data.mainPosition}</Text>
-      {rightSlot}
     </>
   );
 
-  if (!onPress) {
-    return <View className="min-h-[44px] flex-row items-center gap-2.5">{inner}</View>;
-  }
-
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${PLAYER_CARD_COPY.viewProfile} de ${data.username}`}
-      className="min-h-[44px] flex-row items-center gap-2.5 active:opacity-80"
-    >
-      {inner}
-    </Pressable>
+    <View className="min-h-[44px] flex-row items-center gap-2.5">
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${PLAYER_CARD_COPY.viewProfile} de ${data.username}`}
+          className="min-h-[44px] min-w-0 flex-1 flex-row items-center gap-2.5 active:opacity-80"
+        >
+          {identity}
+        </Pressable>
+      ) : (
+        <View className="min-w-0 flex-1 flex-row items-center gap-2.5">{identity}</View>
+      )}
+      {rightSlot}
+    </View>
   );
 }
 
