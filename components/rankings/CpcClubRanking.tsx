@@ -76,6 +76,9 @@ export function CpcClubRanking({
         {RANKING_COPY.clubTitle}
       </Text>
       <Text className="mt-1 mb-2 text-xs text-fg-subtle">{RANKING_COPY.clubSubtitle}</Text>
+      <Text className="mb-1 px-1 text-[10px] font-bold uppercase text-fg-subtle">
+        # · J · V · N · D · Diff · Pts
+      </Text>
       <View className="gap-1.5">
         {standings.map((row, index) => {
           const diff = row.goalsFor - row.goalsAgainst;
