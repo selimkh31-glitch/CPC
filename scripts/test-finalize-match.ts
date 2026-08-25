@@ -333,15 +333,15 @@ test("8. Scores invalides (négatif, non-int) → validation serveur", () => {
   assert.equal(parseUiMatchScore("-1"), null, "ui neg");
 });
 
-test("9. Notify href : competitionId → /competitions sinon /match ; Club mode ; recorder exclu", () => {
+test("9. Notify href : competitionId → /competitions/[id] sinon /match ; Club mode ; recorder exclu", () => {
   assert.equal(matchFinalizedHref({ clubId: CLUB_A }, "PLAYER"), "/match", "sans compétition");
-  assert.equal(matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP }, "PLAYER"), "/competitions", "avec compétition");
+  assert.equal(matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP }, "PLAYER"), `/competitions/${COMP}`, "avec compétition");
   const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "PLAYER");
   assert.equal(navMatch?.href, "/match", "nav match");
   assert.equal(navMatch?.requireClubMode, true, "switch Club");
   assert.equal(navMatch?.selectClubId, CLUB_A, "select club");
   const navComp = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: COMP }, "PLAYER");
-  assert.equal(navComp?.href, "/competitions", "nav competitions");
+  assert.equal(navComp?.href, `/competitions/${COMP}`, "nav competitions");
   assert.equal(navComp?.requireClubMode, false, "competitions sans forcer Club");
   const ids = matchFinalizedRecipientIds({
     recordingClubMemberIds: [OWNER_A, "member-a"],

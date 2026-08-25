@@ -378,6 +378,7 @@ export interface CompetitionRow {
   created_at: string;
   updated_at: string;
   clubs?: CompetitionClubRow[];
+  creator?: Pick<UserRow, "id" | "username"> | null;
 }
 
 export interface CompetitionClubRow {
