@@ -18,10 +18,13 @@ import {
   notificationHref,
   notificationTitle,
   inAppNotificationHref,
+  isClubHiddenByBlock,
+  filterClubsHiddenByBlock,
   otherConversationParticipantIds,
   otherIdsFromBlocks,
   pairIsBlocked,
   REPORT_REASONS,
+  shouldHideContactCta,
   shouldNotifyMessageReceived,
 } from "../lib/safety";
 import { eaIdentityBadge, normalizeEaIdentityKind, statsSourceLabel } from "../lib/statsSource";
@@ -299,4 +302,39 @@ test("masquer est bidirectionnel ; débloquer ne concerne que mes propres blocs"
   assert.true(hidden.includes("x") && hidden.includes("y"), "hide both");
   const iBlocked = blocks.filter((b) => b.blocker_id === "me").map((b) => b.blocked_id);
   assert.equal(iBlocked.join(","), "x", "unblock only x");
+});
+
+test("isClubHiddenByBlock — même règle LIVE/matching (owner, les deux sens)", () => {
+  const blocked = otherIdsFromBlocks(
+    [
+      { blocker_id: "me", blocked_id: "owner-a" },
+      { blocker_id: "owner-b", blocked_id: "me" },
+    ],
+    "me"
+  );
+  assert.true(isClubHiddenByBlock({ owner_id: "owner-a" }, blocked), "j'ai bloqué le owner");
+  assert.true(isClubHiddenByBlock({ owner_id: "owner-b" }, blocked), "le owner m'a bloqué");
+  assert.false(isClubHiddenByBlock({ owner_id: "owner-ok" }, blocked), "owner libre");
+  assert.true(
+    isClubHiddenByBlock({ owner_id: "other", owner: { id: "owner-a" } }, blocked),
+    "owner.id fallback"
+  );
+  assert.false(isClubHiddenByBlock(null, blocked), "pas de club");
+  assert.false(isClubHiddenByBlock({ owner_id: "" }, blocked), "owner vide");
+  const visible = filterClubsHiddenByBlock(
+    [
+      { id: "c1", owner_id: "owner-a", name: "Blocked FC" },
+      { id: "c2", owner_id: "owner-ok", name: "Open FC" },
+      { id: "c3", owner_id: "owner-b", name: "Blocked Me FC" },
+    ],
+    blocked
+  );
+  assert.equal(visible.map((c) => c.id).join(","), "c2", "adversaire / annuaire");
+});
+
+test("shouldHideContactCta — même règle profils ; pas de user = pas de CTA à cacher", () => {
+  assert.true(shouldHideContactCta("x", ["x", "y"]), "blocked");
+  assert.false(shouldHideContactCta("z", ["x"]), "libre");
+  assert.false(shouldHideContactCta(null, ["x"]), "pas de participant user");
+  assert.false(shouldHideContactCta("x", null), "pas de blocs");
 });

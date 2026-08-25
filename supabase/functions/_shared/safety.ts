@@ -80,6 +80,48 @@ export function otherIdsFromBlocks(
   return [...ids];
 }
 
+/**
+ * LIVE / matching / annuaire / recherche d'adversaire : un club dont le
+ * owner est dans la paire bloquée (les deux sens) est masqué. `blockedIds`
+ * vient de `my_blocked_user_ids` / `otherIdsFromBlocks`.
+ */
+export type ClubOwnerBlockFields = {
+  owner_id?: string | null;
+  owner?: { id?: string | null } | null;
+};
+
+export function isClubHiddenByBlock(
+  club: ClubOwnerBlockFields | null | undefined,
+  blockedIds: Iterable<string>
+): boolean {
+  if (!club) return false;
+  const set = blockedIds instanceof Set ? blockedIds : new Set(blockedIds);
+  if (club.owner_id && set.has(club.owner_id)) return true;
+  if (club.owner?.id && set.has(club.owner.id)) return true;
+  return false;
+}
+
+export function filterClubsHiddenByBlock<T extends ClubOwnerBlockFields>(
+  clubs: readonly T[],
+  blockedIds: Iterable<string>
+): T[] {
+  return clubs.filter((club) => !isClubHiddenByBlock(club, blockedIds));
+}
+
+/**
+ * CTA Message / contacter (profils, membres) : masqué si la paire est
+ * bloquée. Compétitions n'affichent pas de user contactable — n'invente
+ * pas de policy d'inscription.
+ */
+export function shouldHideContactCta(
+  otherUserId: string | null | undefined,
+  blockedIds: Iterable<string> | null | undefined
+): boolean {
+  if (!otherUserId) return false;
+  const set = blockedIds instanceof Set ? blockedIds : new Set(blockedIds ?? []);
+  return set.has(otherUserId);
+}
+
 export function notificationTitle(type: string, fallback: string): string {
   return isNotificationType(type) ? NOTIFICATION_TYPE_LABELS[type] : fallback;
 }
