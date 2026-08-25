@@ -4,6 +4,7 @@ import { FEATURE_EA_STATS } from "../_shared/ea.ts";
 import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
 import { confirmClubInSearch } from "../_shared/ea/normalize.ts";
 import { ingestEaClubFromProvider, loadProductClubHistory } from "../_shared/ea/ingest.ts";
+import { buildEaProductDisplay } from "../_shared/ea/display.ts";
 import { getLiveEaTitle, PRODUCT_EA_TITLE, writesToProductLedger } from "../_shared/ea/title.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
@@ -18,7 +19,7 @@ const LINK_ACTIONS = ["search", "link", "history"] as const;
  *             Ingest sous EA_FC_TITLE (live). verified_stats seulement si
  *             live === fc27 (ledger produit). Payload history fc27 honnête
  *             (vide avant cutover).
- *  - history : { eaClubId } → snapshot ledger produit fc27 (listes vides OK).
+ *  - history : { eaClubId, playername? } → vues fc27 club / effectif / matchs / joueur.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -65,22 +66,27 @@ Deno.serve(async (req) => {
 
   if (action === "history") {
     let eaClubId: string;
+    let playername = "";
     try {
       eaClubId = requireString(body.eaClubId, "eaClubId", { min: 1, max: 64 });
+      if (body.playername != null && body.playername !== "") {
+        playername = requireString(body.playername, "playername", { min: 1, max: 60 });
+      }
     } catch (err) {
       if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
       return jsonResponse({ error: "Corps de requête invalide." }, 400);
     }
     const admin = getAdminClient();
-    const productLedger = await loadProductClubHistory(
-      admin,
-      eaClubId,
-      "common-gen5"
-    );
+    const productLedger = await loadProductClubHistory(admin, eaClubId, "common-gen5");
+    const display = buildEaProductDisplay(productLedger, playername || null);
     return jsonResponse({
       liveTitle: getLiveEaTitle(),
       productTitle: PRODUCT_EA_TITLE,
-      productLedger,
+      eaTitle: display.eaTitle,
+      club: display.club,
+      members: display.members,
+      matches: display.matches,
+      player: display.player,
     });
   }
 
@@ -126,6 +132,7 @@ Deno.serve(async (req) => {
     liveTitle
   );
   const productLedger = await loadProductClubHistory(admin, confirmed.externalId, platform);
+  const display = buildEaProductDisplay(productLedger, profile.username);
   const ingestMeta = {
     title: liveTitle,
     members: plan.memberRows.length,
@@ -140,7 +147,11 @@ Deno.serve(async (req) => {
       liveTitle,
       productTitle: PRODUCT_EA_TITLE,
       ingested: ingestMeta,
-      productLedger,
+      eaTitle: display.eaTitle,
+      club: display.club,
+      members: display.members,
+      matches: display.matches,
+      player: display.player,
     });
   }
 
@@ -179,6 +190,10 @@ Deno.serve(async (req) => {
     liveTitle,
     productTitle: PRODUCT_EA_TITLE,
     ingested: ingestMeta,
-    productLedger,
+    eaTitle: display.eaTitle,
+    club: display.club,
+    members: display.members,
+    matches: display.matches,
+    player: display.player,
   });
 });

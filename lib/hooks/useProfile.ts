@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
 import { validateProfileIdentity } from "@/lib/profileIdentity";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { USER_PUBLIC_COLUMNS, type ReviewRow, type UserRow } from "@/lib/types";
+import { USER_PUBLIC_COLUMNS, type ReviewRow, type UserRow, type VerifiedStats } from "@/lib/types";
 import type { ScoutReport, SmartMatchResult } from "@/lib/ai-types";
+import { EA_PRODUCT_HISTORY_QUERY_KEY, type EaProductHistoryResult } from "@/lib/eaProduct";
 
 export function useUserProfile(userId: string | null) {
   return useQuery({
@@ -86,7 +87,19 @@ export function useUpdateOwnProfile() {
 
 export type EaClubCandidate = { clubId: string; name: string };
 
-export type SearchEaClubResult = { candidates: EaClubCandidate[]; unavailable: boolean };
+export type SearchEaClubResult = {
+  candidates: EaClubCandidate[];
+  unavailable: boolean;
+  liveTitle?: string;
+  productTitle?: string;
+};
+
+export type LinkEaClubResult = EaProductHistoryResult & {
+  eaClubId: string;
+  synced: boolean;
+  stats: VerifiedStats | null;
+  ingested: { title: string; members: number; matches: number };
+};
 
 export function useSearchEaClub() {
   return useMutation({
@@ -100,11 +113,12 @@ export function useLinkEaClub() {
   const { refreshProfile } = useAuth();
   return useMutation({
     mutationFn: (input: { eaClubId: string; eaClubName: string }) =>
-      callEdgeFunction<{ synced: boolean }>("link-ea-club", { action: "link", ...input }),
+      callEdgeFunction<LinkEaClubResult>("link-ea-club", { action: "link", ...input }),
     onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: [EA_PRODUCT_HISTORY_QUERY_KEY] });
     },
   });
 }

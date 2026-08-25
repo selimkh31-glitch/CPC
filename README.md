@@ -105,7 +105,7 @@ supabase/functions/
   apply/                    POST — candidature 1 clic (gating 3/jour Free, modération, push)
   respond-application/      POST — accepter/refuser (owner/manager), crée le club_member, push
   submit-review/            POST — review + recalcul reliability_score/streak/badges
-  link-ea-club/             POST — search confirm + link (caller only) + ingest /api/fc
+  link-ea-club/             POST — search / link (caller only) / history (fc27 club·joueur·match)
   ea-sync/                  GET  — cron quotidien, ingest unofficial /api/fc des clubs liés
   season-ranking/           GET  — cron, recalcule divisions + badges de saison
   smart-match/               GET  — matching LIVE déterministe (poste + plateforme owner + expiry + besoin)
@@ -240,7 +240,15 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR_PROJECT.supabase.co/fu
 
 L'app mobile n'appelle jamais `proclubs.ea.com`. RN → Edge (`link-ea-club` / `ea-sync`) → hop Node 20 CPC (`EA_HTTP_HOP_URL`) → `EA_FC_BASE_URL` (défaut `https://proclubs.ea.com/api/fc`). Deno/Edge ne fetch pas EA (403 Akamai HTML). Le hop n'est pas un site produit ; secret `EA_HTTP_HOP_SECRET`. Pas de proxy ClubsZone. Pas de `/api/fifa`.
 
-Titres : chaque ligne d'import a `ea_title` (`fc26`, `fc27`, …). Ledger **produit CPC = `fc27`**, vide au jour 1. Le JSON live `/api/fc` (août 2026) est l'ancien titre : `EA_FC_TITLE=fc26` par défaut — **jamais copié dans fc27**. The Grounds 25 Sep 2026 : poser `EA_FC_TITLE=fc27` (et `EA_FC_BASE_URL` si l'origine change). Pas de bascule auto à la date. Ensuite 14 jours de collecte silencieuse ; lecture UX via `link-ea-club` action `history` (payload fc27 honnête, listes vides OK).
+Titres : chaque ligne d'import a `ea_title` (`fc26`, `fc27`, …). Ledger **produit CPC = `fc27`**, vide au jour 1 — **jamais de mix fc26**. Le JSON live `/api/fc` (août 2026) est l'ancien titre : `EA_FC_TITLE=fc26` par défaut.
+
+Calendrier GTM (Clubs Pro only, ingest + lien + affichage club/joueur/match — pas le marketing) :
+
+- **25 Sep 2026** (The Grounds / lancement FC 27) : CPC prêt pour les testeurs — lier un club et ingérer dans le ledger fc27 vide. Poser `EA_FC_TITLE=fc27` (et `EA_FC_BASE_URL` si l'origine change). Pas de bascule auto à la date.
+- **14 jours** de collecte silencieuse.
+- **~9 Oct 2026** : ouverture publique avec deux semaines d'historique fc27.
+
+Lecture : `link-ea-club` action `history` + bind `lib/hooks/useEaProduct.ts` (`useEaProductHistory`). Payloads `club` / `members` / `matches` / `player` (listes vides OK). Lignes joueur d'un match = `{ name, goals, assists, rating }`, jamais la clé persona. Pas de proxy ClubsZone. Node fetch EA seulement.
 
 ```bash
 EA_HTTP_HOP_SECRET=... npx tsx scripts/ea-http-hop.ts

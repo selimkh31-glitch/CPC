@@ -32,6 +32,7 @@
 | Stats joueur sur fenêtre matchs | `getPlayerStats` + `aggregatePlayerStats` | dérivé de `/clubs/matches` | **B** | Unité mockée | Matching `username == playername` |
 | Classement saison (`/currentSeasonLeaderboard` hors search) | — | non branché | **E** | — | Pas une famille inventée |
 | `getPlayoffData` hors `/clubs/matches?matchType=playoffMatch` | stub | — | **C** | — | Playoffs = matchType déjà typé |
+| Affichage club / joueur / match (fc27) | `ea/display.ts` + `link-ea-club` `history` / `link` ; bind `useEaProductHistory` | lecture ledger produit | **B** | Unité mockée (`test:ea-display`) | Listes vides avant cutover ; pas de mix fc26 ; pas de clés persona |
 
 ## Player Identity
 
@@ -45,12 +46,12 @@ Aucun identifiant joueur EA n'est un login CPC. Clé d'objet `players[clubId][pl
   `ea_imported_clubs`, `ea_imported_members`, `ea_imported_matches`.
 - Colonne `ea_title` (`fcNN`). Ledger produit = **fc27**, vide tant que `EA_FC_TITLE` n'est pas `fc27`.
 - Live `/api/fc` (pré-Grounds) → `EA_FC_TITLE=fc26` par défaut. Pas de copie vers fc27.
-- Cutover 25 Sep 2026 : secrets `EA_FC_TITLE=fc27` + `EA_FC_BASE_URL` si besoin. Pas de `/api/fifa`.
+- Cutover **25 Sep 2026** : secrets `EA_FC_TITLE=fc27` + `EA_FC_BASE_URL` si besoin. Testers lient + ingest. Puis 14 jours de collecte silencieuse ; public **~9 Oct** avec 2 semaines d'historique fc27. Pas de `/api/fifa`.
 - `source = unofficial_api_fc`, `unverified = true`.
 - Dedup matchs : unique `(ea_title, ea_club_id, platform, ea_match_id)`.
 - `users.verified_stats` seulement si live === fc27 (`eaTitle` sur le blob).
-- Liste EA vide → aucune ligne inventée. `link-ea-club` action `history` = payload fc27 (éventuellement vide).
-- `link-ea-club` met à jour la ligne caller seulement. Pas de redesign d'écrans ici.
+- Liste EA vide → aucune ligne inventée. Affichage : `link-ea-club` `history` / `link` → vues `club` / `members` / `matches` / `player` (fc27 only). Bind RN : `useEaProductHistory`. Pas de redesign d'écrans ici.
+- `link-ea-club` met à jour la ligne caller seulement.
 
 ## Résilience
 
