@@ -33,6 +33,7 @@ import {
   shouldHideContactCta,
   shouldNotifyMessageReceived,
 } from "../lib/safety";
+import { competitionLinkedMatchNav } from "../lib/competitions";
 import { eaIdentityBadge, normalizeEaIdentityKind, statsSourceLabel } from "../lib/statsSource";
 
 const assert = {
@@ -224,6 +225,41 @@ test("MATCH_FINALIZED — type, label FR, href /club/[id] ou compétition/tourno
     "Ton club 0 — 0.",
     "copy fallback"
   );
+});
+
+test("played linked match VIEW : même dest MATCH_FINALIZED, jamais /match", () => {
+  const competition = competitionLinkedMatchNav({
+    recordingClubId: "c1",
+    managedClubIds: ["c1"],
+    competitionId: "comp-1",
+    kind: "COMPETITION",
+  });
+  const matchNav = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: "comp-1" }, "CLUB");
+  assert.equal(competition?.href, matchNav?.href, "competition dest");
+  assert.equal(competition?.href, "/competitions/comp-1", "competitions");
+  assert.equal(competition?.requireClubMode, false, "no club mode");
+  assert.equal(competition?.selectClubId, null, "no select");
+  const tournament = competitionLinkedMatchNav({
+    recordingClubId: "c1",
+    managedClubIds: ["c1"],
+    competitionId: "t-1",
+    kind: "TOURNAMENT",
+  });
+  const tourneyNav = matchFinalizedNotificationNav(
+    "MATCH_FINALIZED",
+    { competitionId: "t-1", kind: "TOURNAMENT" },
+    "PLAYER"
+  );
+  assert.equal(tournament?.href, tourneyNav?.href, "tournament dest");
+  assert.equal(tournament?.href, "/tournaments/t-1", "tournaments");
+  const casual = competitionLinkedMatchNav({ recordingClubId: "c1", managedClubIds: ["c1"] });
+  assert.equal(casual?.href, "/club/c1", "club fallback");
+  if (competition?.href === "/match" || tournament?.href === "/match" || casual?.href === "/match") {
+    throw new Error("played VIEW ne doit pas envoyer vers /match");
+  }
+  if ((competition?.href ?? "").includes("match-sheet") || (tournament?.href ?? "").includes("match-sheet")) {
+    throw new Error("played VIEW ne doit pas envoyer vers /match-sheet");
+  }
 });
 
 test("matchFinalizedRecipientIds — membres des deux clubs, pas le recorder", () => {

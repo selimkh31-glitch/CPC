@@ -32,7 +32,8 @@ const MINI_FLAT = "border-0 bg-transparent px-0 py-0";
 /**
  * Tableau = lignes tournament_matches persistées uniquement.
  * Scores / vainqueurs = match_results liés. Unplayed → « pas encore joué ».
- * Clubs = ClubCard MINI hydratés. Tap paire PLAYED = competitionLinkedMatchNav.
+ * Clubs = ClubCard MINI hydratés. Tap paire PLAYED = competitionLinkedMatchNav
+ * (VIEW : tournoi / compétition, jamais `/match`).
  * Paire pas encore jouée : CTA « Enregistrer le résultat » si le viewer gère
  * club_a ou club_b (pending-nav `/match`), sinon non interactif.
  */
@@ -172,7 +173,12 @@ export function TournamentBracket({
                     const nameB = names.get(match.club_b_id);
                     const recordingClubId = tournamentBracketRecordingClubId(match, linked);
                     const playedNav = recordingClubId
-                      ? competitionLinkedMatchNav({ recordingClubId, managedClubIds })
+                      ? competitionLinkedMatchNav({
+                          recordingClubId,
+                          managedClubIds,
+                          competitionId: tournament.id,
+                          kind: tournament.kind,
+                        })
                       : null;
                     const recordNav = recordingClubId
                       ? null

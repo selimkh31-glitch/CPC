@@ -276,6 +276,10 @@ export interface ConversationRow {
   /** Embed optionnel — `groups(id,name)` pour le titre d'une conversation GROUP.
    *  Jamais inventé : nom vide / whitespace → fallback « Groupe ». */
   group?: Pick<GroupRow, "id" | "name"> | null;
+  /** Embed optionnel — `clubs(id,name)` pour le titre d'une conversation CLUB.
+   *  Jamais inventé : nom vide / placeholder « Club Pro Clubs » / « Club »
+   *  → fallback `CLUB_CONVERSATION_COPY`. */
+  club?: Pick<ClubRow, "id" | "name"> | null;
 }
 
 export interface ConversationMemberRow {

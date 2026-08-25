@@ -27,13 +27,20 @@ export { getDirectConversationPeer } from "@/lib/social";
  */
 const MESSAGES_PAGE_SIZE = 30;
 
-/** Membres (peer DIRECT) + groupe (titre GROUP). Pas de join club ici. */
-const CONVERSATION_SELECT = `*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS})), group:groups(id,name)`;
+/** Membres (peer DIRECT) + groupe (titre GROUP) + club (titre CLUB). */
+const CONVERSATION_SELECT = `*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS})), group:groups(id,name), club:clubs(id,name)`;
 
-function hydrateConversationGroup(row: ConversationRow): ConversationRow {
-  const raw = row.group as ConversationRow["group"] | NonNullable<ConversationRow["group"]>[] | null | undefined;
-  const group = Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null);
-  return { ...row, group };
+function firstEmbed<T>(raw: T | T[] | null | undefined): T | null {
+  if (Array.isArray(raw)) return raw[0] ?? null;
+  return raw ?? null;
+}
+
+function hydrateConversationEmbeds(row: ConversationRow): ConversationRow {
+  return {
+    ...row,
+    group: firstEmbed(row.group as ConversationRow["group"] | NonNullable<ConversationRow["group"]>[] | null | undefined),
+    club: firstEmbed(row.club as ConversationRow["club"] | NonNullable<ConversationRow["club"]>[] | null | undefined),
+  };
 }
 
 /** Conversations dont l'utilisateur connecté est membre (les plus récentes en premier). */
@@ -68,7 +75,7 @@ export function useConversations(userId: string | null) {
       } catch {
         blocked = new Set();
       }
-      const rows = ((data ?? []) as ConversationRow[]).map(hydrateConversationGroup);
+      const rows = ((data ?? []) as ConversationRow[]).map(hydrateConversationEmbeds);
       return filterVisibleConversations(rows, userId!, blocked);
     },
   });
@@ -87,7 +94,7 @@ export function useConversation(conversationId: string | null) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      return hydrateConversationGroup(data as ConversationRow);
+      return hydrateConversationEmbeds(data as ConversationRow);
     },
   });
 }

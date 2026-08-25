@@ -4,11 +4,23 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useScoutReport } from "@/lib/hooks/useProfile";
 import { toast } from "@/lib/toast";
+import { FEATURE_REVENUECAT } from "@/lib/constants";
 
-/** Scout Report IA (section 5) — feature Pro (section 6). */
+/** Scout Report IA — pas un produit vendable tant que RevenueCat est off. */
 export function ScoutReportPanel({ isPro }: { isPro: boolean }) {
   const mutation = useScoutReport();
   const report = mutation.data?.report;
+
+  if (!FEATURE_REVENUECAT) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle icon={<Sparkles size={18} color="#9aa0a8" />}>Scout Report IA</CardTitle>
+        </CardHeader>
+        <Text className="text-sm text-fg-muted">Bientôt — pas encore dans le produit, pas à vendre.</Text>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -16,7 +28,7 @@ export function ScoutReportPanel({ isPro }: { isPro: boolean }) {
         <CardTitle icon={<Sparkles size={18} color="#ae8bff" />}>Scout Report IA</CardTitle>
       </CardHeader>
       {!isPro ? (
-        <Text className="text-sm text-fg-muted">Réservé au plan Pro (5€/mois).</Text>
+        <Text className="text-sm text-fg-muted">Bientôt — pas encore dans le produit.</Text>
       ) : report ? (
         <View className="gap-2">
           <Text className="text-sm text-fg">{report.summary}</Text>

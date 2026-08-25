@@ -556,14 +556,20 @@ test("tap paire : recording club seulement si match_results PLAYED lié", () => 
   const asManager = competitionLinkedMatchNav({
     recordingClubId: recordingId!,
     managedClubIds: ["beta"],
+    competitionId: "t1",
+    kind: "TOURNAMENT",
   });
-  assert.equal(asManager?.href, "/match", "manager sheet");
-  assert.equal(asManager?.requireClubMode, true, "club mode");
+  assert.equal(asManager?.href, "/tournaments/t1", "manager → tournament VIEW");
+  assert.equal(asManager?.requireClubMode, false, "no club mode");
+  assert.equal(asManager?.selectClubId, null, "no select");
   const asViewer = competitionLinkedMatchNav({
     recordingClubId: recordingId!,
     managedClubIds: ["other"],
+    competitionId: "t1",
+    kind: "TOURNAMENT",
   });
-  assert.equal(asViewer?.href, "/club/beta", "public club");
+  assert.equal(asViewer?.href, "/tournaments/t1", "viewer same dest");
+  assert.false((asManager?.href ?? "") === "/match", "played view not feuille");
   assert.false((asViewer?.href ?? "").includes("match-sheet"), "not match-sheet");
 });
 
@@ -735,6 +741,8 @@ test("écran tournoi : matchs liés + ClubCard MINI, jamais fallback Club Pro Cl
 
   assert.true(bracket.includes("TournamentClubMini"), "bracket mini cards");
   assert.true(bracket.includes("competitionLinkedMatchNav"), "played pair reuses competition nav");
+  assert.true(bracket.includes("competitionId: tournament.id"), "played view passes tournament id");
+  assert.true(bracket.includes("kind: tournament.kind"), "played view passes kind");
   assert.true(bracket.includes("tournamentBracketRecordingClubId"), "played gate");
   assert.true(bracket.includes("tournamentUnplayedRecordNav"), "unplayed CTA helper");
   assert.true(bracket.includes("TOURNAMENT_COPY.recordResultCta"), "record result CTA");

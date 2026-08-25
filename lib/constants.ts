@@ -78,4 +78,81 @@ export function proPurchaseCta(revenueCatEnabled: boolean): {
 
 // --- Freemium ---------------------------------------------------------------
 export const FREE_APPLICATIONS_PER_DAY = 3;
+/**
+ * Prix cible futur. Ne jamais l'afficher tant que FEATURE_REVENUECAT est false
+ * — pas de prix fictif à l'écran. Ne pas inventer un nouveau tarif ici.
+ */
 export const PRO_PRICE_EUR = 5;
+
+/** Fonctionnalités citées ailleurs comme « Pro » mais pas livrées — jamais en live. */
+export const PRO_LATER_FEATURES = [
+  "Scout Report IA",
+  "Saison CPC",
+  "Badges de saison",
+  "Stats EA liées",
+  "Carte animée premium + raretés",
+  "Filtres avancés",
+  "Priorité dans les candidatures",
+] as const;
+
+export type PricingScreenCopy = {
+  intro: string;
+  /** null si RevenueCat off — aucun montant euro à l'écran. */
+  priceLabel: string | null;
+  ctaLabel: string;
+  liveFeatures: string[];
+  laterHeading: string;
+  laterFeatures: string[];
+};
+
+export type ProfileProEntryCopy = {
+  title: string;
+  subtitle: string | null;
+  accessibilityLabel: string;
+  looksLikeStore: boolean;
+};
+
+/**
+ * Copy /pricing. CPC launch = gratuit (liquidité). Fondamentaux sociaux
+ * (LIVE, profil, DM, postuler/inviter) non paywallés.
+ */
+export function pricingScreenCopy(revenueCatEnabled: boolean): PricingScreenCopy {
+  const laterFeatures = [...PRO_LATER_FEATURES];
+  if (!revenueCatEnabled) {
+    return {
+      intro:
+        "CPC est gratuit pour le moment. Pro n'est pas encore en vente. LIVE, profil, messages, postuler et inviter restent ouverts à tous.",
+      priceLabel: null,
+      ctaLabel: "Pro pas encore en vente",
+      liveFeatures: [],
+      laterHeading: "Plus tard — pas encore dans le produit",
+      laterFeatures,
+    };
+  }
+  return {
+    intro: "Abonnement Pro via l'App Store ou Play Store, annulable à tout moment.",
+    priceLabel: `${PRO_PRICE_EUR}€ / mois`,
+    ctaLabel: "Passer Pro",
+    liveFeatures: [],
+    laterHeading: "Plus tard — pas encore dans le produit",
+    laterFeatures,
+  };
+}
+
+/** Entrée Profil → /pricing : écran joignable, pas un bouton d'achat brillant si IAP off. */
+export function profileProEntryCopy(revenueCatEnabled: boolean): ProfileProEntryCopy {
+  if (!revenueCatEnabled) {
+    return {
+      title: "Pro",
+      subtitle: "Pas encore en vente",
+      accessibilityLabel: "Pro — pas encore en vente",
+      looksLikeStore: false,
+    };
+  }
+  return {
+    title: "Passer Pro",
+    subtitle: null,
+    accessibilityLabel: "Passer Pro",
+    looksLikeStore: true,
+  };
+}

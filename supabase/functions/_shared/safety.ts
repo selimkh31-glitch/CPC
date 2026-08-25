@@ -283,7 +283,8 @@ function linkedCompetitionStackHref(
  * → `/club/[id]` (stack partagé, MatchHistoryList). Jamais `/match` ni
  * `/match-sheet` : `/match` est la feuille, vide après finalize.
  * sinon (ni clubId ni competitionId) → `/notifications`.
- * Pas de competitionLinkedMatchNav (envoie les managers enregistreurs vers `/match`).
+ * Dest VIEW d'un match lié PLAYED : `competitionLinkedMatchNav` (même doctrine
+ * competition / tournament / club, jamais `/match`).
  */
 export function matchFinalizedHref(
   data: Record<string, unknown> | null | undefined,

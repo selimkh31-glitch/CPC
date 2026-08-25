@@ -170,7 +170,7 @@ function RootNavigator() {
         />
         <Stack.Screen
           name="pricing"
-          options={{ presentation: "modal", headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Passer Pro" }}
+          options={{ presentation: "modal", headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Pro" }}
         />
         <Stack.Screen
           name="edit-profile"
