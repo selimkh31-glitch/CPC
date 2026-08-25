@@ -1,5 +1,5 @@
 import { useCallback, type ReactNode } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -12,11 +12,16 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
-import { formatLiveRemaining, liveUiState, LIVE_UX_COPY } from "@/lib/live";
+import {
+  CLUB_MATCH_SHEET_HREF,
+  LIVE_UX_COPY,
+  clubLiveLayout,
+} from "@/lib/live";
 
 /**
- * LIVE Mode Club — un état (off / open / ready), un CTA primaire.
- * Feuille de match = secondaire (ghost). Matching / TTL inchangés.
+ * LIVE Mode Club — Passer LIVE reste le CTA de recherche. Un match lancé
+ * n'enferme pas l'écran : Feuille = bouton rempli vers `/match`.
+ * Matching / TTL inchangés.
  */
 export default function ClubLiveTab() {
   const { session } = useAuth();
@@ -66,6 +71,8 @@ export default function ClubLiveTab() {
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = canMutateClub(myMembership?.role);
   const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
+  const liveActive = snapshot.live.active;
+  const matchActive = snapshot.match.active;
   const liveSession = snapshot.live.active
     ? {
         id: snapshot.live.sessionId,
@@ -76,39 +83,50 @@ export default function ClubLiveTab() {
       }
     : null;
   const owner = club.members?.find((m) => m.user_id === club.owner_id);
-  const uiState = liveUiState({
-    liveActive: Boolean(snapshot.live.active),
-    matchActive: Boolean(snapshot.match.active),
-  });
+  const layout = clubLiveLayout({ canManage, liveActive, matchActive });
+
+  const openMatchSheet = () => {
+    router.push(CLUB_MATCH_SHEET_HREF);
+  };
 
   return shell(
     <>
       <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
 
-      {uiState === "ready" ? (
-        <View className="rounded-[28px] border border-white/10 bg-bg-card px-6 py-6">
-          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.readyTitle}</Text>
-          <Text className="mb-5 mt-2 text-sm text-fg-muted">Tout le monde est là.</Text>
-          <Button variant="ghost" className="min-h-[44px]" onPress={() => router.push("/match")}>
+      {layout.showSessionPanel ? (
+        <LiveSessionPanel
+          clubId={club.id}
+          activeSession={liveSession}
+          canManage={canManage}
+          stopLabel={layout.stopLabel}
+        />
+      ) : null}
+
+      {layout.matchSheetFilled ? (
+        <View className="gap-2">
+          <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.readyTitle}</Text>
+          <Text className="text-sm text-fg-muted">Tout le monde est là.</Text>
+          <Button
+            size="lg"
+            className="min-h-[48px]"
+            accessibilityLabel={LIVE_UX_COPY.matchSheet}
+            onPress={openMatchSheet}
+          >
             {LIVE_UX_COPY.matchSheet}
           </Button>
-          {liveSession ? (
-            <Text className="mt-3 text-sm text-fg-subtle">
-              {LIVE_UX_COPY.clubStillLooking}
-              {liveSession.expires_at ? ` · ${formatLiveRemaining(liveSession.expires_at, now)}` : ""}
-            </Text>
-          ) : null}
         </View>
       ) : (
-        <>
-          <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
-          <Button variant="ghost" className="min-h-[44px]" onPress={() => router.push("/match")}>
-            {LIVE_UX_COPY.matchSheet}
-          </Button>
-        </>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={LIVE_UX_COPY.matchSheet}
+          onPress={openMatchSheet}
+          className="min-h-[44px] justify-center"
+        >
+          <Text className="text-base font-bold text-accent">{LIVE_UX_COPY.matchSheet}</Text>
+        </Pressable>
       )}
 
-      {canManage && uiState === "open" ? (
+      {layout.showRecruit ? (
         <LivePlayersRecruitPanel
           clubId={club.id}
           members={club.members ?? []}

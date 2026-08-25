@@ -349,7 +349,10 @@ test("spine UX — Recrutement invite ; Club pas un 2e LIVE ; Card a Lier mon cl
   assert.false(club.includes("ClubSessionStatus"), "club not 2nd LIVE");
   assert.true(club.includes("MatchHistoryList"), "club stats");
   assert.true(liveClub.includes("LiveSessionPanel"), "club live panel");
-  assert.true(liveClub.includes("liveUiState"), "club live states");
+  assert.true(liveClub.includes("clubLiveLayout"), "club live layout");
+  assert.true(liveClub.includes("CLUB_MATCH_SHEET_HREF"), "feuille href");
+  assert.false(liveClub.includes('uiState === "ready"'), "ready does not replace screen");
+  assert.false(liveClub.includes('variant="ghost"'), "feuille not ghost-only");
   assert.false(liveClub.includes("ClubSessionStatus"), "no duplicate status");
   assert.true(livePlayer.includes("liveFeedEmptyCopy"), "empty live");
   assert.true(profile.includes("onLinkEaClub"), "EA CTA wired");

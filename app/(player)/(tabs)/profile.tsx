@@ -7,6 +7,7 @@ import { Crown, LogOut, Plus } from "lucide-react-native";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
 import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
+import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
@@ -61,6 +62,8 @@ export default function ProfileTabScreen() {
         <View className="mb-8">
           <ModeLifeToggle target="CLUB" managedClubs={managedClubs} />
         </View>
+
+        <DevTestAccountSwitcher />
 
         {profile?.plan !== "PRO" && (
           <Pressable

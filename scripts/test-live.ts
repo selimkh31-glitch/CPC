@@ -6,6 +6,8 @@
  */
 import {
   computeLiveExpiresAt,
+  clubLiveLayout,
+  CLUB_MATCH_SHEET_HREF,
   DEFAULT_LIVE_DURATION_MS,
   findActiveLiveSession,
   formatLiveRemaining,
@@ -129,6 +131,34 @@ test("liveUiState — ready > open > off", () => {
   assert.equal(liveUiState({ liveActive: true }), "open", "open");
   assert.equal(liveUiState({ liveActive: true, matchActive: true }), "ready", "ready wins");
   assert.equal(liveUiState({ liveActive: false, matchActive: true }), "ready", "ready without live");
+});
+
+test("clubLiveLayout — ready ne cache pas Passer LIVE ; feuille remplie si match", () => {
+  const off = clubLiveLayout({ canManage: true, liveActive: false, matchActive: false });
+  assert.equal(off.showSessionPanel, true, "panel off");
+  assert.equal(off.matchSheetFilled, false, "feuille ghost");
+  assert.equal(off.showRecruit, false, "no recruit off");
+  assert.equal(off.stopLabel, LIVE_UX_COPY.stop, "stop");
+
+  const open = clubLiveLayout({ canManage: true, liveActive: true, matchActive: false });
+  assert.equal(open.showSessionPanel, true, "panel open");
+  assert.equal(open.showRecruit, true, "recruit while live");
+
+  const locked = clubLiveLayout({ canManage: true, liveActive: false, matchActive: true });
+  assert.equal(locked.showSessionPanel, true, "panel still there when match launched");
+  assert.equal(locked.matchSheetFilled, true, "feuille filled");
+  assert.equal(locked.stopLabel, LIVE_UX_COPY.quit, "quit uses toggle session");
+  assert.equal(locked.showRecruit, false, "recruit needs live");
+
+  const both = clubLiveLayout({ canManage: true, liveActive: true, matchActive: true });
+  assert.equal(both.showSessionPanel, true, "live + match still has panel");
+  assert.equal(both.matchSheetFilled, true, "feuille filled");
+  assert.equal(both.showRecruit, true, "still searching");
+
+  assert.equal(CLUB_MATCH_SHEET_HREF, "/match", "club feuille route");
+  assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "go live copy");
+  assert.equal(LIVE_UX_COPY.quit, "Quitter", "quit");
+  assert.equal(LIVE_UX_COPY.newLive, "Nouveau LIVE", "new live copy");
 });
 
 console.log(`\n${passed} tests live OK`);

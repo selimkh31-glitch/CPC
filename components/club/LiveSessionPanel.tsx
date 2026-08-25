@@ -22,12 +22,19 @@ interface LiveSessionPanelProps {
   clubId: string;
   activeSession: { id: string; needed_positions: string[]; note: string | null; expires_at?: string | null } | null;
   canManage?: boolean;
+  /** Match lancé : « Quitter » (même toggle session), pas un nouvel API. */
+  stopLabel?: string;
 }
 
 /**
  * LIVE club — états off / open. Postes requis. API TTL / matching inchangée.
  */
-export function LiveSessionPanel({ clubId, activeSession, canManage = true }: LiveSessionPanelProps) {
+export function LiveSessionPanel({
+  clubId,
+  activeSession,
+  canManage = true,
+  stopLabel = LIVE_UX_COPY.stop,
+}: LiveSessionPanelProps) {
   const [positions, setPositions] = useState<string[]>(activeSession?.needed_positions ?? []);
   const [note, setNote] = useState(activeSession?.note ?? "");
   const [duration, setDuration] = useState(String(DEFAULT_LIVE_DURATION_MS));
@@ -106,7 +113,7 @@ export function LiveSessionPanel({ clubId, activeSession, canManage = true }: Li
                 <Text className="text-sm text-fg-subtle">{LIVE_UX_COPY.edit}</Text>
               </Pressable>
               <Button variant="ghost" className="mt-1 min-h-[44px]" loading={toggleSession.isPending} onPress={goOffline}>
-                {LIVE_UX_COPY.stop}
+                {stopLabel}
               </Button>
             </>
           ) : (

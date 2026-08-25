@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
+import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
 import { ClubCard } from "@/components/club/ClubCard";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
@@ -71,6 +72,7 @@ export default function ClubTab() {
           Créer un club
         </Button>
         <ModeLifeToggle target="PLAYER" />
+        <DevTestAccountSwitcher />
       </View>
     );
   }
@@ -107,6 +109,7 @@ export default function ClubTab() {
       />
 
       <ModeLifeToggle target="PLAYER" />
+      <DevTestAccountSwitcher />
 
       <MatchHistoryList
         items={matchHistory}

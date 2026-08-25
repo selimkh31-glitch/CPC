@@ -75,6 +75,31 @@ export function liveUiState(input: { liveActive: boolean; matchActive?: boolean 
   return "off";
 }
 
+/** Feuille club (formation / check-in) — pas `/match-sheet` (ClubHome lecture). */
+export const CLUB_MATCH_SHEET_HREF = "/match";
+
+/**
+ * Club LIVE chrome. `ready` est un badge match, jamais un écran qui cache
+ * Passer LIVE. Matching / TTL inchangés.
+ */
+export function clubLiveLayout(input: {
+  canManage: boolean;
+  liveActive: boolean;
+  matchActive: boolean;
+}): {
+  showSessionPanel: true;
+  matchSheetFilled: boolean;
+  showRecruit: boolean;
+  stopLabel: typeof LIVE_UX_COPY.quit | typeof LIVE_UX_COPY.stop;
+} {
+  return {
+    showSessionPanel: true,
+    matchSheetFilled: input.matchActive,
+    showRecruit: input.canManage && input.liveActive,
+    stopLabel: input.matchActive ? LIVE_UX_COPY.quit : LIVE_UX_COPY.stop,
+  };
+}
+
 /**
  * Copy LIVE (tu, football, courte). Pas de TTL / session / matching à l'écran.
  * Empty = on cherche un match, jamais un vide muet ni une session fake.
@@ -99,6 +124,8 @@ export const LIVE_UX_COPY = {
   clubOpenTitle: "Club en LIVE",
   readyTitle: "Le match est lancé",
   stop: "Arrêter",
+  quit: "Quitter",
+  newLive: "Nouveau LIVE",
   edit: "Modifier",
   matchSheet: "Feuille de match",
   stillLooking: "Les clubs te voient.",
