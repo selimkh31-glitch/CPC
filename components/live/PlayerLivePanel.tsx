@@ -70,10 +70,8 @@ export function PlayerLivePanel() {
 
   return (
     <Card className={cn("mb-5 rounded-[28px] p-6", live && "border-accent/35 bg-accent/8")}>
-      {isLoading ? (
+      {isLoading && !mySession ? (
         <Skeleton className="h-16" />
-      ) : isError ? (
-        <ErrorState message="Impossible de charger ton LIVE." onRetry={refetch} />
       ) : live ? (
         <>
           <View className="mb-2 flex-row items-start gap-2">
@@ -93,6 +91,8 @@ export function PlayerLivePanel() {
             {LIVE_UX_COPY.stop}
           </Button>
         </>
+      ) : isError ? (
+        <ErrorState message="Impossible de charger ton LIVE." onRetry={refetch} />
       ) : (
         <>
           <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>

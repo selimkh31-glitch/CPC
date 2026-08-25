@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { computeLiveExpiresAt, isLiveActive, parseLiveDurationMs } from "@/lib/live";
@@ -91,6 +91,7 @@ export function useMyPlayerSession(userId: string | null) {
   const query = useQuery({
     queryKey: ["my-player-session", userId],
     enabled: Boolean(userId),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("player_sessions")
@@ -161,20 +162,15 @@ export function useGoPlayerLive(userId: string | null) {
       if (!userId) throw new Error("Non authentifié");
       const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
       const expiresAt = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
-      await supabase.from("player_sessions").update({ is_live: false }).eq("user_id", userId).eq("is_live", true);
-      const { data, error } = await supabase
+      const { data: previousRows } = await supabase
         .from("player_sessions")
-        .insert({
-          user_id: userId,
-          is_live: true,
-          note: input.note ?? null,
-          expires_at: expiresAt,
-        })
-        .select()
-        .single();
-      if (error?.code === "23505") {
-        await supabase.from("player_sessions").update({ is_live: false }).eq("user_id", userId).eq("is_live", true);
-        const retry = await supabase
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_live", true);
+      const previousIds = ((previousRows ?? []) as { id: string }[]).map((row) => row.id).filter(Boolean);
+      await supabase.from("player_sessions").update({ is_live: false }).eq("user_id", userId).eq("is_live", true);
+      const insertLive = () =>
+        supabase
           .from("player_sessions")
           .insert({
             user_id: userId,
@@ -184,10 +180,24 @@ export function useGoPlayerLive(userId: string | null) {
           })
           .select()
           .single();
-        if (retry.error) throw retry.error;
+      const restorePrevious = async () => {
+        if (previousIds.length === 0) return;
+        await supabase.from("player_sessions").update({ is_live: true }).in("id", previousIds);
+      };
+      const { data, error } = await insertLive();
+      if (error?.code === "23505") {
+        await supabase.from("player_sessions").update({ is_live: false }).eq("user_id", userId).eq("is_live", true);
+        const retry = await insertLive();
+        if (retry.error) {
+          await restorePrevious();
+          throw retry.error;
+        }
         return retry.data as PlayerSessionRow;
       }
-      if (error) throw error;
+      if (error) {
+        await restorePrevious();
+        throw error;
+      }
       return data as PlayerSessionRow;
     },
     onSuccess: () => {

@@ -6,6 +6,7 @@ import {
   buildClubMatchHistory,
   buildPlayerMatchHistory,
   countPlayerCpcMatches,
+  isEmptyMatchHistoryReadError,
   type MatchHistoryItem,
   type MatchHistoryResultInput,
 } from "@/lib/matchHistory";
@@ -53,9 +54,11 @@ export function usePlayerMatchHistory(userId: string | null) {
         .select("match_checkin_id, club_id, status")
         .eq("user_id", userId!)
         .eq("status", "PRESENT")
-        .order("launched_at", { referencedTable: "match_checkins", ascending: false })
         .limit(PLAYER_MATCH_HISTORY_LOOKBACK);
-      if (partsError) throw partsError;
+      if (partsError) {
+        if (isEmptyMatchHistoryReadError(partsError)) return { items: [], played: 0 };
+        throw partsError;
+      }
 
       const rows = parts ?? [];
       const checkinIds = rows.map((row: { match_checkin_id: string }) => row.match_checkin_id);

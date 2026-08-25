@@ -110,6 +110,7 @@ export const LIVE_UX_COPY = {
   clubHeadline: "On cherche des joueurs",
   goLive: "Passer LIVE",
   findClub: "Clubs en LIVE",
+  liveClubFilters: "Filtres",
   backToLive: "LIVE",
   emptyNoClubs: "Aucun club en LIVE. Passe LIVE, ou vois les clubs.",
   emptySelfLive: "Je cherche un club. Personne d'autre pour l'instant.",

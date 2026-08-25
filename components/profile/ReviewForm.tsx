@@ -32,7 +32,7 @@ export function ReviewForm({ targetUserId }: { targetUserId: string }) {
           toast.success("Merci pour ton retour !");
           setDone(true);
         },
-        onError: (err: any) => toast.error(err.message ?? "Erreur"),
+        onError: (err: any) => toast.error(err.message ?? "Impossible d'envoyer la review."),
       }
     );
   };

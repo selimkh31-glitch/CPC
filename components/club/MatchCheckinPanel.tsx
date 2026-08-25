@@ -33,6 +33,9 @@ type Step = "idle" | "confirm" | "absences" | "ready" | "live" | "finalize" | "f
 const OUTCOME_LABELS: Record<MatchOutcome, string> = { WIN: "Victoire", DRAW: "Match nul", LOSS: "Défaite" };
 const OUTCOME_TONES: Record<MatchOutcome, "accent" | "warn" | "danger"> = { WIN: "accent", DRAW: "warn", LOSS: "danger" };
 
+export const CHECKIN_NEEDS_LIVE_COPY =
+  "Passe le club en LIVE pour lancer le check-in — le match doit être rattaché à une session LIVE.";
+
 /**
  * Check-in / lancement du match (Phase 5, Étape 3) — owner/manager only,
  * rendu par le parent uniquement si `canManage` (aucune re-vérification de
@@ -162,7 +165,10 @@ export function MatchCheckinPanel({
   };
 
   const doLaunch = (absentUserIds: string[]) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      toast.error(CHECKIN_NEEDS_LIVE_COPY);
+      return;
+    }
     launch.mutate(
       { sessionId, absentUserIds },
       {
@@ -178,7 +184,7 @@ export function MatchCheckinPanel({
               : "Match lancé !"
           );
         },
-        onError: (err: any) => toast.error(err.message ?? "Erreur"),
+        onError: (err: any) => toast.error(err.message ?? "Impossible de lancer le check-in."),
       }
     );
   };
@@ -209,7 +215,7 @@ export function MatchCheckinPanel({
           setStep("finalized");
           toast.success("Résultat enregistré !");
         },
-        onError: (err: any) => toast.error(err.message ?? "Erreur"),
+        onError: (err: any) => toast.error(err.message ?? "Impossible de lancer le check-in."),
       }
     );
   };

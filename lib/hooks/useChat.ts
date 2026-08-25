@@ -142,12 +142,29 @@ export function useConversation(conversationId: string | null) {
   });
 }
 
+function conversationIdFromStartPayload(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as { conversation?: { id?: unknown } | { id?: unknown }[] | null; id?: unknown };
+  const embedded = row.conversation;
+  const fromEmbed = Array.isArray(embedded) ? embedded[0]?.id : embedded?.id;
+  if (typeof fromEmbed === "string" && fromEmbed) return fromEmbed;
+  if (typeof row.id === "string" && row.id) return row.id;
+  return null;
+}
+
 /** Démarre (ou retrouve) une conversation DIRECT avec `otherUserId` — voir start-direct-conversation. */
 export function useStartDirectConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (otherUserId: string) =>
-      callEdgeFunction<{ conversation: ConversationRow }>("start-direct-conversation", { otherUserId }),
+    mutationFn: async (otherUserId: string) => {
+      const data = await callEdgeFunction<{ conversation?: ConversationRow | ConversationRow[]; id?: string }>(
+        "start-direct-conversation",
+        { otherUserId }
+      );
+      const id = conversationIdFromStartPayload(data);
+      if (!id) throw new Error("Impossible d'ouvrir la conversation.");
+      return { conversation: { id } };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       queryClient.invalidateQueries({ queryKey: ["conversation"] });

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft } from "lucide-react-native";
 import { LivePlayerCard } from "@/components/live/LivePlayerCard";
+import { LiveClubCard } from "@/components/live/LiveClubCard";
 import { PlayerLivePanel } from "@/components/live/PlayerLivePanel";
 import { FindClubPanel } from "@/components/club/FindClubPanel";
 import { ErrorState } from "@/components/ui/Screen";
@@ -18,11 +19,11 @@ type LivePane = "feed" | "find";
 
 /**
  * LIVE Mode Joueur — un état, un CTA : Passer LIVE.
- * Clubs en LIVE = secondaire. Matching / TTL inchangés.
+ * Clubs en LIVE = liste principale (pas un second écran). Matching / TTL inchangés.
  */
 export default function LiveScreen() {
   const { session } = useAuth();
-  const { data: items, refetch, isRefetching } = useLiveSessions();
+  const { data: items, refetch, isRefetching, isError: clubsError } = useLiveSessions();
   const {
     data: livePlayers,
     isError: playersError,
@@ -33,10 +34,11 @@ export default function LiveScreen() {
   const [pane, setPane] = useState<LivePane>("feed");
   const now = useLiveClock();
 
-  const liveClubCount = useMemo(
-    () => (items ?? []).filter((item) => item.club && isLiveActive(item, now) && (item.needed_positions?.length ?? 0) > 0).length,
+  const liveClubs = useMemo(
+    () => (items ?? []).filter((item) => item.club && isLiveActive(item, now) && (item.needed_positions?.length ?? 0) > 0),
     [items, now]
   );
+  const liveClubCount = liveClubs.length;
 
   const otherLivePlayers = useMemo(() => {
     const selfId = session?.user.id;
@@ -56,7 +58,7 @@ export default function LiveScreen() {
     setPane(next);
   };
 
-  const showFeedEmpty = !playersError && otherLivePlayers.length === 0;
+  const showFeedEmpty = !playersError && otherLivePlayers.length === 0 && liveClubs.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -85,17 +87,30 @@ export default function LiveScreen() {
           <Text className="mb-5 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
           <PlayerLivePanel />
 
-          <Pressable
-            onPress={() => switchPane("find")}
-            className="mb-6 min-h-[44px] justify-center py-1 active:opacity-80"
-            accessibilityRole="button"
-            accessibilityLabel={LIVE_UX_COPY.findClub}
-          >
-            <Text className="text-sm text-fg-subtle">
-              {LIVE_UX_COPY.findClub}
-              {liveClubCount > 0 ? ` · ${LIVE_UX_COPY.liveClubsNow(liveClubCount)}` : ""}
-            </Text>
-          </Pressable>
+          <View className="mb-6">
+            <View className="mb-3 min-h-[44px] flex-row items-center justify-between gap-3">
+              <Text className="text-sm text-fg-subtle">{LIVE_UX_COPY.findClub}</Text>
+              <Pressable
+                onPress={() => switchPane("find")}
+                className="min-h-[44px] justify-center py-1 active:opacity-80"
+                accessibilityRole="button"
+                accessibilityLabel={LIVE_UX_COPY.liveClubFilters}
+              >
+                <Text className="text-sm font-bold text-accent">{LIVE_UX_COPY.liveClubFilters}</Text>
+              </Pressable>
+            </View>
+            {clubsError ? (
+              <ErrorState message="Impossible de charger les clubs LIVE." onRetry={refetch} />
+            ) : liveClubs.length > 0 ? (
+              <View className="gap-3">
+                {liveClubs.map((item) => (
+                  <LiveClubCard key={item.id} item={item} />
+                ))}
+              </View>
+            ) : (
+              <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.noLiveClubs}</Text>
+            )}
+          </View>
 
           {playersError ? (
             <View className="mb-2">

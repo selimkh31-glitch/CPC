@@ -39,7 +39,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
   const now = useLiveClock();
   const [filters, setFilters] = useState<LiveFiltersState>(EMPTY_LIVE_FILTERS);
   const [mode, setMode] = useState<FindMode>("live");
-  const [relaxed, setRelaxed] = useState(false);
+  const [relaxed, setRelaxed] = useState(true);
 
   const activeLive = useMemo(
     () => (items ?? []).filter((item) => item.club && isLiveActive(item, now) && (item.needed_positions?.length ?? 0) > 0),
@@ -121,7 +121,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
         <View className="mb-3 flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">
             <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.findClub}</Text>
-            <Text className="mt-0.5 text-sm text-fg-muted">Ceux qui cherchent un match.</Text>
+            <Text className="mt-0.5 text-sm text-fg-muted">Clubs qui cherchent des joueurs.</Text>
           </View>
           {mode === "directory" ? (
             <Button

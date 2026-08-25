@@ -1,10 +1,8 @@
 import { Alert, ScrollView, Text, View } from "react-native";
-import { Users } from "lucide-react-native";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
-import { PlayerCard } from "@/components/player/PlayerCard";
 import { ClubCard } from "@/components/club/ClubCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { MyDepartureStatusCard } from "@/components/club/MyDepartureStatusCard";
@@ -16,8 +14,7 @@ import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { benchMembers, formatNeededPositionsLine } from "@/lib/sessionState";
-import { buildPlayerCardData } from "@/lib/playerCard";
+import { formatNeededPositionsLine } from "@/lib/sessionState";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
@@ -72,9 +69,6 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
   const activeSession = findActiveLiveSession(club.sessions, now);
-  // Banc — tout membre sans slot_assignment, dérivé de l'existant : aucune
-  // nouvelle table/requête, réutilise club_members + slot_assignments.
-  const bench = benchMembers(club.members, assignments);
   const neededLine = activeSession ? formatNeededPositionsLine(activeSession.needed_positions) : null;
   const managers = (club.members ?? []).filter((m) => m.role === "MANAGER");
   const cardData = buildClubCardDataFromHydratedClub(club, {
@@ -168,6 +162,7 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
           assignments={assignments}
           onEmptySlotPress={onEmptySlotPress}
           currentUserId={session?.user.id ?? null}
+          clubId={club.id}
           // Foundation #2.1 — Mode Joueur : jamais d'affordance de
           // recrutement. `interactive={false}` supprime le "+"/l'indice
           // "Rechercher" sur les slots vides (voir FormationPitch/PitchSlot) ;
@@ -177,33 +172,6 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
         />
       ) : (
         <EmptyState title="Ce club n'a pas encore configuré sa formation." />
-      )}
-
-      {/* 4. Effectif / banc */}
-      {bench.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
-            <Text className="text-sm text-fg-muted">{bench.length}</Text>
-          </CardHeader>
-          <View className="gap-2">
-            {bench.map((m) =>
-              m.user ? (
-                <PlayerCard
-                  key={m.user_id}
-                  data={buildPlayerCardData(m.user, { clubName: club.name })}
-                  variant="mini"
-                />
-              ) : (
-                <View key={m.user_id} className="min-h-[44px] justify-center rounded-2xl border border-border bg-bg-elevated px-3 py-2">
-                  <Text numberOfLines={1} className="text-sm text-fg-muted">
-                    Joueur
-                  </Text>
-                </View>
-              )
-            )}
-          </View>
-        </Card>
       )}
 
       {/* 5. Mon statut — engagement/départ, MEMBER et MANAGER (jamais OWNER, section 9).

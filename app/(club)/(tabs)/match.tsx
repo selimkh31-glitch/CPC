@@ -2,7 +2,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { ChevronDown, ChevronUp, Mail, Users } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Mail } from "lucide-react-native";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -18,7 +18,6 @@ import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import {
-  benchMembers,
   canMutateClub,
   clubSessionSnapshot,
   filledSlotCount,
@@ -89,7 +88,7 @@ export default function MatchTab() {
   }
 
   if (isError) {
-    return shell(<ErrorState message="Impossible de charger la feuille de match." onRetry={refetch} />);
+    // Refetch focus a échoué : on garde la feuille, pas un overlay qui coupe le LIVE.
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
@@ -107,7 +106,6 @@ export default function MatchTab() {
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
   const members = club.members ?? [];
-  const bench = benchMembers(members, assignments);
   const fill = rosterFillLabel(filledSlotCount(assignments));
 
   const onEmptySlotPress = (slot: FormationSlot) => {
@@ -119,6 +117,7 @@ export default function MatchTab() {
 
   return shell(
     <>
+      {isError ? <ErrorState message="Impossible de charger la feuille de match." onRetry={refetch} /> : null}
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
           <Text className="font-display text-2xl text-fg">{club.name}</Text>
@@ -179,35 +178,10 @@ export default function MatchTab() {
               formationId={formationId}
               assignments={assignments}
               interactive={canManage}
+              clubId={club.id}
               onEmptySlotPress={canManage ? onEmptySlotPress : undefined}
               emptySlotHint="Inviter sur ce poste"
             />
-          )}
-
-          {bench.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
-                <Text className="text-sm text-fg-muted">{bench.length}</Text>
-              </CardHeader>
-              <View className="gap-2">
-                {bench.map((m) =>
-                  m.user ? (
-                    <PlayerCard
-                      key={m.user_id}
-                      data={buildPlayerCardData(m.user, { clubName: club.name })}
-                      variant="mini"
-                    />
-                  ) : (
-                    <View key={m.user_id} className="min-h-[44px] justify-center rounded-2xl border border-border bg-bg-elevated px-3 py-2">
-                      <Text numberOfLines={1} className="text-sm text-fg-muted">
-                        Joueur
-                      </Text>
-                    </View>
-                  )
-                )}
-              </View>
-            </Card>
           )}
 
           <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />

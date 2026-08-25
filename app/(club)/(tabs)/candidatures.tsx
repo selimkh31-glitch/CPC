@@ -32,11 +32,12 @@ export default function RecrutementTab() {
   }
 
   if (isError) {
-    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
+    // Refetch a échoué : Recrutement reste utilisable avec le club déjà chargé.
   }
 
   return shell(
     <>
+      {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <View>
         <Text className="font-display text-2xl text-fg">Recrutement</Text>
         <Text className="mt-0.5 text-sm text-fg-muted">Accepte, refuse ou invite.</Text>

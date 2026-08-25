@@ -2,10 +2,13 @@
  * Tests de lib/recruitment.ts — transitions idempotentes.
  * Lancer : npx tsx scripts/test-recruitment.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   liveOffRecruitmentEvent,
   nextApplicationStatus,
   nextInvitationStatus,
+  playerInvitationAcceptHref,
   recruitmentNotificationNav,
 } from "../lib/recruitment";
 
@@ -106,6 +109,17 @@ test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
     null,
     "tournament schedule not recruitment"
   );
+});
+
+test("joueur ACCEPTED → feuille /match-sheet, jamais Recrutement", () => {
+  assert.equal(playerInvitationAcceptHref("club-1"), "/match-sheet?clubId=club-1", "href");
+  assert.equal(playerInvitationAcceptHref("  "), null, "blank");
+  assert.equal(playerInvitationAcceptHref(null), null, "null");
+  assert.equal(playerInvitationAcceptHref(undefined), null, "undefined");
+  const list = readFileSync(`${process.cwd()}/components/player/MyInvitationsList.tsx`, "utf8");
+  assert.equal(list.includes("playerInvitationAcceptHref"), true, "list uses helper");
+  assert.equal(list.includes("router.push(href)"), true, "navigates");
+  assert.equal(list.includes("/candidatures"), false, "not recrutement");
 });
 
 console.log(`\n${passed} tests recruitment OK`);

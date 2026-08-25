@@ -54,7 +54,7 @@ export default function ClubLiveTab() {
   }
 
   if (isError) {
-    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
+    // Refetch focus a échoué : on garde la feuille LIVE, pas un overlay qui coupe.
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
@@ -80,6 +80,7 @@ export default function ClubLiveTab() {
 
   return shell(
     <>
+      {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
 
       {layout.showSessionPanel ? (

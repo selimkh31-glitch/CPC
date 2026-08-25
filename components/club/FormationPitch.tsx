@@ -22,6 +22,7 @@ export function FormationPitch({
   onEmptySlotPress,
   currentUserId = null,
   emptySlotHint = "Rechercher",
+  clubId = null,
 }: {
   formationId: FormationId;
   assignments: SlotAssignmentRow[];
@@ -36,6 +37,8 @@ export function FormationPitch({
    *  côté owner/manager, laissé au défaut générique sinon (le tap et le
    *  routing vers player-search restent strictement inchangés). */
   emptySlotHint?: string;
+  /** Club de la feuille — passé au profil pour « Retirer de la feuille ». */
+  clubId?: string | null;
 }) {
   const slots = FORMATIONS[formationId];
   const bySlot = new Map(assignments.map((a) => [a.slot_id, a]));
@@ -62,6 +65,7 @@ export function FormationPitch({
           onEmptySlotPress={onEmptySlotPress}
           isYou={Boolean(currentUserId && bySlot.get(slot.slotId)?.user_id === currentUserId)}
           emptySlotHint={emptySlotHint}
+          clubId={clubId}
         />
       ))}
     </View>
@@ -75,6 +79,7 @@ function PitchSlot({
   onEmptySlotPress,
   isYou,
   emptySlotHint,
+  clubId,
 }: {
   slot: FormationSlot;
   occupant: SlotAssignmentRow | null;
@@ -82,6 +87,7 @@ function PitchSlot({
   onEmptySlotPress?: (slot: FormationSlot) => void;
   isYou: boolean;
   emptySlotHint: string;
+  clubId: string | null;
 }) {
   const positionLabel = POSITION_LABELS[slot.position as PositionCode] ?? slot.position;
   const isEmpty = !occupant?.user;
@@ -99,7 +105,10 @@ function PitchSlot({
   const onPress = () => {
     if (occupant?.user) {
       Haptics.selectionAsync();
-      router.push(`/profile/${occupant.user_id}`);
+      const href = clubId
+        ? `/profile/${occupant.user_id}?clubId=${encodeURIComponent(clubId)}`
+        : `/profile/${occupant.user_id}`;
+      router.push(href);
       return;
     }
     if (!canOpenEmpty || !onEmptySlotPress) return;

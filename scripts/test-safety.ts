@@ -3,6 +3,8 @@
  * href notifications, sources EA/CPC sans identité joueur inventée.
  * Lancer : npx tsx scripts/test-safety.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   isNotificationType,
   isReportReason,
@@ -556,4 +558,28 @@ test("shouldHideContactCta — même règle profils ; pas de user = pas de CTA �
   assert.false(shouldHideContactCta("z", ["x"]), "libre");
   assert.false(shouldHideContactCta(null, ["x"]), "pas de participant user");
   assert.false(shouldHideContactCta("x", null), "pas de blocs");
+});
+
+test("signalements / blocs : FK PostgREST réelles, pas *_id_fkey inventé", () => {
+  const src = readFileSync(`${process.cwd()}/lib/hooks/useSafety.ts`, "utf8");
+  assert.true(src.includes("users!user_reports_reported_fkey"), "reports fkey");
+  assert.true(src.includes("users!user_blocks_blocked_fkey"), "blocks fkey");
+  assert.false(src.includes("user_reports_reported_id_fkey"), "pas reported_id_fkey");
+  assert.false(src.includes("user_blocks_blocked_id_fkey"), "pas blocked_id_fkey");
+  assert.true(src.includes('.from("user_reports")'), "reports query");
+});
+
+test("retirer de la feuille sans Bloquer ; check-in ne swallow pas", () => {
+  const profile = readFileSync(`${process.cwd()}/components/profile/ProfileContent.tsx`, "utf8");
+  assert.true(profile.includes("Retirer de la feuille"), "cta");
+  assert.true(profile.includes("useClearSlotAssignment"), "mutates slots");
+  assert.true(profile.includes("Bloquer"), "block stays");
+  const checkin = readFileSync(`${process.cwd()}/components/club/MatchCheckinPanel.tsx`, "utf8");
+  assert.true(checkin.includes("CHECKIN_NEEDS_LIVE_COPY"), "toast if no session");
+  assert.true(checkin.includes("launch.mutate"), "calls Edge");
+  assert.true(checkin.includes("onError"), "surfaces Edge error");
+  const depart = readFileSync(`${process.cwd()}/components/club/MyDepartureStatusCard.tsx`, "utf8");
+  assert.true(depart.includes("Confirmer"), "in-card confirm");
+  assert.true(depart.includes("requestDeparture.mutate"), "mutates");
+  assert.false(depart.includes("Alert.alert"), "not Alert-only");
 });

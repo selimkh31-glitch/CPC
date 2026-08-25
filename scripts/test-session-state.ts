@@ -4,6 +4,8 @@
  *
  * Lancer : npx tsx scripts/test-session-state.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   benchMembers,
   canMutateClub,
@@ -182,6 +184,15 @@ test("canPressEmptyFormationSlot — pas de CTA morte sans handler", () => {
   assert.equal(canPressEmptyFormationSlot(true, false), false, "sans handler");
   assert.equal(canPressEmptyFormationSlot(false, true), false, "lecture seule");
   assert.equal(canPressEmptyFormationSlot(false, false), false, "ni l'un ni l'autre");
+});
+
+test("feuille : plus de chrome Banc dans match.tsx / ClubHome", () => {
+  const match = readFileSync(`${process.cwd()}/app/(club)/(tabs)/match.tsx`, "utf8");
+  const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
+  assert.equal(match.includes(">Banc<"), false, "match no Banc");
+  assert.equal(home.includes(">Banc<"), false, "home no Banc");
+  assert.equal(match.includes("benchMembers"), false, "match no bench UI helper");
+  assert.equal(home.includes("benchMembers"), false, "home no bench UI helper");
 });
 
 console.log(`\n${passed} test(s) passés.`);

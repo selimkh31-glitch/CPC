@@ -51,7 +51,10 @@ Deno.serve(async (req) => {
     })
     .select()
     .single();
-  if (error) return jsonResponse({ error: error.message }, 500);
+  if (error) {
+    if (error.code === "23505") return jsonResponse({ error: "Tu as déjà noté ce joueur." }, 409);
+    return jsonResponse({ error: error.message || "Impossible d'enregistrer la review." }, 500);
+  }
 
   const { data: target } = await admin.from("users").select("*").eq("id", targetUserId).single();
   if (target) {

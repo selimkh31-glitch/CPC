@@ -158,6 +158,12 @@ export function useCreateSession(clubId: string) {
       if (!input.neededPositions.length) throw new Error("Sélectionne au moins un poste recherché.");
       const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
       const expiresAt = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
+      const { data: previousRows } = await supabase
+        .from("club_sessions")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("is_live", true);
+      const previousIds = ((previousRows ?? []) as { id: string }[]).map((row) => row.id).filter(Boolean);
       await supabase.from("club_sessions").update({ is_live: false }).eq("club_id", clubId).eq("is_live", true);
       const { data, error } = await supabase
         .from("club_sessions")
@@ -170,7 +176,12 @@ export function useCreateSession(clubId: string) {
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (previousIds.length > 0) {
+          await supabase.from("club_sessions").update({ is_live: true }).in("id", previousIds);
+        }
+        throw error;
+      }
       return data as ClubSessionRow;
     },
     onSuccess: () => {
@@ -253,6 +264,24 @@ export function useUpdateMember(clubId: string) {
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+    },
+  });
+}
+
+/**
+ * Retire un joueur de la feuille (slot_assignments) sans le bloquer ni
+ * le sortir de club_members. RLS slot_assignments_write_manager.
+ */
+export function useClearSlotAssignment(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from("slot_assignments").delete().eq("club_id", clubId).eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
     },
   });
 }

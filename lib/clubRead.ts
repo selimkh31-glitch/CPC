@@ -22,7 +22,8 @@ export type ManagedClubScreen = "loading" | "error" | "empty" | "ready";
 
 /**
  * 0 clubs / pas de data → empty + créer, avant ErrorState.
- * ErrorState seulement s'il reste une data club et une vraie panne.
+ * Une data club déjà là reste ready même si le refetch focus échoue :
+ * un overlay rouge ne doit pas couper le LIVE (quitter l'onglet ≠ Arrêter).
  */
 export function managedClubScreenState(input: {
   clubId: string | null;
@@ -34,6 +35,5 @@ export function managedClubScreenState(input: {
   if (!input.clubId) return "empty";
   if (input.isLoading && !input.club) return "loading";
   if (!input.club) return "empty";
-  if (input.isError) return "error";
   return "ready";
 }

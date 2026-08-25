@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { Alert, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Text, View } from "react-native";
 import { DoorOpen, Clock, ArrowRightCircle } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +29,7 @@ export function MyDepartureStatusCard({
   membership: ClubMemberRow;
 }) {
   const { data: departure, isLoading } = useDeparture(membership.active_departure_request_id);
+  const [confirming, setConfirming] = useState(false);
   const requestDeparture = useRequestDeparture(clubId);
 
   const onStatusChange = useCallback((status: DepartureStatus) => {
@@ -45,22 +46,14 @@ export function MyDepartureStatusCard({
   useMyDepartureUpdates(userId, onStatusChange);
 
   const confirmAndRequest = () => {
-    Alert.alert(
-      "Quitter le club ?",
-      "L'owner/manager aura 3 minutes pour répondre. Tu restes membre et peux continuer à jouer normalement pendant ce temps — aucune pénalité.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Confirmer",
-          style: "destructive",
-          onPress: () =>
-            requestDeparture.mutate(undefined, {
-              onSuccess: () => toast.success("Demande de départ envoyée."),
-              onError: (err: any) => toast.error(err.message ?? "Erreur"),
-            }),
-        },
-      ]
-    );
+    if (requestDeparture.isPending) return;
+    requestDeparture.mutate(undefined, {
+      onSuccess: () => {
+        setConfirming(false);
+        toast.success("Demande de départ envoyée.");
+      },
+      onError: (err: any) => toast.error(err.message ?? "Impossible d'envoyer la demande de départ."),
+    });
   };
 
   // Demande active — affiche le statut résolu côté serveur, aucune logique recréée ici.
@@ -145,9 +138,24 @@ export function MyDepartureStatusCard({
         {membership.matches_played_count} match{membership.matches_played_count > 1 ? "s" : ""} joué — départ
         disponible.
       </Text>
-      <Button variant="danger" loading={requestDeparture.isPending} onPress={confirmAndRequest}>
-        Quitter le club
-      </Button>
+      {confirming ? (
+        <View className="gap-2">
+          <Text className="text-sm text-fg-muted">
+            L&apos;owner/manager aura 3 minutes pour répondre. Tu restes membre et tu peux continuer à jouer pendant ce
+            temps — aucune pénalité.
+          </Text>
+          <Button variant="danger" loading={requestDeparture.isPending} onPress={confirmAndRequest}>
+            Confirmer
+          </Button>
+          <Button variant="secondary" disabled={requestDeparture.isPending} onPress={() => setConfirming(false)}>
+            Annuler
+          </Button>
+        </View>
+      ) : (
+        <Button variant="danger" onPress={() => setConfirming(true)}>
+          Quitter le club
+        </Button>
+      )}
     </Card>
   );
 }

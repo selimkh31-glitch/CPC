@@ -12,6 +12,7 @@ import { buildClubCardData } from "@/lib/clubCard";
 import { useMyInvitations, useRespondInvitation, useRespondTransitionInvitation } from "@/lib/hooks/useInvitations";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { clubRankingRowHref } from "@/lib/rankings";
+import { playerInvitationAcceptHref } from "@/lib/recruitment";
 import { toast } from "@/lib/toast";
 import { tournamentClubDisplayName } from "@/lib/tournaments";
 import type { InvitationStatus } from "@/lib/types";
@@ -71,16 +72,33 @@ export function MyInvitationsList() {
     );
   }
 
-  const act = (invitationId: string, status: "ACCEPTED" | "DECLINED", isTransition: boolean) => {
+  const act = (
+    invitationId: string,
+    status: "ACCEPTED" | "DECLINED",
+    isTransition: boolean,
+    clubId: string
+  ) => {
     const mutation = isTransition ? respondTransition : respond;
     mutation.mutate(
       { invitationId, status },
       {
-        onSuccess: () =>
+        onSuccess: (data) => {
           toast.success(
             status === "ACCEPTED" ? (isTransition ? "Place réservée !" : "Invitation acceptée !") : "Invitation refusée."
-          ),
-        onError: (err: any) => toast.error(err.message ?? "Erreur"),
+          );
+          if (status !== "ACCEPTED" || isTransition) return;
+          const landedClubId =
+            (data && typeof data === "object" && "invitation" in data
+              ? (data as { invitation?: { club_id?: string } }).invitation?.club_id
+              : null) ?? clubId;
+          const href = playerInvitationAcceptHref(landedClubId);
+          if (!href) {
+            toast.error("Invitation acceptée, mais le club est introuvable.");
+            return;
+          }
+          router.push(href);
+        },
+        onError: (err: any) => toast.error(err.message ?? "Impossible de répondre à l'invitation."),
       }
     );
   };
@@ -111,10 +129,10 @@ export function MyInvitationsList() {
             ) : null}
             {inv.status === "PENDING" ? (
               <View className="mt-3 flex-row gap-2">
-                <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition)}>
+                <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition, inv.club_id)}>
                   Refuser
                 </Button>
-                <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition)}>
+                <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition, inv.club_id)}>
                   {isTransition ? "Réserver ma place" : "Accepter"}
                 </Button>
               </View>

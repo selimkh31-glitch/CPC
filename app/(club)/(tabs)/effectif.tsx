@@ -72,13 +72,7 @@ export default function ClubTab() {
   }
 
   if (isError) {
-    return shell(
-      <View className="gap-4">
-        <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
-        <ModeLifeToggle target="PLAYER" />
-        <DevTestAccountSwitcher />
-      </View>
-    );
+    // Refetch focus a échoué : on garde l'onglet Club, pas un overlay qui coupe le LIVE.
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
@@ -87,6 +81,7 @@ export default function ClubTab() {
 
   return shell(
     <>
+      {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <ClubCard
         data={buildClubCardDataFromHydratedClub(club, {
           members: club.members,

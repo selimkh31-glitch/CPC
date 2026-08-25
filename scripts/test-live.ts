@@ -130,6 +130,7 @@ test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
   assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 2 }), LIVE_UX_COPY.emptyNoPlayers, "players");
   assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "cta");
   assert.equal(LIVE_UX_COPY.findClub, "Clubs en LIVE", "find");
+  assert.equal(LIVE_UX_COPY.liveClubFilters, "Filtres", "filters");
   assert.equal(LIVE_UX_COPY.otherPlayers, "Ils veulent jouer", "others");
   assert.equal(LIVE_UX_COPY.emptyNoClubs.includes("invent"), false, "no fake");
 });
@@ -191,6 +192,42 @@ test("panels LIVE : joueur = playerHeadline, club = clubHeadline / Club en LIVE"
   assert.true(club.includes("LIVE_UX_COPY.clubHeadline"), "club off uses clubHeadline");
   assert.true(club.includes("LIVE_UX_COPY.clubOpenTitle"), "club open title");
   assert.false(club.includes("LIVE_UX_COPY.playerHeadline"), "club not playerHeadline");
+});
+
+test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", () => {
+  const feed = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
+  assert.true(feed.includes("LiveClubCard"), "cards on feed");
+  assert.true(feed.includes("LIVE_UX_COPY.findClub"), "section label");
+  assert.true(feed.includes("LIVE_UX_COPY.noLiveClubs"), "honest empty");
+  assert.false(feed.includes("On cherche un match"), "no match hunt");
+});
+
+test("unmount / blur d'onglet LIVE ne coupe pas is_live", () => {
+  const files = [
+    "components/live/PlayerLivePanel.tsx",
+    "components/club/LiveSessionPanel.tsx",
+    "app/(player)/(tabs)/index.tsx",
+    "app/(club)/(tabs)/index.tsx",
+    "app/(club)/(tabs)/match.tsx",
+  ];
+  for (const rel of files) {
+    const src = readFileSync(`${process.cwd()}/${rel}`, "utf8");
+    assert.false(/useEffect\([\s\S]*is_live:\s*false/.test(src), `${rel} no useEffect is_live false`);
+    assert.false(/useFocusEffect\([\s\S]*is_live:\s*false/.test(src), `${rel} no focus is_live false`);
+    assert.false(/AppState[\s\S]*is_live:\s*false/.test(src), `${rel} no AppState is_live false`);
+  }
+  const player = readFileSync(`${process.cwd()}/components/live/PlayerLivePanel.tsx`, "utf8");
+  assert.false(/useEffect\(/.test(player), "player panel no effect");
+  const stop = player.slice(player.indexOf("const stop"), player.indexOf("const openSheet"));
+  assert.true(stop.includes("goOffline.mutate"), "Arrêter still cuts LIVE");
+  const club = readFileSync(`${process.cwd()}/components/club/LiveSessionPanel.tsx`, "utf8");
+  const goOffline = club.slice(club.indexOf("const goOffline"), club.indexOf("const neededLabel"));
+  assert.true(goOffline.includes("toggleSession.mutate"), "Arrêter club still cuts LIVE");
+  assert.false(/cleanup[\s\S]*is_live/.test(club), "club panel no cleanup offline");
+  const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");
+  assert.true(create.includes("update({ is_live: true }).in(\"id\", previousIds)"), "restore club LIVE if insert fails");
+  const playerHook = readFileSync(`${process.cwd()}/lib/hooks/usePlayerLive.ts`, "utf8");
+  assert.true(playerHook.includes("restorePrevious"), "restore player LIVE if insert fails");
 });
 
 console.log(`\n${passed} tests live OK`);

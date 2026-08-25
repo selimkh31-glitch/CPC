@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Ban, Flag, Star } from "lucide-react-native";
+import { Ban, Flag, Star, UserMinus } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
@@ -13,15 +13,26 @@ import { StartDirectMessageButton } from "@/components/social/StartDirectMessage
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
 import { usePlayerMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useCurrentClubForUser } from "@/lib/hooks/useCurrentClubs";
+import { useClub, useClearSlotAssignment } from "@/lib/hooks/useClubs";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { shouldHideContactCta } from "@/lib/safety";
 import { PLAYER_CARD_COPY } from "@/lib/playerCard";
+import { canMutateClub } from "@/lib/sessionState";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
 /** Contenu de la page profil, réutilisé pour le profil perso (tab) et /profile/[id]. */
-export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boolean }) {
+export function ProfileContent({
+  userId,
+  isOwn,
+  clubId = null,
+}: {
+  userId: string;
+  isOwn: boolean;
+  /** Club de la feuille d'où on vient — manager : Retirer de la feuille. */
+  clubId?: string | null;
+}) {
   const { session } = useAuth();
   const { data: user, isLoading, isError, refetch } = useUserProfile(userId);
   const { data: reviews } = useUserReviews(userId);
@@ -124,6 +135,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
               Signaler
             </Button>
           </View>
+          {clubId ? <RemoveFromSheetButton clubId={clubId} userId={user.id} /> : null}
         </View>
       )}
 
@@ -167,5 +179,34 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
 
       {!isOwn && user && <ReviewForm targetUserId={user.id} />}
     </View>
+  );
+}
+
+function RemoveFromSheetButton({ clubId, userId }: { clubId: string; userId: string }) {
+  const { session } = useAuth();
+  const { data: club } = useClub(clubId);
+  const clear = useClearSlotAssignment(clubId);
+  const myMembership = session ? club?.members?.find((m) => m.user_id === session.user.id) : undefined;
+  const onSheet = Boolean(club?.slotAssignments?.some((row) => row.user_id === userId));
+  if (!canMutateClub(myMembership?.role) || session?.user.id === userId || !onSheet) return null;
+
+  return (
+    <Button
+      variant="secondary"
+      className="min-h-[44px]"
+      icon={<UserMinus size={15} color="#f4f5f7" />}
+      loading={clear.isPending}
+      onPress={() =>
+        clear.mutate(userId, {
+          onSuccess: () => {
+            toast.success("Retiré de la feuille.");
+            if (router.canGoBack()) router.back();
+          },
+          onError: (err: any) => toast.error(err.message ?? "Impossible de retirer de la feuille."),
+        })
+      }
+    >
+      Retirer de la feuille
+    </Button>
   );
 }

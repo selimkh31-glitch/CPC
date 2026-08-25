@@ -86,8 +86,8 @@ test("0 clubs / pas de data = empty même si isError (refetch TanStack)", () => 
   );
   assert.equal(
     managedClubScreenState({ clubId: "c1", club: { id: "c1" }, isLoading: false, isError: true }),
-    "error",
-    "club data + fail = error"
+    "ready",
+    "club data + fail refetch = ready (LIVE survives tab blur)"
   );
   assert.equal(
     managedClubScreenState({ clubId: "c1", club: { id: "c1" }, isLoading: false, isError: false }),
@@ -137,6 +137,8 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
   const live = read("app/(club)/(tabs)/index.tsx");
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const match = read("app/(club)/(tabs)/match.tsx");
+  assert.false(/if \(isError\) \{\s*return shell/.test(live), "LIVE isError does not unmount panel");
+  assert.true(live.includes("LiveSessionPanel"), "LIVE panel");
   for (const [rel, src] of [
     ["LIVE", live],
     ["Club", clubTab],
@@ -150,11 +152,10 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
   assert.true(rec.indexOf("if (!club)") < rec.indexOf("if (isError)"), "recrutement empty before error");
 });
 
-test("onglet Club : switcher même en empty et en erreur réseau", () => {
+test("onglet Club : switcher même en empty et si refetch échoue", () => {
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
-  const errorIdx = clubTab.indexOf('message="Impossible de charger ce club."');
-  const afterError = clubTab.slice(errorIdx, errorIdx + 400);
-  assert.true(afterError.includes("DevTestAccountSwitcher"), "switcher on error");
+  assert.true(clubTab.includes('message="Impossible de charger ce club."'), "error copy");
+  assert.true(clubTab.includes("DevTestAccountSwitcher"), "switcher on club tab");
   const emptyIdx = clubTab.indexOf("<ManagedClubEmpty");
   const afterEmpty = clubTab.slice(emptyIdx, emptyIdx + 350);
   assert.true(afterEmpty.includes("DevTestAccountSwitcher"), "switcher on empty");
