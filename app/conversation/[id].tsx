@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useConversation, useLoadOlderMessages, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/hooks/useChat";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
-import { BLOCKED_DM_COPY, conversationListLabel, isDirectPeerBlocked } from "@/lib/social";
+import { BLOCKED_DM_COPY, conversationDisplayName, isDirectPeerBlocked } from "@/lib/social";
 import { cn, timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { MessageRow } from "@/lib/types";
@@ -32,7 +32,7 @@ export default function ConversationThreadScreen() {
   const markRead = useMarkConversationRead(id ?? "", profile?.id ?? "");
 
   const title =
-    conversation && profile?.id ? conversationListLabel(conversation, profile.id) : "Conversation";
+    conversation && profile?.id ? conversationDisplayName(conversation, profile.id) : "Conversation";
   const peerBlocked = Boolean(
     conversation && profile?.id && isDirectPeerBlocked(conversation, profile.id, blockedIds ?? [])
   );

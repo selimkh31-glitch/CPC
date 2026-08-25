@@ -4,6 +4,7 @@
  * create-group et le realtime messages restent la source de vérité.
  */
 import type { ClubRole, ConversationRole, ConversationRow, GroupMemberRow, UserRow } from "@/lib/types";
+import { tournamentClubDisplayName } from "@/lib/tournaments";
 
 /** Copy honnête : un blocage (les deux sens) interdit le DM, sans le cacher. */
 export const BLOCKED_DM_COPY = "Tu ne peux pas envoyer de message à ce joueur (blocage).";
@@ -66,14 +67,23 @@ export function getDirectConversationPeer(conversation: ConversationRow, selfUse
   return other?.user ?? null;
 }
 
-export function conversationListLabel(conversation: ConversationRow, selfUserId: string): string {
+/**
+ * Titre liste / header : nom réel hydraté pour CLUB, sinon copy générique.
+ * Jamais « Club Pro Clubs » / « Club ».
+ */
+export function conversationDisplayName(conversation: ConversationRow, selfUserId: string): string {
   if (conversation.type === "DIRECT") {
     return getDirectConversationPeer(conversation, selfUserId)?.username ?? "Joueur Pro Clubs";
   }
   if (conversation.type === "GROUP") return "Groupe";
-  if (conversation.type === "CLUB") return "Club Pro Clubs";
+  if (conversation.type === "CLUB") {
+    return tournamentClubDisplayName(conversation.club?.name) ?? CLUB_CONVERSATION_COPY;
+  }
   return "Conversation";
 }
+
+/** Alias — même helper pour la liste et le fil. */
+export const conversationListLabel = conversationDisplayName;
 
 export function isDirectPeerBlocked(
   conversation: ConversationRow,
