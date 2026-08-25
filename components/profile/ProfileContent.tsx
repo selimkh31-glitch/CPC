@@ -9,7 +9,9 @@ import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
 import { ReviewForm } from "@/components/profile/ReviewForm";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
+import { usePlayerMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
+import { shouldHideContactCta } from "@/lib/safety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -19,12 +21,18 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const { session } = useAuth();
   const { data: user, isLoading, isError, refetch } = useUserProfile(userId);
   const { data: reviews } = useUserReviews(userId);
+  const {
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = usePlayerMatchHistory(userId);
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
   const iBlockedThem = Boolean(myBlocks?.some((row) => row.blocked_id === userId));
-  const blockedEitherWay = Boolean(blockedIds?.includes(userId));
+  const blockedEitherWay = shouldHideContactCta(userId, blockedIds);
 
   if (isError) {
     return (
@@ -64,6 +72,10 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
               }
             : null
         }
+        matchHistory={matchHistory}
+        matchHistoryLoading={matchHistoryLoading}
+        matchHistoryError={matchHistoryError}
+        onRetryMatchHistory={refetchMatchHistory}
       />
 
       {isOwn && user && (

@@ -65,6 +65,17 @@ export const FEATURE_EA_STATS = process.env.EXPO_PUBLIC_FEATURE_EA_STATS !== "fa
 export const FEATURE_AI = process.env.EXPO_PUBLIC_FEATURE_AI !== "false";
 export const FEATURE_REVENUECAT = process.env.EXPO_PUBLIC_FEATURE_REVENUECAT === "true";
 
+/** Copy courte si l'IAP n'est pas branché — pas de toast de succès fictif. */
+export const PRO_PURCHASE_UNAVAILABLE_REASON = "Paiement in-app pas encore configuré.";
+
+export function proPurchaseCta(revenueCatEnabled: boolean): {
+  canPurchase: boolean;
+  disabledReason: string | null;
+} {
+  if (revenueCatEnabled) return { canPurchase: true, disabledReason: null };
+  return { canPurchase: false, disabledReason: PRO_PURCHASE_UNAVAILABLE_REASON };
+}
+
 // --- Freemium ---------------------------------------------------------------
 export const FREE_APPLICATIONS_PER_DAY = 3;
 export const PRO_PRICE_EUR = 5;

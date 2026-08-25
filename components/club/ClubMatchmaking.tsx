@@ -22,9 +22,13 @@ export function ClubMatchmaking({ compact = false }: { compact?: boolean }) {
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 12 }}>
       <View>
         {!compact && <Text className="font-display text-2xl text-fg">Trouver un club</Text>}
-        {mainPosition && (
-          <Text className="text-sm text-fg-muted">Postes recherchés pour {POSITION_LABELS[mainPosition]}</Text>
-        )}
+        <Text className="text-sm text-fg-muted">
+          {compact
+            ? "Clubs avec un slot libre pour ton poste — distinct du feed LIVE."
+            : mainPosition
+              ? `Postes recherchés pour ${POSITION_LABELS[mainPosition]}`
+              : "Clubs avec un slot libre pour ton poste."}
+        </Text>
       </View>
 
       {isLoading ? (

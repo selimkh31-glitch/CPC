@@ -16,6 +16,7 @@ import {
   matchSheetTitle,
   rosterFillLabel,
   startingUserIds,
+  canPressEmptyFormationSlot,
   type LiveSessionFields,
 } from "../lib/sessionState";
 import type { ClubMemberRow, MatchCheckinRow, SlotAssignmentRow } from "../lib/types";
@@ -174,6 +175,13 @@ test("banc = membres sans slot_assignment ; filled = nombre de lignes slots", ()
   assert.equal(filledSlotCount([]), 0, "vide");
   assert.equal(rosterFillLabel(1), "1/11 titulaires", "label");
   assert.equal(rosterFillLabel(11), "11/11 titulaires", "complet — compte, pas FULL");
+});
+
+test("canPressEmptyFormationSlot — pas de CTA morte sans handler", () => {
+  assert.equal(canPressEmptyFormationSlot(true, true), true, "owner + handler");
+  assert.equal(canPressEmptyFormationSlot(true, false), false, "sans handler");
+  assert.equal(canPressEmptyFormationSlot(false, true), false, "lecture seule");
+  assert.equal(canPressEmptyFormationSlot(false, false), false, "ni l'un ni l'autre");
 });
 
 console.log(`\n${passed} test(s) passés.`);

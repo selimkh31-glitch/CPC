@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, ChevronUp, Mail, Users } from "lucide-react-native";
@@ -31,6 +31,7 @@ import { useClubInvitations } from "@/lib/hooks/useInvitations";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
+import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 
 /**
  * Feuille de match — organisation (hors tab bar, `href: null`).
@@ -62,10 +63,19 @@ export default function MatchTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
-        <ModeSwitch managedClubs={managedClubs} />
-        {body}
-      </ScrollView>
+      {/* iOS: padding, offset 0 — contenu déjà sous le notch, au-dessus de la tab bar (pas un header stack). */}
+      {/* Android: undefined — windowSoftInputMode resize (app.json) rétrécit la fenêtre ; padding doublerait. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+        style={{ flex: 1 }}
+        className="flex-1"
+      >
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
+          <ModeSwitch managedClubs={managedClubs} />
+          {body}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
@@ -261,6 +271,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
         <Text className="text-sm text-fg-muted">Aucune invitation en attente.</Text>
       ) : (
         <View className="gap-2">
+          <Text className="text-xs text-fg-subtle">{FINALIZE_MATCH_COPY.invitationsHint}</Text>
           {invitations.map((inv) => {
             const position = inv.slot_id ? positionBySlotId.get(inv.slot_id) : null;
             return (

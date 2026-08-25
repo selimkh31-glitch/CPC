@@ -31,6 +31,11 @@ export function requireUuid(value: unknown, field: string): string {
   return value;
 }
 
+export function optionalUuid(value: unknown, field: string): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  return requireUuid(value, field);
+}
+
 export function requireIntInRange(value: unknown, field: string, min: number, max: number): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
     throw new ValidationError(`${field} doit être un entier entre ${min} et ${max}.`);

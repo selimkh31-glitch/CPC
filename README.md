@@ -63,7 +63,22 @@ npm run prisma:migrate
 # 2. supabase/migrations/0003_triggers.sql   (dépend des policies ci-dessus)
 ```
 
-**Compétitions (0026) — à appliquer manuellement, pas depuis l'agent :** coller `supabase/migrations/0026_competitions_foundation.sql` dans le SQL Editor du projet distant **après** 0025. Ne **pas** `prisma migrate deploy` (Option B, double-apply). Puis déployer les Edge `create-competition` et `register-competition-club`. Aucune table de classements : `match_results` n'a pas de `competition_id`.
+**Compétitions (0026 + 0027) — à appliquer manuellement, pas depuis l'agent :** Option B, **pas** `prisma migrate deploy` (double-apply).
+
+```bash
+npx prisma db execute --file supabase/migrations/0026_competitions_foundation.sql --schema prisma/schema.prisma
+npx prisma db execute --file supabase/migrations/0027_match_result_competition_link.sql --schema prisma/schema.prisma
+```
+
+Puis déployer `create-competition`, **redéployer** `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés. Après RPC `finalize_match` réussie, l’Edge crée une notif in-app `MATCH_FINALIZED` (membres des deux clubs, **sauf le recorder**) ; un échec notify n’annule pas le résultat. Après INSERT `competition_clubs` réussi, `register-competition-club` crée une notif in-app `COMPETITION_CLUB_REGISTERED` (`created_by` + OWNER/MANAGER du club, dédupliqués) ; un échec notify n’annule pas l’inscription. **Pas de SQL** pour cette notif : `notifications.type` est du texte libre (0025), comme `MESSAGE_RECEIVED` / `MATCH_FINALIZED`. **Pas de 0029.**
+
+**Conversation club (0028)** — après 0016–0017 (tables + RLS chat). Get-or-create `start_club_conversation`, pas de nouvelle table.
+
+```bash
+npx prisma db execute --file supabase/migrations/0028_club_conversation.sql --schema prisma/schema.prisma
+```
+
+Puis déployer `start-club-conversation`.
 
 Tous les `id` (sauf `users.id`, toujours l'UID Supabase Auth) utilisent `@default(dbgenerated("gen_random_uuid()"))` — un vrai DEFAULT Postgres — pour que les INSERT faits hors Prisma Client (app mobile via `supabase-js`, Edge Functions) fonctionnent sans fournir `id`.
 
@@ -91,7 +106,9 @@ supabase/functions/
   moderate/                    POST — modération générique
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
   create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN)
-  register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409
+  register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409 ; notif COMPETITION_CLUB_REGISTERED après INSERT
+  start-direct-conversation/   POST — get-or-create DM
+  start-club-conversation/     POST — get-or-create conversation CLUB (0028)
 ```
 
 Déploiement :

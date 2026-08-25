@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
@@ -5,13 +6,19 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useAppMode } from "@/lib/providers/AppModeProvider";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
 } from "@/lib/hooks/useNotifications";
 import { unreadNotificationCount } from "@/lib/notificationRead";
-import { notificationHref, notificationTitle } from "@/lib/safety";
+import { recruitmentNotificationNav } from "@/lib/recruitment";
+import {
+  inAppNotificationHref,
+  matchFinalizedNotificationNav,
+  notificationTitle,
+} from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationRow } from "@/lib/types";
@@ -19,15 +26,40 @@ import type { NotificationRow } from "@/lib/types";
 /** Liste des notifications in-app — extraite de app/notifications.tsx pour l'onglet Activité. */
 export function NotificationsList() {
   const { session } = useAuth();
+  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
   const userId = session?.user.id ?? null;
   const { data, isLoading, isError, refetch } = useNotifications(userId);
   const markRead = useMarkNotificationRead(userId);
   const markAll = useMarkAllNotificationsRead(userId);
   const unread = unreadNotificationCount(data ?? []);
+  const [pendingNav, setPendingNav] = useState<{ href: string; requireClubMode: boolean } | null>(null);
+
+  // Navigation après commit React : setMode("CLUB") doit avoir monté l'arbre
+  // (club) avant router.push("/candidatures") — même doctrine que create-club.
+  useEffect(() => {
+    if (!pendingNav) return;
+    if (pendingNav.requireClubMode && mode !== "CLUB") return;
+    router.push(pendingNav.href as any);
+    setPendingNav(null);
+  }, [pendingNav, mode]);
 
   const open = (item: NotificationRow) => {
     if (!item.read_at) markRead.mutate(item.id);
-    router.push(notificationHref(item.type, item.data) as any);
+    const recruitment = recruitmentNotificationNav(item.type, item.data);
+    if (recruitment) {
+      if (recruitment.selectClubId) setSelectedManagedClubId(recruitment.selectClubId);
+      if (recruitment.requireClubMode) setMode("CLUB");
+      setPendingNav({ href: recruitment.href, requireClubMode: recruitment.requireClubMode });
+      return;
+    }
+    const matchNav = matchFinalizedNotificationNav(item.type, item.data, mode);
+    if (matchNav) {
+      if (matchNav.selectClubId) setSelectedManagedClubId(matchNav.selectClubId);
+      if (matchNav.requireClubMode) setMode("CLUB");
+      setPendingNav({ href: matchNav.href, requireClubMode: matchNav.requireClubMode });
+      return;
+    }
+    router.push(inAppNotificationHref(item.type, item.data, mode) as any);
   };
 
   if (isLoading) {

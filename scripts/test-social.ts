@@ -4,7 +4,11 @@
  */
 import {
   BLOCKED_DM_COPY,
+  CLUB_CONVERSATION_COPY,
+  canOpenClubConversation,
   canStartDirectMessage,
+  clubConversationSqlIssues,
+  clubRoleToConversationRole,
   conversationListLabel,
   filterVisibleConversations,
   filterVisibleGroupMembers,
@@ -104,7 +108,7 @@ test("conversationListLabel — DIRECT / GROUP / CLUB, pas de présence inventé
   );
 });
 
-test("filtre DM bloqués ; GROUP reste visible", () => {
+test("filtre DM bloqués ; GROUP et CLUB restent visibles", () => {
   const peer = user("b", "Striker27");
   const other = user("c", "Cam27");
   const blockedDm = direct("c1", "me", peer);
@@ -117,11 +121,20 @@ test("filtre DM bloqués ; GROUP reste visible", () => {
     created_by: "me",
     created_at: "",
   };
+  const club: ConversationRow = {
+    id: "cl1",
+    type: "CLUB",
+    club_id: "club1",
+    group_id: null,
+    created_by: "me",
+    created_at: "",
+  };
   assert.true(isDirectPeerBlocked(blockedDm, "me", ["b"]), "blocked");
   assert.false(isDirectPeerBlocked(openDm, "me", ["b"]), "open");
   assert.false(isDirectPeerBlocked(group, "me", ["b"]), "group not hidden");
-  const visible = filterVisibleConversations([blockedDm, openDm, group], "me", new Set(["b"]));
-  assert.equal(visible.map((c) => c.id).join(","), "c2,g1", "ids");
+  assert.false(isDirectPeerBlocked(club, "me", ["b"]), "club not hidden");
+  const visible = filterVisibleConversations([blockedDm, openDm, group, club], "me", new Set(["b"]));
+  assert.equal(visible.map((c) => c.id).join(","), "c2,g1,cl1", "ids");
 });
 
 test("membres de groupe : block masque l'autre, pas soi", () => {
@@ -139,6 +152,33 @@ test("canStartDirectMessage refuse self et blocked ; copy honnête non vide", ()
   assert.false(canStartDirectMessage("me", "x", ["x"]), "blocked");
   assert.true(canStartDirectMessage("me", "x", ["y"]), "ok");
   assert.true(BLOCKED_DM_COPY.includes("blocage"), "copy");
+});
+
+test("canOpenClubConversation — OWNER/MANAGER/MEMBER, pas un tiers", () => {
+  assert.true(canOpenClubConversation("OWNER"), "owner");
+  assert.true(canOpenClubConversation("MANAGER"), "manager");
+  assert.true(canOpenClubConversation("MEMBER"), "member");
+  assert.false(canOpenClubConversation(null), "null");
+  assert.false(canOpenClubConversation(undefined), "undef");
+  assert.equal(clubRoleToConversationRole("OWNER"), "OWNER", "owner role");
+  assert.equal(clubRoleToConversationRole("MANAGER"), "ADMIN", "manager→admin");
+  assert.equal(clubRoleToConversationRole("MEMBER"), "MEMBER", "member role");
+  assert.true(CLUB_CONVERSATION_COPY.includes("club"), "copy fr");
+});
+
+test("SQL 0028 : get-or-create CLUB, pas de 2e moteur / pas d'INSERT client", () => {
+  const valid = `
+    create or replace function public.start_club_conversation(p_actor_id uuid, p_club_id uuid)
+    type = 'CLUB'
+    grant execute on function public.start_club_conversation(uuid, uuid) to service_role
+    create or replace function public.sync_club_conversation_membership()
+    on_club_member_conversation_sync
+    club_role_to_conversation_role
+  `;
+  assert.equal(clubConversationSqlIssues(valid).join(" | "), "", "contrat 0028");
+  const secondEngine = `${valid}\ncreate table public.club_messages (id uuid);`;
+  assert.true(clubConversationSqlIssues(secondEngine).some((i) => i.startsWith("interdit:")), "no 2e moteur");
+  assert.true(clubConversationSqlIssues("create table public.foo ()").length > 0, "sql incomplet");
 });
 
 console.log(`\n${passed} tests OK`);

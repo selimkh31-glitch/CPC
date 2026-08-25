@@ -9,6 +9,7 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS } from "@/lib/constants";
 import { useClubsList } from "@/lib/hooks/useClubs";
 import { isLiveActive } from "@/lib/live";
+import { clubPublicHref } from "@/lib/clubProfile";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 
 /** Annuaire complet — extrait de l'ancien onglet Clubs (Mode Joueur). */
@@ -47,7 +48,12 @@ export function ClubsDirectory({ hideTitle = false }: { hideTitle?: boolean }) {
       renderItem={({ item: club }) => {
         const isLive = club.sessions?.some((s) => isLiveActive(s, now));
         return (
-          <Pressable onPress={() => router.push(`/club/${club.id}`)} className="active:opacity-90">
+          <Pressable
+            onPress={() => router.push(clubPublicHref(club.id))}
+            accessibilityRole="button"
+            accessibilityLabel={`Voir ${club.name}`}
+            className="active:opacity-90"
+          >
             <Card>
               <View className="flex-row items-center justify-between">
                 <Text className="font-display text-lg text-fg">{club.name}</Text>

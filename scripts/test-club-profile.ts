@@ -10,9 +10,11 @@ import {
   clubLanguagesLine,
   clubOwnerPlatform,
   clubOwnerUsername,
+  clubPublicHref,
   findClubOwner,
   sortClubRoster,
 } from "../lib/clubProfile";
+import { PRO_PURCHASE_UNAVAILABLE_REASON, proPurchaseCta } from "../lib/constants";
 import { hasVerifiedEaStatValues, normalizeEaIdentityKind } from "../lib/statsSource";
 import type { ClubMemberRow, ClubSessionRow, UserRow } from "../lib/types";
 
@@ -131,6 +133,24 @@ test("sortClubRoster — affichage Owner / Manager / Membre, sans muter l'entré
     "ordre"
   );
   assert.equal(members[0].role, "MEMBER", "entrée non mutée");
+});
+
+test("clubPublicHref — page publique /club/[id], jamais /match-sheet", () => {
+  assert.equal(clubPublicHref("c1"), "/club/c1", "base");
+  assert.equal(clubPublicHref("c1", "s1"), "/club/c1?session=s1", "session");
+  assert.equal(clubPublicHref("  c1  ", "  "), "/club/c1", "session vide ignorée");
+  if (clubPublicHref("c1").includes("match-sheet")) {
+    throw new Error("clubPublicHref ne doit pas pointer vers /match-sheet");
+  }
+});
+
+test("proPurchaseCta — désactivé sans RevenueCat, pas de succès fictif", () => {
+  const off = proPurchaseCta(false);
+  assert.equal(off.canPurchase, false, "off");
+  assert.equal(off.disabledReason, PRO_PURCHASE_UNAVAILABLE_REASON, "reason");
+  const on = proPurchaseCta(true);
+  assert.equal(on.canPurchase, true, "on");
+  assert.equal(on.disabledReason, null, "no reason");
 });
 
 console.log("lib/statsSource.ts — stats EA honnêtes");

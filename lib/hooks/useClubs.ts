@@ -3,7 +3,9 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { computeLiveExpiresAt, parseLiveDurationMs } from "@/lib/live";
 import { validateClubIdentity } from "@/lib/clubIdentity";
+import { filterClubsHiddenByBlock } from "@/lib/safety";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
+import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 
 export function useClubsList() {
   return useQuery({
@@ -15,7 +17,14 @@ export function useClubsList() {
         .order("created_at", { ascending: false })
         .limit(60);
       if (error) throw error;
-      return data as (ClubRow & { sessions: { is_live: boolean; expires_at: string | null }[] })[];
+      let blocked: Set<string>;
+      try {
+        blocked = await fetchBlockedUserIdSet();
+      } catch {
+        blocked = new Set();
+      }
+      const rows = data as (ClubRow & { sessions: { is_live: boolean; expires_at: string | null }[] })[];
+      return filterClubsHiddenByBlock(rows, blocked);
     },
   });
 }

@@ -4,7 +4,8 @@
  * SOURCE DE VÉRITÉ UNIQUE pour le statut, la validation du nom, les
  * prédicats RLS (lecture / création / inscription) et l'idempotence 409.
  * Edge Functions : import `../_shared/competitions.ts`. App mobile :
- * `lib/competitions.ts` (réexport). Aucun classement, aucun score inventé.
+ * `lib/competitions.ts` (réexport). Classement uniquement depuis des
+ * `match_results` réellement liés (competition_id + opponent_club_id).
  */
 
 export const COMPETITION_STATUSES = ["DRAFT", "OPEN", "CLOSED"] as const;
@@ -34,12 +35,40 @@ export const COMPETITION_COPY = {
   empty: "Aucune compétition Pro Clubs ouverte pour le moment.",
   emptyHint: "Crée-en une (brouillon ou ouverte) — virtuelle, FC 27 uniquement.",
   loadError: "Impossible de charger les compétitions.",
+  detailLoadError: "Impossible de charger cette compétition.",
   registerConflict: "Ce club Pro Clubs est déjà inscrit à cette compétition.",
   notOpen: "Les inscriptions ne sont ouvertes que pour une compétition OPEN.",
   notManager: "Tu n'es pas owner ou manager de ce club Pro Clubs.",
   competitionNotFound: "Compétition introuvable.",
   created: "Compétition Pro Clubs créée.",
   registered: "Club inscrit à la compétition.",
+  draftCannotRegister: "Les clubs ne peuvent pas s'inscrire : cette compétition est encore en brouillon.",
+  closedCannotRegister: "Les inscriptions sont fermées.",
+  createOwnerHint: "Tu en seras le créateur. Un brouillon reste invisible aux autres, et aucun club ne peut s'y inscrire.",
+  draftCreateHint: "Visible seulement par toi. Les clubs ne peuvent pas s'inscrire tant qu'elle n'est pas ouverte.",
+  openCreateHint: "Les clubs Pro Clubs gérés (owner ou manager) peuvent s'inscrire.",
+  creatorLabel: "Créateur",
+  participantsTitle: "Clubs inscrits",
+  participantsEmpty: "Aucun club Pro Clubs inscrit.",
+  openJoinHint: "Ouverte — les clubs Pro Clubs gérés (owner ou manager) peuvent s'inscrire.",
+  standingsTitle: "Classement",
+  standingsEmpty: "Pas de classement tant qu'aucun match lié n'a été enregistré pour cette compétition.",
+  standingsEmptyHint:
+    "Le classement se calcule uniquement depuis des résultats Pro Clubs avec un club adverse CPC et cette compétition. Aucun point inventé.",
+  standingsLoadError: "Impossible de charger les résultats liés.",
+  opponentLabel: "Club adverse",
+  opponentSearchPlaceholder: "Rechercher un club Pro Clubs",
+  opponentHint: "Tape au moins 2 lettres. Clubs CPC existants uniquement — pas un nom libre.",
+  opponentRequired: "Choisis le club adverse parmi les clubs CPC existants.",
+  opponentEmpty: "Aucun club Pro Clubs ne correspond.",
+  opponentLoadError: "Impossible de charger les clubs.",
+  competitionOptionalLabel: "Compétition (optionnel)",
+  competitionNone: "Aucune — résultat amical (pas de classement)",
+  competitionEmpty:
+    "Ce club n'est inscrit à aucune compétition ouverte. Le résultat sera enregistré sans compétition.",
+  competitionEmptyShared:
+    "Les deux clubs ne sont inscrits ensemble à aucune compétition ouverte. Le résultat sera enregistré sans compétition.",
+  competitionLoadError: "Impossible de charger les compétitions du club.",
 } as const;
 
 export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
@@ -48,7 +77,50 @@ export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
   CLOSED: "Fermée",
 };
 
-const MATCH_RESULT_COLUMNS = [
+/** Deep link détail — stack `/competitions/[id]`, pas un onglet. Liste si id absent. */
+export function competitionDetailHref(competitionId: string | null | undefined): string {
+  if (typeof competitionId === "string" && competitionId.length > 0) {
+    return `/competitions/${competitionId}`;
+  }
+  return "/competitions";
+}
+
+export type CompetitionRegisterCtaKind =
+  | "register"
+  | "already_registered"
+  | "draft"
+  | "closed"
+  | "no_managed_club";
+
+/**
+ * CTA d'inscription honnête : jamais un bouton mort sur DRAFT/CLOSED.
+ * OPEN + OWNER/MANAGER + pas encore inscrit → bouton. Doublon → copy 409.
+ */
+export function competitionRegisterCtaKind(input: {
+  status: string;
+  hasManagedClub: boolean;
+  alreadyRegistered: boolean;
+}): CompetitionRegisterCtaKind {
+  if (input.alreadyRegistered) return "already_registered";
+  if (input.status === "DRAFT") return "draft";
+  if (input.status !== "OPEN") return "closed";
+  if (!input.hasManagedClub) return "no_managed_club";
+  return "register";
+}
+
+/** Nom du créateur : username réel, sinon « Toi » si viewer = created_by. Pas de pseudo inventé. */
+export function competitionCreatorLabel(
+  competition: { created_by: string; creator?: { username?: string | null } | null },
+  viewerId: string | null
+): string {
+  const username = competition.creator?.username?.trim();
+  if (username) return username;
+  if (viewerId && competition.created_by === viewerId) return "Toi";
+  return "Joueur Pro Clubs";
+}
+
+/** Colonnes match_results après 0027 (lien club adverse + compétition). */
+export const MATCH_RESULT_COLUMNS = [
   "id",
   "match_checkin_id",
   "club_id",
@@ -58,7 +130,19 @@ const MATCH_RESULT_COLUMNS = [
   "mvp_user_id",
   "recorded_by",
   "created_at",
+  "opponent_club_id",
+  "competition_id",
 ] as const;
+
+export const MATCH_OUTCOMES = ["WIN", "DRAW", "LOSS"] as const;
+export type MatchResultOutcome = (typeof MATCH_OUTCOMES)[number];
+
+/** Points CPC déterministes : victoire 3, nul 1, défaite 0. Jamais season_stats. */
+export const COMPETITION_POINTS: Record<MatchResultOutcome, number> = {
+  WIN: 3,
+  DRAW: 1,
+  LOSS: 0,
+};
 
 export function isCompetitionStatus(value: unknown): value is CompetitionStatus {
   return typeof value === "string" && (COMPETITION_STATUSES as readonly string[]).includes(value);
@@ -127,15 +211,131 @@ export function uniqueViolationHttpStatus(code: string | undefined | null): 409 
   return code === POSTGRES_UNIQUE_VIOLATION ? REGISTER_CONFLICT_STATUS : null;
 }
 
+export function isMatchResultOutcome(value: unknown): value is MatchResultOutcome {
+  return typeof value === "string" && (MATCH_OUTCOMES as readonly string[]).includes(value);
+}
+
+export function inverseMatchOutcome(outcome: MatchResultOutcome): MatchResultOutcome {
+  if (outcome === "WIN") return "LOSS";
+  if (outcome === "LOSS") return "WIN";
+  return "DRAW";
+}
+
 /**
- * Classement compétition : uniquement si on peut le remplir depuis
- * `match_results` existants. Aujourd'hui impossible (pas de competition_id,
- * pas de club adverse). Ne jamais inventer de standings.
+ * Schéma : les colonnes de lien existent (0027). Ne dit PAS qu'un classement
+ * est affichable — il faut aussi au moins une ligne réellement liée.
  */
 export function canFillStandingsFromMatchResults(
   columns: readonly string[] = MATCH_RESULT_COLUMNS
 ): boolean {
   return columns.includes("competition_id") && columns.includes("opponent_club_id");
+}
+
+export interface LinkedMatchResultInput {
+  club_id: string;
+  opponent_club_id: string | null;
+  competition_id: string | null;
+  outcome: string;
+  our_score: number;
+  opponent_score: number;
+}
+
+export function isLinkedCompetitionResult(
+  row: LinkedMatchResultInput,
+  competitionId: string
+): boolean {
+  return (
+    row.competition_id === competitionId &&
+    typeof row.opponent_club_id === "string" &&
+    row.opponent_club_id.length > 0 &&
+    row.opponent_club_id !== row.club_id &&
+    isMatchResultOutcome(row.outcome)
+  );
+}
+
+/** Au moins une ligne match_results liée à CETTE compétition (club + adverse). */
+export function hasLinkedCompetitionResults(
+  rows: readonly LinkedMatchResultInput[],
+  competitionId: string
+): boolean {
+  return rows.some((row) => isLinkedCompetitionResult(row, competitionId));
+}
+
+export function canShowCompetitionStandings(
+  rows: readonly LinkedMatchResultInput[],
+  competitionId: string,
+  columns: readonly string[] = MATCH_RESULT_COLUMNS
+): boolean {
+  return canFillStandingsFromMatchResults(columns) && hasLinkedCompetitionResults(rows, competitionId);
+}
+
+export interface CompetitionStandingRow {
+  clubId: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+function emptyStanding(clubId: string): CompetitionStandingRow {
+  return {
+    clubId,
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    points: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+  };
+}
+
+function applyOutcome(standing: CompetitionStandingRow, outcome: MatchResultOutcome, gf: number, ga: number) {
+  standing.played += 1;
+  standing.goalsFor += gf;
+  standing.goalsAgainst += ga;
+  standing.points += COMPETITION_POINTS[outcome];
+  if (outcome === "WIN") standing.wins += 1;
+  else if (outcome === "DRAW") standing.draws += 1;
+  else standing.losses += 1;
+}
+
+/**
+ * Classement déterministe depuis les match_results liés uniquement.
+ * Chaque ligne crédite les deux clubs (enregistreur + adverse). Clubs
+ * inscrits sans match : absents (pas de row 0-0-0 inventée).
+ * Tri : points DESC, différence de buts DESC, buts pour DESC, clubId ASC.
+ * Ne lit jamais season_stats.
+ */
+export function computeCompetitionStandings(
+  rows: readonly LinkedMatchResultInput[],
+  competitionId: string
+): CompetitionStandingRow[] {
+  const byClub = new Map<string, CompetitionStandingRow>();
+
+  for (const row of rows) {
+    if (!isLinkedCompetitionResult(row, competitionId)) continue;
+    const outcome = row.outcome as MatchResultOutcome;
+    const opponentId = row.opponent_club_id as string;
+    const home = byClub.get(row.club_id) ?? emptyStanding(row.club_id);
+    const away = byClub.get(opponentId) ?? emptyStanding(opponentId);
+    applyOutcome(home, outcome, row.our_score, row.opponent_score);
+    applyOutcome(away, inverseMatchOutcome(outcome), row.opponent_score, row.our_score);
+    byClub.set(row.club_id, home);
+    byClub.set(opponentId, away);
+  }
+
+  return [...byClub.values()].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+    return a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0;
+  });
 }
 
 const REQUIRED_SQL_FRAGMENTS = [
@@ -157,7 +357,7 @@ const FORBIDDEN_SQL_FRAGMENTS = [
   "alter table public.match_checkins",
 ] as const;
 
-/** Vérifie le SQL fondation (texte) : tables + RLS + unique, pas de 2e moteur de résultats. */
+/** Vérifie le SQL fondation 0026 (texte) : tables + RLS + unique, pas de 2e moteur. */
 export function competitionsFoundationSqlIssues(sql: string): string[] {
   const normalized = sql.toLowerCase().replace(/\s+/g, " ");
   const issues: string[] = [];
@@ -167,6 +367,44 @@ export function competitionsFoundationSqlIssues(sql: string): string[] {
     }
   }
   for (const fragment of FORBIDDEN_SQL_FRAGMENTS) {
+    if (normalized.includes(fragment.toLowerCase())) {
+      issues.push(`interdit: ${fragment}`);
+    }
+  }
+  return issues;
+}
+
+const REQUIRED_LINK_SQL_FRAGMENTS = [
+  "alter table public.match_results",
+  "opponent_club_id",
+  "competition_id",
+  "opponent_club_id is distinct from club_id",
+  "create or replace function public.finalize_match",
+  "p_opponent_club_id",
+  "p_competition_id",
+  "clubs_not_in_competition",
+  "when unique_violation then",
+  "grant execute on function public.finalize_match",
+  "to service_role",
+] as const;
+
+const FORBIDDEN_LINK_SQL_FRAGMENTS = [
+  "create table if not exists public.standings",
+  "create table if not exists public.competition_standings",
+  "create table if not exists public.league_standings",
+  "for insert to authenticated",
+] as const;
+
+/** Vérifie le SQL 0027 : lien match_results, pas de table standings, pas d'INSERT client. */
+export function matchResultLinkSqlIssues(sql: string): string[] {
+  const normalized = sql.toLowerCase().replace(/\s+/g, " ");
+  const issues: string[] = [];
+  for (const fragment of REQUIRED_LINK_SQL_FRAGMENTS) {
+    if (!normalized.includes(fragment.toLowerCase())) {
+      issues.push(`manque: ${fragment}`);
+    }
+  }
+  for (const fragment of FORBIDDEN_LINK_SQL_FRAGMENTS) {
     if (normalized.includes(fragment.toLowerCase())) {
       issues.push(`interdit: ${fragment}`);
     }

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import type { ClubRow } from "@/lib/types";
 import type { PositionCode } from "@/lib/constants";
+import { isClubHiddenByBlock } from "@/lib/safety";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 
 export interface ClubMatch {
@@ -45,7 +46,7 @@ export function useClubSearch(mainPosition: PositionCode | null, secondaryPositi
         owner: { id?: string; username: string } | null;
         sessions: { is_live: boolean; expires_at: string | null }[];
       })[]) {
-        if (blocked.has(row.owner_id) || (row.owner?.id && blocked.has(row.owner.id))) continue;
+        if (isClubHiddenByBlock(row, blocked)) continue;
         const formationId = row.formation as FormationId | null;
         if (!formationId || !FORMATIONS[formationId]) continue;
 

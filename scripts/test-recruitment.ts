@@ -6,6 +6,7 @@ import {
   liveOffRecruitmentEvent,
   nextApplicationStatus,
   nextInvitationStatus,
+  recruitmentNotificationNav,
 } from "../lib/recruitment";
 
 const assert = {
@@ -58,6 +59,32 @@ test("liveOffRecruitmentEvent — TTL passé = EXPIRE, sinon CANCEL", () => {
   assert.equal(liveOffRecruitmentEvent("2026-08-24T11:59:00.000Z", now), "EXPIRE", "ttl");
   assert.equal(liveOffRecruitmentEvent("2026-08-24T14:00:00.000Z", now), "CANCEL", "manual");
   assert.equal(liveOffRecruitmentEvent(null, now), "CANCEL", "null expiry");
+});
+
+test("APPLICATION_RECEIVED → Recrutement + clubId (pas /club/[id])", () => {
+  const nav = recruitmentNotificationNav("APPLICATION_RECEIVED", { clubId: "c1" });
+  assert.equal(nav?.href, "/candidatures", "href");
+  assert.equal(nav?.selectClubId, "c1", "club");
+  assert.equal(nav?.requireClubMode, true, "club mode");
+  assert.equal(recruitmentNotificationNav("APPLICATION_RECEIVED", {})?.selectClubId, null, "no club");
+});
+
+test("INVITATION_RECEIVED → Mes invitations (Accepter côté joueur)", () => {
+  const nav = recruitmentNotificationNav("INVITATION_RECEIVED", { clubId: "c1", invitationId: "i1" });
+  assert.equal(nav?.href, "/my-invitations", "href");
+  assert.equal(nav?.requireClubMode, false, "player");
+});
+
+test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
+  assert.equal(recruitmentNotificationNav("APPLICATION_ACCEPTED", {})?.href, "/my-applications", "accepted");
+  assert.equal(recruitmentNotificationNav("APPLICATION_DECLINED", {})?.href, "/my-applications", "declined");
+  assert.equal(recruitmentNotificationNav("MESSAGE_RECEIVED", { conversationId: "x" }), null, "not recruitment");
+  assert.equal(recruitmentNotificationNav("MATCH_FINALIZED", { clubId: "c1" }), null, "match not recruitment");
+  assert.equal(
+    recruitmentNotificationNav("COMPETITION_CLUB_REGISTERED", { competitionId: "comp-1" }),
+    null,
+    "register not recruitment"
+  );
 });
 
 console.log(`\n${passed} tests recruitment OK`);

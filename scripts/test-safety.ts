@@ -6,14 +6,25 @@
 import {
   isNotificationType,
   isReportReason,
+  matchFinalizedCopy,
+  matchFinalizedHref,
+  matchFinalizedNotificationNav,
+  matchFinalizedRecipientIds,
   messageReceivedCopy,
+  competitionClubRegisteredCopy,
+  competitionClubRegisteredHref,
+  competitionClubRegisteredRecipientIds,
   NOTIFICATION_TYPE_LABELS,
   notificationHref,
   notificationTitle,
+  inAppNotificationHref,
+  isClubHiddenByBlock,
+  filterClubsHiddenByBlock,
   otherConversationParticipantIds,
   otherIdsFromBlocks,
   pairIsBlocked,
   REPORT_REASONS,
+  shouldHideContactCta,
   shouldNotifyMessageReceived,
 } from "../lib/safety";
 import { eaIdentityBadge, normalizeEaIdentityKind, statsSourceLabel } from "../lib/statsSource";
@@ -76,6 +87,170 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.false(isNotificationType("RANDOM"), "unknown type");
 });
 
+test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter/refuser)", () => {
+  assert.equal(
+    inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "CLUB"),
+    "/candidatures",
+    "club mode"
+  );
+  assert.equal(
+    inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "PLAYER"),
+    "/candidatures",
+    "player mode — même cible, l'appelant passe en Mode Club"
+  );
+  assert.equal(
+    inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
+    "/conversation/conv-1",
+    "dm inchangé"
+  );
+});
+
+test("MATCH_FINALIZED — type, label FR, href /match ou /competitions/[id]", () => {
+  assert.true(isNotificationType("MATCH_FINALIZED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.MATCH_FINALIZED, "Résultat de match", "label");
+  assert.equal(notificationTitle("MATCH_FINALIZED", "x"), "Résultat de match", "title");
+  assert.equal(notificationHref("MATCH_FINALIZED", { clubId: "c1" }), "/match", "href club");
+  assert.equal(
+    notificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }),
+    "/competitions/comp-1",
+    "href competition"
+  );
+  assert.equal(notificationHref("MATCH_FINALIZED", { competitionId: "" }), "/match", "empty competition");
+  assert.equal(inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1" }, "CLUB"), "/match", "in-app club");
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1" }, "PLAYER"),
+    "/match",
+    "in-app player — même feuille, l'appelant passe en Mode Club"
+  );
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }, "CLUB"),
+    "/competitions/comp-1",
+    "in-app club + compétition"
+  );
+  assert.equal(
+    inAppNotificationHref("MATCH_FINALIZED", { clubId: "c1", competitionId: "comp-1" }, "PLAYER"),
+    "/competitions/comp-1",
+    "in-app player + compétition"
+  );
+  assert.equal(matchFinalizedHref({ clubId: "c1" }, "CLUB"), "/match", "helper club");
+  assert.equal(matchFinalizedHref({ competitionId: "comp-1" }, "PLAYER"), "/competitions/comp-1", "helper competition");
+  const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: "c1" }, "CLUB");
+  assert.equal(navMatch?.href, "/match", "nav href");
+  assert.equal(navMatch?.requireClubMode, true, "nav club mode");
+  assert.equal(navMatch?.selectClubId, "c1", "nav clubId");
+  const navComp = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: "comp-1" }, "PLAYER");
+  assert.equal(navComp?.href, "/competitions/comp-1", "nav competitions");
+  assert.equal(navComp?.requireClubMode, false, "nav competitions no club mode");
+  assert.equal(matchFinalizedNotificationNav("MESSAGE_RECEIVED", { clubId: "c1" }, "CLUB"), null, "not match");
+  const copy = matchFinalizedCopy({ clubName: "  CPC United  ", opponentClubName: " Rival FC ", ourScore: 3, opponentScore: 1 });
+  assert.equal(copy.type, "MATCH_FINALIZED", "copy type");
+  assert.equal(copy.title, "Résultat de match", "copy title");
+  assert.equal(copy.body, "CPC United 3 — 1 Rival FC.", "copy body");
+  assert.equal(
+    matchFinalizedCopy({ clubName: "   ", ourScore: 0, opponentScore: 0 }).body,
+    "Ton club 0 — 0.",
+    "copy fallback"
+  );
+});
+
+test("matchFinalizedRecipientIds — membres des deux clubs, pas le recorder", () => {
+  const ids = matchFinalizedRecipientIds({
+    recordingClubMemberIds: ["recorder", "a", "a", ""],
+    opponentClubMemberIds: ["b", "recorder", "c"],
+    recorderId: "recorder",
+  }).sort();
+  assert.equal(ids.join(","), "a,b,c", "union minus recorder");
+  assert.equal(
+    matchFinalizedRecipientIds({ recordingClubMemberIds: ["recorder"], recorderId: "recorder" }).join(","),
+    "",
+    "recorder only"
+  );
+  assert.equal(
+    matchFinalizedRecipientIds({
+      recordingClubMemberIds: ["a"],
+      opponentClubMemberIds: [],
+      recorderId: "recorder",
+    }).join(","),
+    "a",
+    "no opponent"
+  );
+});
+
+test("COMPETITION_CLUB_REGISTERED — type, label FR, href /competitions/[id]", () => {
+  assert.true(isNotificationType("COMPETITION_CLUB_REGISTERED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.COMPETITION_CLUB_REGISTERED, "Club inscrit", "label");
+  assert.equal(notificationTitle("COMPETITION_CLUB_REGISTERED", "x"), "Club inscrit", "title");
+  assert.equal(
+    notificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "comp-1" }),
+    "/competitions/comp-1",
+    "href"
+  );
+  assert.equal(notificationHref("COMPETITION_CLUB_REGISTERED", {}), "/competitions", "href empty data");
+  assert.equal(competitionClubRegisteredHref({ clubId: "c1" }), "/competitions", "helper sans id");
+  assert.equal(
+    competitionClubRegisteredHref({ clubId: "c1", competitionId: "comp-1" }),
+    "/competitions/comp-1",
+    "helper"
+  );
+  assert.equal(
+    inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "comp-1" }, "CLUB"),
+    "/competitions/comp-1",
+    "in-app club"
+  );
+  assert.equal(
+    inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1" }, "PLAYER"),
+    "/competitions",
+    "in-app player sans id"
+  );
+  const copy = competitionClubRegisteredCopy({
+    clubName: "  CPC United  ",
+    competitionName: "  Coupe du jeudi  ",
+  });
+  assert.equal(copy.type, "COMPETITION_CLUB_REGISTERED", "copy type");
+  assert.equal(copy.title, "Club inscrit", "copy title");
+  assert.equal(copy.body, "CPC United s'est inscrit à Coupe du jeudi.", "copy body");
+  assert.equal(
+    competitionClubRegisteredCopy({ clubName: "   ", competitionName: "  " }).body,
+    "Un club s'est inscrit à une compétition.",
+    "copy fallback"
+  );
+});
+
+test("competitionClubRegisteredRecipientIds — created_by + OWNER/MANAGER, pas de doublon, pas MEMBER", () => {
+  const ids = competitionClubRegisteredRecipientIds({
+    createdBy: "creator",
+    clubMembers: [
+      { userId: "creator", role: "OWNER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "member", role: "MEMBER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "", role: "OWNER" },
+    ],
+  }).sort();
+  assert.equal(ids.join(","), "creator,manager", "union minus member/dup");
+  assert.equal(
+    competitionClubRegisteredRecipientIds({
+      createdBy: null,
+      clubMembers: [{ userId: "owner", role: "OWNER" }],
+    }).join(","),
+    "owner",
+    "no created_by"
+  );
+  assert.equal(
+    competitionClubRegisteredRecipientIds({
+      createdBy: "creator",
+      clubMembers: [{ userId: "member", role: "MEMBER" }],
+    }).join(","),
+    "creator",
+    "member excluded"
+  );
+  assert.equal(
+    competitionClubRegisteredRecipientIds({ createdBy: "", clubMembers: [] }).join(","),
+    "",
+    "empty"
+  );
+});
+
 test("MESSAGE_RECEIVED — type, label FR, href conversation", () => {
   assert.true(isNotificationType("MESSAGE_RECEIVED"), "known type");
   assert.equal(NOTIFICATION_TYPE_LABELS.MESSAGE_RECEIVED, "Nouveau message", "label");
@@ -132,4 +307,39 @@ test("masquer est bidirectionnel ; débloquer ne concerne que mes propres blocs"
   assert.true(hidden.includes("x") && hidden.includes("y"), "hide both");
   const iBlocked = blocks.filter((b) => b.blocker_id === "me").map((b) => b.blocked_id);
   assert.equal(iBlocked.join(","), "x", "unblock only x");
+});
+
+test("isClubHiddenByBlock — même règle LIVE/matching (owner, les deux sens)", () => {
+  const blocked = otherIdsFromBlocks(
+    [
+      { blocker_id: "me", blocked_id: "owner-a" },
+      { blocker_id: "owner-b", blocked_id: "me" },
+    ],
+    "me"
+  );
+  assert.true(isClubHiddenByBlock({ owner_id: "owner-a" }, blocked), "j'ai bloqué le owner");
+  assert.true(isClubHiddenByBlock({ owner_id: "owner-b" }, blocked), "le owner m'a bloqué");
+  assert.false(isClubHiddenByBlock({ owner_id: "owner-ok" }, blocked), "owner libre");
+  assert.true(
+    isClubHiddenByBlock({ owner_id: "other", owner: { id: "owner-a" } }, blocked),
+    "owner.id fallback"
+  );
+  assert.false(isClubHiddenByBlock(null, blocked), "pas de club");
+  assert.false(isClubHiddenByBlock({ owner_id: "" }, blocked), "owner vide");
+  const visible = filterClubsHiddenByBlock(
+    [
+      { id: "c1", owner_id: "owner-a", name: "Blocked FC" },
+      { id: "c2", owner_id: "owner-ok", name: "Open FC" },
+      { id: "c3", owner_id: "owner-b", name: "Blocked Me FC" },
+    ],
+    blocked
+  );
+  assert.equal(visible.map((c) => c.id).join(","), "c2", "adversaire / annuaire");
+});
+
+test("shouldHideContactCta — même règle profils ; pas de user = pas de CTA à cacher", () => {
+  assert.true(shouldHideContactCta("x", ["x", "y"]), "blocked");
+  assert.false(shouldHideContactCta("z", ["x"]), "libre");
+  assert.false(shouldHideContactCta(null, ["x"]), "pas de participant user");
+  assert.false(shouldHideContactCta("x", null), "pas de blocs");
 });

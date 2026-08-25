@@ -13,6 +13,7 @@ import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
+import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
@@ -125,6 +126,7 @@ export default function ClubTab() {
           onPress: () => router.push("/match"),
         }}
       />
+      <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
       <SocialShortcuts />
       <CompetitionsLink />
       <MembersPanel

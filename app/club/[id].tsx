@@ -7,10 +7,13 @@ import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
+import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
+import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
@@ -18,6 +21,12 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: club, isLoading, isError, refetch } = useClub(id);
+  const {
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = useClubMatchHistory(id ?? null, club?.name);
   const { session } = useAuth();
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const now = useLiveClock();
@@ -64,6 +73,15 @@ export default function ClubDetailScreen() {
       </View>
 
       <Card>
+        <MatchHistoryList
+          items={matchHistory}
+          loading={matchHistoryLoading}
+          error={matchHistoryError}
+          onRetry={refetchMatchHistory}
+        />
+      </Card>
+
+      <Card>
         <Text className="mb-2 font-display text-lg text-fg">Session</Text>
         {activeSession ? (
           <>
@@ -75,9 +93,9 @@ export default function ClubDetailScreen() {
               ))}
             </View>
             {activeSession.note && <Text className="mb-3 text-sm text-fg-muted">{activeSession.note}</Text>}
-            {session && !isMember && !blockedIds?.includes(club.owner_id) ? (
+            {session && !isMember && !isClubHiddenByBlock(club, blockedIds ?? []) ? (
               <ApplyForm sessionId={activeSession.id} neededPositions={activeSession.needed_positions} />
-            ) : session && !isMember && blockedIds?.includes(club.owner_id) ? (
+            ) : session && !isMember && isClubHiddenByBlock(club, blockedIds ?? []) ? (
               <Text className="text-sm text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
             ) : !session ? (
               <Link href="/(auth)/login" className="text-sm text-accent">
@@ -100,7 +118,7 @@ export default function ClubDetailScreen() {
         <View className="gap-3">
           {(club.members ?? []).map((m) => {
             const isSelf = session?.user.id === m.user_id;
-            const blocked = Boolean(blockedIds?.includes(m.user_id));
+            const blocked = shouldHideContactCta(m.user_id, blockedIds);
             return (
               <View key={m.id} className="gap-2 rounded-2xl border border-border bg-bg-elevated p-3">
                 <View className="min-h-[44px] flex-row items-center justify-between gap-2">

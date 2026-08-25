@@ -38,6 +38,18 @@ export function clubActiveLiveSession<T extends LiveSessionLike>(
   return findActiveLiveSession(sessions, nowMs);
 }
 
+/**
+ * Page publique d'un club (`/club/[id]`) — ApplyForm + membres.
+ * Distinct de `/match-sheet` (vue joueur de la formation, interactive=false,
+ * pas de candidature) et de `/match` (feuille owner/manager, Mode Club).
+ */
+export function clubPublicHref(clubId: string, sessionId?: string | null): string {
+  const id = clubId.trim();
+  const base = `/club/${id}`;
+  const session = sessionId?.trim();
+  return session ? `${base}?session=${encodeURIComponent(session)}` : base;
+}
+
 /** Tri d'affichage uniquement — ne change aucun rôle en base. */
 export function sortClubRoster(members: ClubMemberRow[]): ClubMemberRow[] {
   const order: Record<ClubMemberRow["role"], number> = { OWNER: 0, MANAGER: 1, MEMBER: 2 };

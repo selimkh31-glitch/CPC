@@ -5,13 +5,13 @@ import { Badge } from "@/components/ui/Badge";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { POSITION_LABELS, CLUB_LEVEL_LABELS, LANGUAGE_LABELS, type PositionCode } from "@/lib/constants";
 import { isLiveActive } from "@/lib/live";
+import { clubPublicHref } from "@/lib/clubProfile";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import type { ClubMatch } from "@/lib/hooks/useClubSearch";
 
 /**
- * Résultat de recherche joueur -> club (phase 4). Réutilise Card/Badge
- * existants. Étape 5 : owner, statut LIVE et langues ajoutés à l'affichage
- * (données déjà disponibles via useClubSearch, aucun nouveau moteur).
+ * Résultat de recherche joueur -> club. Tap = page publique `/club/[id]`
+ * (ApplyForm si LIVE). Pas `/match-sheet` : ClubHome est lecture seule, sans candidature.
  */
 export function ClubMatchCard({ match }: { match: ClubMatch }) {
   const now = useLiveClock();
@@ -19,7 +19,12 @@ export function ClubMatchCard({ match }: { match: ClubMatch }) {
   const isLive = club.sessions?.some((s) => isLiveActive(s, now)) ?? false;
 
   return (
-    <Pressable onPress={() => router.push(`/match-sheet?clubId=${club.id}`)} className="active:opacity-90">
+    <Pressable
+      onPress={() => router.push(clubPublicHref(club.id))}
+      accessibilityRole="button"
+      accessibilityLabel={`Voir ${club.name}`}
+      className="active:opacity-90"
+    >
       <Card>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">

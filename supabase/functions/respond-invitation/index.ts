@@ -51,7 +51,9 @@ Deno.serve(async (req) => {
         ? "Ce poste vient d'être pris."
         : acceptError.message.includes("invitation_not_pending")
           ? "Cette invitation a déjà été traitée."
-          : acceptError.message;
+          : acceptError.message.includes("already_has_active_club")
+            ? "Tu es déjà engagé avec un autre club."
+            : acceptError.message;
       return jsonResponse({ error: message }, 409);
     }
     updated = accepted;

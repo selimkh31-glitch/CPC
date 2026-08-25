@@ -16,7 +16,9 @@ export { getDirectConversationPeer } from "@/lib/social";
  * supabase/migrations/0017_chat_rls.sql), même convention que
  * club_sessions/reviews pour les mutations "simples". Seule la CRÉATION
  * d'une conversation DIRECT (dédoublonnage) passe par une Edge Function
- * (start-direct-conversation), trop multi-étapes pour du RLS seul.
+ * (start-direct-conversation), trop multi-étapes pour du RLS seul. Type
+ * CLUB : get-or-create via start-club-conversation (0028), même fil
+ * `/conversation/[id]`.
  *
  * Pagination (section 30) : `useMessages` charge les MESSAGES_PAGE_SIZE
  * derniers messages ; `useLoadOlderMessages` fusionne une page plus
@@ -85,6 +87,20 @@ export function useStartDirectConversation() {
   return useMutation({
     mutationFn: (otherUserId: string) =>
       callEdgeFunction<{ conversation: ConversationRow }>("start-direct-conversation", { otherUserId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["conversation"] });
+    },
+    onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
+/** Ouvre (ou retrouve) la conversation CLUB du club — voir start-club-conversation / 0028. */
+export function useStartClubConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (clubId: string) =>
+      callEdgeFunction<{ conversation: ConversationRow }>("start-club-conversation", { clubId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       queryClient.invalidateQueries({ queryKey: ["conversation"] });

@@ -6,11 +6,38 @@ import type { CompetitionCreateStatus } from "@/lib/competitions";
 import type { CompetitionClubRow, CompetitionRow } from "@/lib/types";
 
 const COMPETITION_LIST_SELECT =
-  "*, clubs:competition_clubs(*, club:clubs(id, name))";
+  "*, clubs:competition_clubs(*, club:clubs(id, name)), creator:users!competitions_created_by_fkey(id, username)";
+
+function unwrapOne<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function normalizeCompetition(row: CompetitionRow): CompetitionRow {
+  const clubs = (row.clubs ?? []).map((item) => ({
+    ...item,
+    club: unwrapOne(item.club as CompetitionClubRow["club"] | CompetitionClubRow["club"][] | null) ?? undefined,
+  }));
+  return {
+    ...row,
+    clubs,
+    creator: unwrapOne(row.creator as CompetitionRow["creator"] | CompetitionRow["creator"][] | null),
+  };
+}
+
+function invalidateCompetitionQueries(queryClient: ReturnType<typeof useQueryClient>, competitionId?: string) {
+  queryClient.invalidateQueries({ queryKey: ["competitions"] });
+  queryClient.invalidateQueries({ queryKey: ["competition"] });
+  queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
+  queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
+  if (competitionId) {
+    queryClient.invalidateQueries({ queryKey: ["competition", competitionId] });
+  }
+}
 
 /**
  * Liste réelle (RLS) : OPEN pour tout authentifié, plus les DRAFT/CLOSED du créateur.
- * Pas de classements, pas de scores inventés.
+ * Participants = lignes competition_clubs. Pas de classements inventés.
  */
 export function useCompetitions() {
   return useQuery({
@@ -21,12 +48,30 @@ export function useCompetitions() {
         .select(COMPETITION_LIST_SELECT)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as CompetitionRow[];
+      return (data ?? []).map((row) => normalizeCompetition(row as CompetitionRow));
     },
   });
 }
 
-export function useCreateCompetition(userId: string) {
+/** Une compétition (RLS) : OPEN ou created_by = JWT. null si introuvable / non lisible. */
+export function useCompetition(competitionId: string | null) {
+  return useQuery({
+    queryKey: ["competition", competitionId],
+    enabled: Boolean(competitionId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("competitions")
+        .select(COMPETITION_LIST_SELECT)
+        .eq("id", competitionId!)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return normalizeCompetition(data as CompetitionRow);
+    },
+  });
+}
+
+export function useCreateCompetition(_userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { name: string; status: CompetitionCreateStatus }) => {
@@ -36,9 +81,9 @@ export function useCreateCompetition(userId: string) {
       });
       return competition;
     },
-    onSuccess: () => {
+    onSuccess: (competition) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({ queryKey: ["competitions"] });
+      invalidateCompetitionQueries(queryClient, competition?.id);
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   });
@@ -54,9 +99,9 @@ export function useRegisterCompetitionClub() {
       );
       return registration;
     },
-    onSuccess: () => {
+    onSuccess: (_registration, input) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({ queryKey: ["competitions"] });
+      invalidateCompetitionQueries(queryClient, input.competitionId);
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   });
