@@ -22,7 +22,7 @@ export function useClubOpenCompetitions(clubId: string | null, opponentClubId?: 
           const competition = Array.isArray(row.competition) ? row.competition[0] : row.competition;
           return competition ?? null;
         })
-        .filter((c): c is CompetitionRow => Boolean(c) && c.status === "OPEN");
+        .filter((c): c is CompetitionRow => c != null && c.status === "OPEN");
 
       if (opponentClubId) {
         const { data: opponentRows, error: opponentError } = await supabase

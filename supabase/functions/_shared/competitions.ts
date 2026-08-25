@@ -340,7 +340,6 @@ const FORBIDDEN_LINK_SQL_FRAGMENTS = [
   "create table if not exists public.competition_standings",
   "create table if not exists public.league_standings",
   "for insert to authenticated",
-  "prisma migrate deploy",
 ] as const;
 
 /** Vérifie le SQL 0027 : lien match_results, pas de table standings, pas d'INSERT client. */

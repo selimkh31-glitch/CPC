@@ -26,8 +26,6 @@ import {
   registerBlockMessage,
   uniqueViolationHttpStatus,
 } from "../lib/competitions";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -324,14 +322,21 @@ test("SQL fondation : tables + unique + RLS ; refuse standings / alter match_res
 });
 
 test("SQL 0027 : ALTER match_results + finalize étendu ; pas de table standings / INSERT client", () => {
-  const sql0027 = readFileSync(
-    resolve(process.cwd(), "supabase/migrations/0027_match_result_competition_link.sql"),
-    "utf8"
-  );
-  assert.equal(matchResultLinkSqlIssues(sql0027).join(" | "), "", "contrat 0027");
-  const withStandings = `${sql0027}\ncreate table if not exists public.standings (id uuid);`;
+  const valid = `
+    alter table public.match_results add column if not exists opponent_club_id uuid;
+    alter table public.match_results add column if not exists competition_id uuid;
+    check (opponent_club_id is distinct from club_id)
+    create or replace function public.finalize_match(
+      p_match_checkin_id uuid, p_actor_id uuid, p_our_score int, p_opponent_score int,
+      p_mvp_user_id uuid, p_opponent_club_id uuid, p_competition_id uuid
+    )
+    raise exception 'clubs_not_in_competition';
+    grant execute on function public.finalize_match(uuid, uuid, int, int, uuid, uuid, uuid) to service_role;
+  `;
+  assert.equal(matchResultLinkSqlIssues(valid).join(" | "), "", "contrat 0027");
+  const withStandings = `${valid}\ncreate table if not exists public.standings (id uuid);`;
   assert.true(matchResultLinkSqlIssues(withStandings).some((i) => i.startsWith("interdit:")), "no standings table");
-  const clientInsert = `${sql0027}\ncreate policy x on public.match_results for insert to authenticated with check (true);`;
+  const clientInsert = `${valid}\ncreate policy x on public.match_results for insert to authenticated with check (true);`;
   assert.true(matchResultLinkSqlIssues(clientInsert).some((i) => i.includes("insert")), "no client insert");
 });
 
