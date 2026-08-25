@@ -14,7 +14,7 @@ import {
   findClubOwner,
   sortClubRoster,
 } from "../lib/clubProfile";
-import { PRO_PURCHASE_UNAVAILABLE_REASON, proPurchaseCta } from "../lib/constants";
+import { PRO_PURCHASE_UNAVAILABLE_REASON, pricingScreenCopy, profileProEntryCopy, proPurchaseCta } from "../lib/constants";
 import { hasVerifiedEaStatValues, normalizeEaIdentityKind } from "../lib/statsSource";
 import type { ClubMemberRow, ClubSessionRow, UserRow } from "../lib/types";
 
@@ -151,6 +151,39 @@ test("proPurchaseCta — désactivé sans RevenueCat, pas de succès fictif", ()
   const on = proPurchaseCta(true);
   assert.equal(on.canPurchase, true, "on");
   assert.equal(on.disabledReason, null, "no reason");
+});
+
+function livePricingText(revenueCatEnabled: boolean): string {
+  const copy = pricingScreenCopy(revenueCatEnabled);
+  return [copy.intro, copy.priceLabel ?? "", copy.ctaLabel, ...copy.liveFeatures].join("\n");
+}
+
+test("pricingScreenCopy — sans RevenueCat : pas d'euro, Scout Report IA pas live", () => {
+  const copy = pricingScreenCopy(false);
+  assert.equal(copy.priceLabel, null, "priceLabel");
+  assert.equal(copy.liveFeatures.length, 0, "aucune feature live");
+  const live = livePricingText(false);
+  if (/€|\bEUR\b|\d+\s*€/i.test(live) || live.includes(String(5))) {
+    throw new Error(`Copy live sans RevenueCat ne doit pas contenir de montant euro.\n  reçu: ${live}`);
+  }
+  if (copy.liveFeatures.includes("Scout Report IA") || /Scout Report IA/.test(live)) {
+    throw new Error("Scout Report IA ne doit pas être listé comme feature live.");
+  }
+  if (!copy.laterFeatures.includes("Scout Report IA")) {
+    throw new Error("Scout Report IA peut figurer en « plus tard », pas en live.");
+  }
+  if (!copy.intro.includes("gratuit") || !copy.intro.includes("pas encore en vente")) {
+    throw new Error(`Intro honnête attendue (gratuit / pas encore en vente).\n  reçu: ${copy.intro}`);
+  }
+});
+
+test("profileProEntryCopy — sans RevenueCat : entrée joignable, pas un store", () => {
+  const off = profileProEntryCopy(false);
+  assert.equal(off.looksLikeStore, false, "pas un store");
+  assert.equal(off.title, "Pro", "title");
+  assert.equal(off.subtitle, "Pas encore en vente", "subtitle");
+  const on = profileProEntryCopy(true);
+  assert.equal(on.looksLikeStore, true, "store si RC on");
 });
 
 console.log("lib/statsSource.ts — stats EA honnêtes");
