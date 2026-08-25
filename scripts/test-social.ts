@@ -2,7 +2,8 @@
  * Tests de lib/social.ts — labels chat, filtre block DM / membres de groupe.
  * Sans réseau. Lancer : npx tsx scripts/test-social.ts
  */
-import { readFileSync } from "node:fs";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   BLOCKED_DM_COPY,
   CLUB_CONVERSATION_COPY,
