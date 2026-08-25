@@ -1,11 +1,11 @@
 import { Text, View } from "react-native";
 import { cn } from "@/lib/utils";
 
-type AvatarSize = "sm" | "md" | "lg";
+type AvatarSize = "sm" | "md" | "lg" | "xl";
 type AvatarTone = "neutral" | "accent" | "mvp";
 
-const SIZE_PX: Record<AvatarSize, number> = { sm: 32, md: 44, lg: 64 };
-const SIZE_TEXT: Record<AvatarSize, string> = { sm: "text-[10px]", md: "text-sm", lg: "text-xl" };
+const SIZE_PX: Record<AvatarSize, number> = { sm: 32, md: 44, lg: 64, xl: 88 };
+const SIZE_TEXT: Record<AvatarSize, string> = { sm: "text-[10px]", md: "text-sm", lg: "text-xl", xl: "text-2xl" };
 const TONE_BORDER: Record<AvatarTone, string> = {
   neutral: "border-border",
   accent: "border-accent",

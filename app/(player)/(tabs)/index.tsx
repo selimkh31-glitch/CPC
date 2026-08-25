@@ -11,6 +11,7 @@ import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { isLiveActive } from "@/lib/live";
+import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 
 type LivePane = "feed" | "find";
 
@@ -39,6 +40,7 @@ export default function LiveScreen() {
     const selfId = session?.user.id;
     return (livePlayers ?? []).filter((row) => isLiveActive(row, now) && row.user && row.user_id !== selfId);
   }, [livePlayers, session?.user.id, now]);
+  const { data: clubsByUser } = useCurrentClubsByUserIds(otherLivePlayers.map((row) => row.user_id));
 
   const refreshing = isRefetching || playersRefetching;
   const onRefresh = () => {
@@ -93,7 +95,12 @@ export default function LiveScreen() {
               <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-subtle">Autres joueurs LIVE</Text>
               <View className="gap-2.5">
                 {otherLivePlayers.map((item) => (
-                  <LivePlayerCard key={item.id} item={item} />
+                  <LivePlayerCard
+                    key={item.id}
+                    item={item}
+                    clubName={clubsByUser?.get(item.user_id)?.name ?? null}
+                    clubId={clubsByUser?.get(item.user_id)?.id ?? null}
+                  />
                 ))}
               </View>
             </View>

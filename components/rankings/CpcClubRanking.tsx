@@ -1,9 +1,11 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { router } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import {
   RANKING_COPY,
   canShowCpcClubRanking,
+  clubRankingRowHref,
   computeCpcClubStandings,
 } from "@/lib/rankings";
 import type { LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
@@ -85,11 +87,13 @@ export function CpcClubRanking({
       {standings.map((row, index) => {
         const diff = row.goalsFor - row.goalsAgainst;
         const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
-        return (
-          <View key={row.clubId} className="min-h-[36px] flex-row items-center px-1 py-1">
+        const clubName = names.get(row.clubId);
+        const href = clubRankingRowHref(row.clubId, clubName);
+        const cells = (
+          <>
             <Text className="w-8 text-xs text-fg-muted">{index + 1}</Text>
             <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-fg">
-              {names.get(row.clubId) ?? "Club Pro Clubs"}
+              {clubName ?? "Club Pro Clubs"}
             </Text>
             <Text className="w-7 text-right text-xs text-fg">{row.played}</Text>
             <Text className="w-7 text-right text-xs text-fg">{row.wins}</Text>
@@ -97,7 +101,25 @@ export function CpcClubRanking({
             <Text className="w-7 text-right text-xs text-fg">{row.losses}</Text>
             <Text className="w-9 text-right text-xs text-fg">{diffLabel}</Text>
             <Text className="w-9 text-right text-sm font-bold text-accent">{row.points}</Text>
-          </View>
+          </>
+        );
+        if (!href) {
+          return (
+            <View key={row.clubId} className="min-h-[36px] flex-row items-center px-1 py-1">
+              {cells}
+            </View>
+          );
+        }
+        return (
+          <Pressable
+            key={row.clubId}
+            onPress={() => router.push(href)}
+            accessibilityRole="button"
+            accessibilityLabel={`Ouvrir le profil du club ${clubName}`}
+            className="min-h-[44px] flex-row items-center px-1 py-1 active:opacity-80"
+          >
+            {cells}
+          </Pressable>
         );
       })}
     </View>

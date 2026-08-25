@@ -195,7 +195,7 @@ function MemberRow({
   return (
     <PlayerCard
       data={cardData}
-      variant="compact"
+      variant="mini"
       state={member.role === "OWNER" ? "featured" : "normal"}
       rightSlot={<RoleBadge role={member.role} />}
       footer={

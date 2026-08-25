@@ -57,9 +57,10 @@ test("Ligues reste hors tab bar (href: null)", () => {
   assert.equal(LEAGUES_STACK_HREF, "/leagues", "stack still /leagues");
 });
 
-test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), pas seulement l'onglet joueur", () => {
+test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), sans tab Redirect collision", () => {
   const stackFile = `${root}/app/leagues.tsx`;
   assert.true(existsSync(stackFile), "app/leagues.tsx");
+  assert.false(existsSync(`${root}/app/(player)/(tabs)/leagues.tsx`), "no tab collision");
   const layout = readFileSync(`${root}/app/_layout.tsx`, "utf8");
   const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
   const playerGuard = layout.indexOf('mode === "PLAYER"');
@@ -76,6 +77,8 @@ test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), pas seu
     "title"
   );
   assert.true(readFileSync(stackFile, "utf8").includes("CpcClubRanking"), "stack has CPC table");
+  const tabsLayout = readFileSync(`${root}/app/(player)/(tabs)/_layout.tsx`, "utf8");
+  assert.false(tabsLayout.includes('name="leagues"'), "Ligues pas un onglet");
 });
 
 console.log(`\n${passed} tests OK`);

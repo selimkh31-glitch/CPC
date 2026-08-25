@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
-import type { ApplicationRow } from "@/lib/types";
+import { USER_PUBLIC_COLUMNS, type ApplicationRow } from "@/lib/types";
 
 /**
  * Registre module-level des canaux `applications-${clubId}` — même nécessité
@@ -65,7 +65,7 @@ export function useApplications(clubId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")
-        .select("*, user:users(id,username,reliability_score,platform)")
+        .select(`*, user:users(${USER_PUBLIC_COLUMNS})`)
         .eq("club_id", clubId!)
         .order("created_at", { ascending: false });
       if (error) throw error;

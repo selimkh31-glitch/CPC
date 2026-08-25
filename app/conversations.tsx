@@ -6,7 +6,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useConversations } from "@/lib/hooks/useChat";
-import { conversationListLabel } from "@/lib/social";
+import { conversationListLabel, getDirectConversationPeer } from "@/lib/social";
+import { PlayerCard } from "@/components/player/PlayerCard";
+import { buildPlayerCardData } from "@/lib/playerCard";
 import { timeAgo } from "@/lib/utils";
 import type { ConversationRow } from "@/lib/types";
 
@@ -47,6 +49,21 @@ export default function ConversationsScreen() {
 
 function ConversationRowItem({ conversation, selfUserId }: { conversation: ConversationRow; selfUserId: string }) {
   const label = conversationListLabel(conversation, selfUserId);
+  const peer = getDirectConversationPeer(conversation, selfUserId);
+
+  if (peer) {
+    return (
+      <PlayerCard
+        data={buildPlayerCardData(peer)}
+        variant="mini"
+        onPress={() => router.push(`/conversation/${conversation.id}`)}
+        rightSlot={<MessageCircle size={18} color="#9aa0a8" />}
+        footer={
+          <Text className="text-[11px] text-fg-subtle">{timeAgo(conversation.created_at)}</Text>
+        }
+      />
+    );
+  }
 
   return (
     <Pressable

@@ -10,6 +10,7 @@ import { ReviewForm } from "@/components/profile/ReviewForm";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
 import { usePlayerMatchHistory } from "@/lib/hooks/useMatchHistory";
+import { useCurrentClubForUser } from "@/lib/hooks/useCurrentClubs";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { shouldHideContactCta } from "@/lib/safety";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -27,6 +28,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
     isError: matchHistoryError,
     refetch: refetchMatchHistory,
   } = usePlayerMatchHistory(userId);
+  const currentClub = useCurrentClubForUser(userId);
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
   const blockUser = useBlockUser();
@@ -56,23 +58,11 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   return (
     <View className="items-center gap-4">
       <ClubProCard
-        data={
-          user
-            ? {
-                username: user.username,
-                platform: user.platform,
-                mainPosition: user.main_position,
-                secondaryPositions: user.secondary_positions ?? [],
-                playStyle: user.play_style,
-                reliabilityScore: user.reliability_score,
-                plan: user.plan,
-                currentStreak: user.current_streak,
-                verifiedStats: user.verified_stats,
-                eaIdentityKind: user.ea_identity_kind,
-              }
-            : null
-        }
-        matchHistory={matchHistory}
+        user={user}
+        clubName={currentClub.data?.name ?? null}
+        clubId={currentClub.data?.id ?? null}
+        cpcMatchesPlayed={matchHistory?.played ?? null}
+        matchHistory={matchHistory?.items}
         matchHistoryLoading={matchHistoryLoading}
         matchHistoryError={matchHistoryError}
         onRetryMatchHistory={refetchMatchHistory}
