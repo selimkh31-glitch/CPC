@@ -13,7 +13,8 @@ export * from "../supabase/functions/_shared/safety";
  * accepte/refuse. `/club/[id]` n'a pas ces actions. L'appelant doit passer
  * en Mode Club et sélectionner `data.clubId` (voir recruitmentNotificationNav).
  * MATCH_FINALIZED → `/competitions` si `competitionId`, sinon `/match`
- * (feuille Mode Club). Pas d'écran mort.
+ * (feuille Mode Club). COMPETITION_CLUB_REGISTERED → `/competitions`.
+ * Pas d'écran mort.
  */
 export function inAppNotificationHref(
   type: string,
@@ -23,5 +24,6 @@ export function inAppNotificationHref(
   const recruitment = recruitmentNotificationNav(type, data);
   if (recruitment) return recruitment.href;
   if (type === "MATCH_FINALIZED") return matchFinalizedHref(data, mode);
+  if (type === "COMPETITION_CLUB_REGISTERED") return "/competitions";
   return notificationHref(type, data);
 }

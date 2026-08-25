@@ -11,6 +11,9 @@ import {
   matchFinalizedNotificationNav,
   matchFinalizedRecipientIds,
   messageReceivedCopy,
+  competitionClubRegisteredCopy,
+  competitionClubRegisteredHref,
+  competitionClubRegisteredRecipientIds,
   NOTIFICATION_TYPE_LABELS,
   notificationHref,
   notificationTitle,
@@ -167,6 +170,76 @@ test("matchFinalizedRecipientIds — membres des deux clubs, pas le recorder", (
     }).join(","),
     "a",
     "no opponent"
+  );
+});
+
+test("COMPETITION_CLUB_REGISTERED — type, label FR, href /competitions", () => {
+  assert.true(isNotificationType("COMPETITION_CLUB_REGISTERED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.COMPETITION_CLUB_REGISTERED, "Club inscrit", "label");
+  assert.equal(notificationTitle("COMPETITION_CLUB_REGISTERED", "x"), "Club inscrit", "title");
+  assert.equal(
+    notificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "comp-1" }),
+    "/competitions",
+    "href"
+  );
+  assert.equal(notificationHref("COMPETITION_CLUB_REGISTERED", {}), "/competitions", "href empty data");
+  assert.equal(competitionClubRegisteredHref({ clubId: "c1" }), "/competitions", "helper");
+  assert.equal(
+    inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "comp-1" }, "CLUB"),
+    "/competitions",
+    "in-app club"
+  );
+  assert.equal(
+    inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1" }, "PLAYER"),
+    "/competitions",
+    "in-app player"
+  );
+  const copy = competitionClubRegisteredCopy({
+    clubName: "  CPC United  ",
+    competitionName: "  Coupe du jeudi  ",
+  });
+  assert.equal(copy.type, "COMPETITION_CLUB_REGISTERED", "copy type");
+  assert.equal(copy.title, "Club inscrit", "copy title");
+  assert.equal(copy.body, "CPC United s'est inscrit à Coupe du jeudi.", "copy body");
+  assert.equal(
+    competitionClubRegisteredCopy({ clubName: "   ", competitionName: "  " }).body,
+    "Un club s'est inscrit à une compétition.",
+    "copy fallback"
+  );
+});
+
+test("competitionClubRegisteredRecipientIds — created_by + OWNER/MANAGER, pas de doublon, pas MEMBER", () => {
+  const ids = competitionClubRegisteredRecipientIds({
+    createdBy: "creator",
+    clubMembers: [
+      { userId: "creator", role: "OWNER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "member", role: "MEMBER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "", role: "OWNER" },
+    ],
+  }).sort();
+  assert.equal(ids.join(","), "creator,manager", "union minus member/dup");
+  assert.equal(
+    competitionClubRegisteredRecipientIds({
+      createdBy: null,
+      clubMembers: [{ userId: "owner", role: "OWNER" }],
+    }).join(","),
+    "owner",
+    "no created_by"
+  );
+  assert.equal(
+    competitionClubRegisteredRecipientIds({
+      createdBy: "creator",
+      clubMembers: [{ userId: "member", role: "MEMBER" }],
+    }).join(","),
+    "creator",
+    "member excluded"
+  );
+  assert.equal(
+    competitionClubRegisteredRecipientIds({ createdBy: "", clubMembers: [] }).join(","),
+    "",
+    "empty"
   );
 });
 
