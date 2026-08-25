@@ -14,8 +14,8 @@ import {
 import type { CompetitionRow } from "@/lib/types";
 
 const STATUS_OPTIONS: { value: CompetitionCreateStatus; hint: string }[] = [
-  { value: "OPEN", hint: "Les clubs Pro Clubs gérés peuvent s'inscrire." },
-  { value: "DRAFT", hint: "Visible seulement par toi tant qu'elle n'est pas ouverte." },
+  { value: "OPEN", hint: COMPETITION_COPY.openCreateHint },
+  { value: "DRAFT", hint: COMPETITION_COPY.draftCreateHint },
 ];
 
 export function CreateCompetitionForm({ onCreated }: { onCreated?: (competition: CompetitionRow) => void }) {
@@ -23,6 +23,7 @@ export function CreateCompetitionForm({ onCreated }: { onCreated?: (competition:
   const [name, setName] = useState("");
   const [status, setStatus] = useState<CompetitionCreateStatus>("OPEN");
   const mutation = useCreateCompetition(session?.user.id ?? "");
+  const canSubmit = Boolean(session) && name.trim().length > 0 && !mutation.isPending;
 
   const submit = () => {
     if (!session || !name.trim()) {
@@ -50,6 +51,7 @@ export function CreateCompetitionForm({ onCreated }: { onCreated?: (competition:
       <CardHeader>
         <CardTitle>{COMPETITION_COPY.create}</CardTitle>
       </CardHeader>
+      <Text className="mb-3 text-xs text-fg-muted">{COMPETITION_COPY.createOwnerHint}</Text>
       <View className="gap-3">
         <View>
           <Label>{COMPETITION_COPY.nameLabel}</Label>
@@ -86,7 +88,15 @@ export function CreateCompetitionForm({ onCreated }: { onCreated?: (competition:
             })}
           </View>
         </View>
-        <Button loading={mutation.isPending} onPress={submit}>
+        {status === "DRAFT" ? (
+          <Text className="text-xs text-fg-muted">{COMPETITION_COPY.draftCannotRegister}</Text>
+        ) : null}
+        {mutation.isError ? (
+          <Text className="text-xs text-danger">
+            {mutation.error instanceof Error ? mutation.error.message : COMPETITION_COPY.loadError}
+          </Text>
+        ) : null}
+        <Button loading={mutation.isPending} disabled={!canSubmit} onPress={submit}>
           {COMPETITION_COPY.createCta}
         </Button>
       </View>

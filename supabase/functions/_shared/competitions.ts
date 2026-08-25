@@ -35,12 +35,22 @@ export const COMPETITION_COPY = {
   empty: "Aucune compétition Pro Clubs ouverte pour le moment.",
   emptyHint: "Crée-en une (brouillon ou ouverte) — virtuelle, FC 27 uniquement.",
   loadError: "Impossible de charger les compétitions.",
+  detailLoadError: "Impossible de charger cette compétition.",
   registerConflict: "Ce club Pro Clubs est déjà inscrit à cette compétition.",
   notOpen: "Les inscriptions ne sont ouvertes que pour une compétition OPEN.",
   notManager: "Tu n'es pas owner ou manager de ce club Pro Clubs.",
   competitionNotFound: "Compétition introuvable.",
   created: "Compétition Pro Clubs créée.",
   registered: "Club inscrit à la compétition.",
+  draftCannotRegister: "Les clubs ne peuvent pas s'inscrire : cette compétition est encore en brouillon.",
+  closedCannotRegister: "Les inscriptions sont fermées.",
+  createOwnerHint: "Tu en seras le créateur. Un brouillon reste invisible aux autres, et aucun club ne peut s'y inscrire.",
+  draftCreateHint: "Visible seulement par toi. Les clubs ne peuvent pas s'inscrire tant qu'elle n'est pas ouverte.",
+  openCreateHint: "Les clubs Pro Clubs gérés (owner ou manager) peuvent s'inscrire.",
+  creatorLabel: "Créateur",
+  participantsTitle: "Clubs inscrits",
+  participantsEmpty: "Aucun club Pro Clubs inscrit.",
+  openJoinHint: "Ouverte — les clubs Pro Clubs gérés (owner ou manager) peuvent s'inscrire.",
   standingsTitle: "Classement",
   standingsEmpty: "Pas de classement tant qu'aucun match lié n'a été enregistré pour cette compétition.",
   standingsEmptyHint:
@@ -66,6 +76,48 @@ export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
   OPEN: "Ouverte",
   CLOSED: "Fermée",
 };
+
+/** Deep link détail — stack `/competitions/[id]`, pas un onglet. Liste si id absent. */
+export function competitionDetailHref(competitionId: string | null | undefined): string {
+  if (typeof competitionId === "string" && competitionId.length > 0) {
+    return `/competitions/${competitionId}`;
+  }
+  return "/competitions";
+}
+
+export type CompetitionRegisterCtaKind =
+  | "register"
+  | "already_registered"
+  | "draft"
+  | "closed"
+  | "no_managed_club";
+
+/**
+ * CTA d'inscription honnête : jamais un bouton mort sur DRAFT/CLOSED.
+ * OPEN + OWNER/MANAGER + pas encore inscrit → bouton. Doublon → copy 409.
+ */
+export function competitionRegisterCtaKind(input: {
+  status: string;
+  hasManagedClub: boolean;
+  alreadyRegistered: boolean;
+}): CompetitionRegisterCtaKind {
+  if (input.alreadyRegistered) return "already_registered";
+  if (input.status === "DRAFT") return "draft";
+  if (input.status !== "OPEN") return "closed";
+  if (!input.hasManagedClub) return "no_managed_club";
+  return "register";
+}
+
+/** Nom du créateur : username réel, sinon « Toi » si viewer = created_by. Pas de pseudo inventé. */
+export function competitionCreatorLabel(
+  competition: { created_by: string; creator?: { username?: string | null } | null },
+  viewerId: string | null
+): string {
+  const username = competition.creator?.username?.trim();
+  if (username) return username;
+  if (viewerId && competition.created_by === viewerId) return "Toi";
+  return "Joueur Pro Clubs";
+}
 
 /** Colonnes match_results après 0027 (lien club adverse + compétition). */
 export const MATCH_RESULT_COLUMNS = [

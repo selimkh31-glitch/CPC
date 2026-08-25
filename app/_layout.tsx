@@ -226,10 +226,15 @@ function RootNavigator() {
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
         />
         {/* Compétitions virtuelles FC 27 Pro Clubs — stack, pas un onglet.
-            Ligues (`(player)/(tabs)/leagues`) reste href: null. */}
+            Ligues (`(player)/(tabs)/leagues`) reste href: null.
+            Détail `/competitions/[id]` (deep link notifs), pas de tab dédié. */}
         <Stack.Screen
-          name="competitions"
+          name="competitions/index"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Compétitions" }}
+        />
+        <Stack.Screen
+          name="competitions/[id]"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
         />
       </Stack.Protected>
 

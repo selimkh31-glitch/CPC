@@ -7,7 +7,10 @@ import {
   canInsertCompetition,
   canRegisterCompetitionClub,
   canShowCompetitionStandings,
+  competitionCreatorLabel,
+  competitionDetailHref,
   competitionIsReadable,
+  competitionRegisterCtaKind,
   competitionsFoundationSqlIssues,
   computeCompetitionStandings,
   COMPETITION_COPY,
@@ -300,12 +303,74 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de % inventé", () => {
   assert.true(COMPETITION_COPY.standingsEmpty.includes("match lié"), "standings empty");
   assert.true(COMPETITION_COPY.standingsEmptyHint.includes("Aucun point inventé"), "no invent points");
   assert.false(COMPETITION_COPY.standingsEmpty.includes("%"), "no percent standings");
+  assert.true(COMPETITION_COPY.draftCannotRegister.includes("brouillon"), "draft copy");
+  assert.true(COMPETITION_COPY.draftCreateHint.includes("ne peuvent pas s'inscrire"), "draft create hint");
+  assert.false(COMPETITION_COPY.draftCannotRegister.includes("%"), "no percent draft");
 });
 
 test("liste/inscription : clubs inscrits = noms, pas de CTA contact à inventer", () => {
   assert.true(COMPETITION_COPY.registerCta.toLowerCase().includes("club"), "register club");
   assert.false(COMPETITION_COPY.registerCta.toLowerCase().includes("message"), "no dm cta");
   assert.false(COMPETITION_COPY.title.toLowerCase().includes("message"), "no message title");
+  assert.equal(COMPETITION_COPY.participantsEmpty, "Aucun club Pro Clubs inscrit.", "participants empty");
+});
+
+test("détail /competitions/[id] ; liste si id absent", () => {
+  assert.equal(competitionDetailHref("comp-1"), "/competitions/comp-1", "detail");
+  assert.equal(competitionDetailHref(""), "/competitions", "empty");
+  assert.equal(competitionDetailHref(null), "/competitions", "null");
+  assert.equal(competitionDetailHref(undefined), "/competitions", "undef");
+});
+
+test("CTA inscription honnête : DRAFT copy, pas de bouton mort ; OPEN + club géré", () => {
+  assert.equal(
+    competitionRegisterCtaKind({ status: "DRAFT", hasManagedClub: true, alreadyRegistered: false }),
+    "draft",
+    "draft blocks even owner"
+  );
+  assert.equal(
+    competitionRegisterCtaKind({ status: "CLOSED", hasManagedClub: true, alreadyRegistered: false }),
+    "closed",
+    "closed"
+  );
+  assert.equal(
+    competitionRegisterCtaKind({ status: "OPEN", hasManagedClub: true, alreadyRegistered: false }),
+    "register",
+    "open manager"
+  );
+  assert.equal(
+    competitionRegisterCtaKind({ status: "OPEN", hasManagedClub: true, alreadyRegistered: true }),
+    "already_registered",
+    "dup"
+  );
+  assert.equal(
+    competitionRegisterCtaKind({ status: "OPEN", hasManagedClub: false, alreadyRegistered: false }),
+    "no_managed_club",
+    "member/non-member cannot register someone else's club"
+  );
+  assert.equal(
+    competitionRegisterCtaKind({ status: "DRAFT", hasManagedClub: false, alreadyRegistered: false }),
+    "draft",
+    "draft sans club"
+  );
+});
+
+test("créateur : username réel, sinon Toi si viewer = created_by, jamais un pseudo inventé", () => {
+  assert.equal(
+    competitionCreatorLabel({ created_by: "u1", creator: { username: "  CPCAce  " } }, "u2"),
+    "CPCAce",
+    "username"
+  );
+  assert.equal(
+    competitionCreatorLabel({ created_by: "u1", creator: { username: "   " } }, "u1"),
+    "Toi",
+    "own draft"
+  );
+  assert.equal(
+    competitionCreatorLabel({ created_by: "u1" }, "u2"),
+    "Joueur Pro Clubs",
+    "other unknown"
+  );
 });
 
 test("SQL fondation : tables + unique + RLS ; refuse standings / alter match_results", () => {
