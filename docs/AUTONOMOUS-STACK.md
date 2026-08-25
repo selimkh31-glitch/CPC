@@ -146,7 +146,7 @@ Sans 0029 : `kind` / `tournament_matches` absents → liste/création tournoi é
 | `0026_competitions_foundation.sql` | PR #9 | `competitions` + `competition_clubs` (unique paire) | prérequis de 0027 |
 | **`0027_match_result_competition_link.sql`** | **PR #14** | **`match_results.opponent_club_id` + `competition_id` (nullable FKs). CHECK adverse ≠ club. Trigger : si compétition, les deux clubs sont dans `competition_clubs`. `finalize_match` étendu. Pas de table standings.** | **Appliqué par CoS (PC fondateur)** |
 | **`0028_club_conversation.sql`** | **PR #15** | **Get-or-create conversation `CLUB` (RPC `start_club_conversation`) + sync `club_members` → `conversation_members`. Pas de nouvelle table / pas de 2e chat.** | **Appliqué par CoS (PC fondateur)** |
-| **`0029_tournaments_v1.sql`** | Tournois V1 | **`competitions.kind` COMPETITION\|TOURNAMENT + `tournament_matches` (paires SCHEDULED\|PLAYED). Pas de table `tournaments` dupliquée. Pas de scores sur les paires. PLAYED via trigger `match_results`.** | **À appliquer par CoS** |
+| **`0029_tournaments_v1.sql`** | Tournois V1 | **`competitions.kind` COMPETITION\|TOURNAMENT + `tournament_matches` (paires SCHEDULED\|PLAYED) + `tournament_round_clubs` (pool par tour). Pas de table `tournaments` dupliquée. Pas de scores sur les paires. PLAYED via trigger `match_results`. Vainqueur = finale PLAYED.** | **À appliquer par CoS** |
 
 Sans 0027 : `finalize-match` enverrait `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas — **ce n’est plus le cas en prod** (0027 appliqué + Edge redéployée).  
 Sans 0028 : le bouton Conversation du club échouerait — **ce n’est plus le cas en prod** (0028 + `start-club-conversation` déployée).
@@ -344,7 +344,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 - Créer une compétition (DRAFT ou OPEN), la voir dans la liste.
 - OWNER/MANAGER : inscrire un club géré sur une OPEN. Doublon → **409**, pas une 2ᵉ ligne.
 - Classement **seulement** s’il existe au moins un `match_results` avec `competition_id` **et** `opponent_club_id`. Sinon copy honnête, **pas** de rows 0-0-0, **pas** de `season_stats`.
-- **Tournois V1** : même table, `kind=TOURNAMENT`. Stack `/tournaments/[id]`. Tableau = paires `tournament_matches` uniquement. Générer le 1er tour (créateur, OPEN, ≥2 clubs). Scores depuis résultats liés ; unplayed = « pas encore joué ».
+- **Tournois V1** : même table, `kind=TOURNAMENT`. Stack `/tournaments/[id]`. Tableau = paires `tournament_matches` uniquement. Tours : 1er depuis clubs inscrits ; suivants depuis vainqueurs **PLAYED** (+ pool `tournament_round_clubs`). Vainqueur du tournoi = finale persistée (1 match, pool 2, résultat lié). Unplayed = « pas encore joué ».
 
 ### Notifications (#10 + #11 + MATCH_FINALIZED + COMPETITION_CLUB_REGISTERED)
 

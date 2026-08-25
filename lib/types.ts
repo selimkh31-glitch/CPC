@@ -398,6 +398,14 @@ export interface TournamentMatchRow {
   club_b?: Pick<ClubRow, "id" | "name"> | null;
 }
 
+export interface TournamentRoundClubRow {
+  id: string;
+  competition_id: string;
+  round: number;
+  club_id: string;
+  created_at: string;
+}
+
 export interface CompetitionClubRow {
   id: string;
   competition_id: string;

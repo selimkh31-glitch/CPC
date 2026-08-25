@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyClubs } from "@/lib/hooks/useClubs";
 import { useRegisterCompetitionClub } from "@/lib/hooks/useCompetitions";
 import { useCompetitionLinkedResults } from "@/lib/hooks/useCompetitionResults";
-import { useScheduleTournamentRound, useTournament, useTournamentMatches } from "@/lib/hooks/useTournaments";
+import { useScheduleTournamentRound, useTournament, useTournamentMatches, useTournamentRoundClubs } from "@/lib/hooks/useTournaments";
 import { toast } from "@/lib/toast";
 import { competitionCreatorLabel, competitionDetailHref, competitionRegisterCtaKind, type CompetitionStatus } from "@/lib/competitions";
 import { TOURNAMENT_COPY, TOURNAMENT_STATUS_LABELS } from "@/lib/tournaments";
@@ -34,6 +34,7 @@ export default function TournamentDetailScreen() {
   const { session } = useAuth();
   const { data: tournament, isLoading, isError, refetch } = useTournament(tournamentId);
   const matchesQuery = useTournamentMatches(tournamentId);
+  const roundClubsQuery = useTournamentRoundClubs(tournamentId);
   const { data: managedClubs } = useMyClubs(session?.user.id ?? null);
   const register = useRegisterCompetitionClub();
   const schedule = useScheduleTournamentRound();
@@ -166,6 +167,7 @@ export default function TournamentDetailScreen() {
         <TournamentBracket
           tournament={tournament}
           matches={matchesQuery.data}
+          roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
           viewerId={session?.user.id ?? null}
           isLoading={matchesQuery.isLoading}
@@ -176,7 +178,8 @@ export default function TournamentDetailScreen() {
             schedule.mutate(
               { tournamentId: tournament.id },
               {
-                onSuccess: () => toast.success(TOURNAMENT_COPY.scheduled),
+                onSuccess: (data) =>
+                  toast.success(data.intent === "next" ? TOURNAMENT_COPY.scheduledNext : TOURNAMENT_COPY.scheduled),
                 onError: (err: unknown) => {
                   toast.error(err instanceof Error ? err.message : "Erreur");
                 },
@@ -190,6 +193,7 @@ export default function TournamentDetailScreen() {
         <TournamentProgression
           tournament={tournament}
           matches={matchesQuery.data}
+          roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
         />
       </Card>

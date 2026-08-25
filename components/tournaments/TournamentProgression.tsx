@@ -1,20 +1,29 @@
 import { Text, View } from "react-native";
-import { TOURNAMENT_COPY, tournamentQualifiedClubIds } from "@/lib/tournaments";
+import {
+  latestRoundNumber,
+  matchesInRound,
+  TOURNAMENT_COPY,
+  tournamentChampionClubId,
+  tournamentMatchWinnerId,
+} from "@/lib/tournaments";
 import type { LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
-import type { CompetitionRow, TournamentMatchRow } from "@/lib/types";
+import type { CompetitionRow, TournamentMatchRow, TournamentRoundClubRow } from "@/lib/types";
 
-/** Qualifiés = vainqueurs de matchs avec résultat lié uniquement. Pas de 0-0. */
+/** Qualifiés / vainqueur = uniquement des résultats PLAYED liés. Pas de 0-0 inventé. */
 export function TournamentProgression({
   tournament,
   matches,
+  roundClubs,
   results,
 }: {
   tournament: CompetitionRow;
   matches: TournamentMatchRow[] | undefined;
+  roundClubs: TournamentRoundClubRow[] | undefined;
   results: LinkedMatchResultRow[] | undefined;
 }) {
   const rows = matches ?? [];
   const linked = results ?? [];
+  const pool = roundClubs ?? [];
   const names = new Map<string, string>();
   for (const row of tournament.clubs ?? []) {
     if (row.club?.name) names.set(row.club_id, row.club.name);
@@ -24,21 +33,46 @@ export function TournamentProgression({
     if (match.club_b?.name) names.set(match.club_b_id, match.club_b.name);
   }
 
-  const qualified = tournamentQualifiedClubIds(rows, linked);
+  const championId = tournamentChampionClubId(rows, linked, pool);
+  const latest = latestRoundNumber(rows);
+  const latestWinners: string[] = [];
+  if (latest != null) {
+    const seen = new Set<string>();
+    for (const match of matchesInRound(rows, latest)) {
+      const winnerId = tournamentMatchWinnerId(match, linked);
+      if (!winnerId || seen.has(winnerId)) continue;
+      seen.add(winnerId);
+      latestWinners.push(winnerId);
+    }
+  }
 
   return (
     <View>
       <Text className="mb-1 text-xs font-bold uppercase tracking-wide text-fg-muted">
+        {TOURNAMENT_COPY.championTitle}
+      </Text>
+      {championId ? (
+        <Text className="mb-3 text-base font-bold text-accent">
+          {names.get(championId) ?? "Club Pro Clubs"}
+        </Text>
+      ) : (
+        <>
+          <Text className="text-xs text-fg-muted">{TOURNAMENT_COPY.championEmpty}</Text>
+          <Text className="mb-3 mt-0.5 text-xs text-fg-subtle">{TOURNAMENT_COPY.championHint}</Text>
+        </>
+      )}
+
+      <Text className="mb-1 text-xs font-bold uppercase tracking-wide text-fg-muted">
         {TOURNAMENT_COPY.progressionTitle}
       </Text>
-      {qualified.length === 0 ? (
+      {latestWinners.length === 0 ? (
         <>
           <Text className="text-xs text-fg-muted">{TOURNAMENT_COPY.progressionEmpty}</Text>
           <Text className="mt-0.5 text-xs text-fg-subtle">{TOURNAMENT_COPY.progressionHint}</Text>
         </>
       ) : (
         <View className="gap-1">
-          {qualified.map((clubId) => (
+          {latestWinners.map((clubId) => (
             <Text key={clubId} className="text-sm font-semibold text-fg">
               {names.get(clubId) ?? "Club Pro Clubs"}
             </Text>

@@ -22,6 +22,7 @@
 --
 -- PAS de table tournaments dupliquée, PAS de classement saison globale,
 -- PAS de ligues, PAS de scores 0-0 inventés, PAS de bracket décoratif.
+-- Pool par tour : tournament_round_clubs (clubs du tour au moment du tirage).
 -- ==============================================================================
 
 -- ------------------------------------------------------------------
@@ -197,3 +198,68 @@ create trigger tournament_matches_mark_played
   on public.match_results
   for each row
   execute function public.tournament_matches_mark_played();
+
+-- ------------------------------------------------------------------
+-- 5) Pool de clubs par tour — snapshot au tirage (pas les inscriptions tardives)
+-- ------------------------------------------------------------------
+create table if not exists public.tournament_round_clubs (
+  id uuid not null default gen_random_uuid(),
+  competition_id uuid not null,
+  round integer not null,
+  club_id uuid not null,
+  created_at timestamp(3) not null default current_timestamp,
+
+  constraint tournament_round_clubs_pkey primary key (id),
+  constraint tournament_round_clubs_competition_fkey
+    foreign key (competition_id) references public.competitions(id) on delete cascade,
+  constraint tournament_round_clubs_club_fkey
+    foreign key (club_id) references public.clubs(id) on delete cascade,
+  constraint tournament_round_clubs_round_check check (round >= 1),
+  constraint tournament_round_clubs_pair_unique unique (competition_id, round, club_id)
+);
+
+create index if not exists tournament_round_clubs_competition_id_idx
+  on public.tournament_round_clubs (competition_id, round);
+
+grant select on public.tournament_round_clubs to authenticated;
+grant all privileges on public.tournament_round_clubs to service_role;
+
+alter table public.tournament_round_clubs enable row level security;
+
+create policy "tournament_round_clubs_select_open_or_own" on public.tournament_round_clubs
+  for select to authenticated using (
+    exists (
+      select 1 from public.competitions c
+      where c.id = competition_id
+        and (c.status = 'OPEN' or c.created_by = auth.uid())
+    )
+  );
+
+create or replace function public.tournament_round_clubs_insert_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_kind text;
+begin
+  select kind into v_kind from public.competitions where id = new.competition_id;
+  if v_kind is distinct from 'TOURNAMENT' then
+    raise exception 'not_a_tournament';
+  end if;
+  if not exists (
+    select 1 from public.competition_clubs
+    where competition_id = new.competition_id and club_id = new.club_id
+  ) then
+    raise exception 'clubs_not_in_competition';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tournament_round_clubs_insert_guard on public.tournament_round_clubs;
+create trigger tournament_round_clubs_insert_guard
+  before insert on public.tournament_round_clubs
+  for each row
+  execute function public.tournament_round_clubs_insert_guard();

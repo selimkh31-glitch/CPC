@@ -65,20 +65,30 @@ export const TOURNAMENT_COPY = {
   needTwoClubs: "Il faut au moins deux clubs inscrits pour générer un tour.",
   cannotScheduleHint: "Pas assez de clubs inscrits — aucun match n'est inventé.",
   scheduleCta: "Générer le premier tour",
-  scheduleLocked: "Le premier tour est déjà généré.",
-  scheduled: "Premier tour enregistré.",
+  scheduleNextCta: "Générer le tour suivant",
+  scheduleLocked: "Ce tour est déjà généré.",
+  scheduled: "Tour enregistré.",
+  scheduledNext: "Tour suivant enregistré.",
   scheduleNotOwner: "Seul le créateur du tournoi peut générer un tour.",
   scheduleNotOpen: "Ouvre le tournoi (OPEN) et inscris au moins deux clubs avant de générer un tour.",
+  scheduleWaitResults:
+    "Tous les matchs du tour doivent avoir un vainqueur (résultat lié, pas de nul, pas « pas encore joué ») avant le tour suivant.",
+  scheduleDrawBlocks: "Un match nul n'a pas de vainqueur — le tour suivant n'est pas généré.",
+  alreadyComplete: "Ce tournoi a déjà un vainqueur.",
+  needTwoAdvancing: "Pas assez de clubs qualifiés (vainqueurs PLAYED) pour un tour suivant.",
   notATournament: "Cette compétition n'est pas un tournoi.",
   roundLabel: "Tour",
   notPlayed: "pas encore joué",
   drawNoWinner: "Match nul — pas de vainqueur.",
   winnerLabel: "Vainqueur",
+  championTitle: "Vainqueur du tournoi",
+  championEmpty: "Pas de vainqueur tant que la finale n'a pas de résultat lié.",
+  championHint: "Le vainqueur vient uniquement d'un match PLAYED. Jamais un 0-0 inventé.",
   progressionTitle: "Qualifiés",
   progressionEmpty: "Aucun club qualifié : aucun match du tableau n'a encore de résultat lié.",
   progressionHint: "La progression ne compte que les matchs PLAYED (résultat Pro Clubs lié). Jamais un 0-0 inventé.",
   unpairedTitle: "Sans adversaire (nombre impair)",
-  unpairedHint: "Ce club est inscrit mais n'a pas de match au premier tour — pas d'adversaire inventé.",
+  unpairedHint: "Ce club est dans ce tour mais n'a pas de match — pas d'adversaire inventé.",
   registeredAfterSchedule: "Inscrit, hors tableau du premier tour.",
   matchesLoadError: "Impossible de charger les matchs du tournoi.",
 } as const;
@@ -141,7 +151,11 @@ export type ScheduleBlockReason =
   | "not_open"
   | "not_a_tournament"
   | "need_two_clubs"
-  | "already_scheduled";
+  | "already_scheduled"
+  | "round_incomplete"
+  | "draw_blocks"
+  | "already_complete"
+  | "need_two_advancing";
 
 export function canScheduleFirstRound(input: {
   actorId: string;
@@ -170,6 +184,10 @@ export function scheduleBlockMessage(reason: ScheduleBlockReason): string {
   if (reason === "not_owner") return TOURNAMENT_COPY.scheduleNotOwner;
   if (reason === "need_two_clubs") return TOURNAMENT_COPY.needTwoClubs;
   if (reason === "not_a_tournament") return TOURNAMENT_COPY.notATournament;
+  if (reason === "round_incomplete") return TOURNAMENT_COPY.scheduleWaitResults;
+  if (reason === "draw_blocks") return TOURNAMENT_COPY.scheduleDrawBlocks;
+  if (reason === "already_complete") return TOURNAMENT_COPY.alreadyComplete;
+  if (reason === "need_two_advancing") return TOURNAMENT_COPY.needTwoAdvancing;
   return TOURNAMENT_COPY.scheduleNotOpen;
 }
 
@@ -181,17 +199,18 @@ export interface ScheduledPairing {
   status: "SCHEDULED";
 }
 
-export interface FirstRoundSchedule {
+export interface RoundSchedule {
   pairings: ScheduledPairing[];
   unpairedClubIds: string[];
+  round: number;
 }
 
 /**
- * Premier tour déterministe : tri des ids, paires consécutives.
+ * Tour déterministe : tri des ids, paires consécutives.
  * Club impair restant = unpaired (pas de bye inventé, pas de match fantôme).
  * < 2 clubs → pairings vides (l'Edge refuse avant d'écrire).
  */
-export function scheduleFirstRoundFromClubs(clubIds: readonly string[]): FirstRoundSchedule {
+export function scheduleRoundFromClubIds(clubIds: readonly string[], round: number): RoundSchedule {
   const unique = [...new Set(clubIds.filter((id) => typeof id === "string" && id.length > 0))];
   unique.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const pairings: ScheduledPairing[] = [];
@@ -202,7 +221,7 @@ export function scheduleFirstRoundFromClubs(clubIds: readonly string[]): FirstRo
     const clubAId = a < b ? a : b;
     const clubBId = a < b ? b : a;
     pairings.push({
-      round: FIRST_TOURNAMENT_ROUND,
+      round,
       slot,
       clubAId,
       clubBId,
@@ -211,7 +230,11 @@ export function scheduleFirstRoundFromClubs(clubIds: readonly string[]): FirstRo
     slot += 1;
   }
   const unpairedClubIds = unique.length % 2 === 1 ? [unique[unique.length - 1]] : [];
-  return { pairings, unpairedClubIds };
+  return { pairings, unpairedClubIds, round };
+}
+
+export function scheduleFirstRoundFromClubs(clubIds: readonly string[]): RoundSchedule {
+  return scheduleRoundFromClubIds(clubIds, FIRST_TOURNAMENT_ROUND);
 }
 
 export interface TournamentMatchInput {
@@ -326,6 +349,148 @@ export function unpairedRegisteredClubIds(
   return registeredClubIds.filter((id) => !inBracket.has(id));
 }
 
+export interface TournamentRoundClubInput {
+  competition_id: string;
+  round: number;
+  club_id: string;
+}
+
+export function latestRoundNumber(matches: readonly Pick<TournamentMatchInput, "round">[]): number | null {
+  if (matches.length === 0) return null;
+  let max = matches[0].round;
+  for (const match of matches) {
+    if (match.round > max) max = match.round;
+  }
+  return max;
+}
+
+export function matchesInRound<T extends Pick<TournamentMatchInput, "round" | "slot">>(
+  matches: readonly T[],
+  round: number
+): T[] {
+  return matches.filter((match) => match.round === round).sort((a, b) => a.slot - b.slot);
+}
+
+export function clubIdsInRound(
+  roundClubs: readonly TournamentRoundClubInput[],
+  round: number
+): string[] {
+  return roundClubs.filter((row) => row.round === round).map((row) => row.club_id);
+}
+
+export function unpairedClubIdsInRound(
+  roundClubIds: readonly string[],
+  roundMatches: readonly Pick<TournamentMatchInput, "club_a_id" | "club_b_id">[]
+): string[] {
+  return unpairedRegisteredClubIds(roundClubIds, roundMatches);
+}
+
+export type NextRoundPool =
+  | { ok: true; clubIds: string[] }
+  | { ok: false; reason: "round_incomplete" | "draw_blocks" };
+
+/**
+ * Clubs du tour suivant : vainqueurs PLAYED du tour + clubs du pool sans match.
+ * Unplayed / nul → pas de tour suivant (pas de bye inventé, pas de vainqueur inventé).
+ */
+export function nextRoundClubIds(
+  roundMatches: readonly TournamentMatchInput[],
+  roundClubIds: readonly string[],
+  results: readonly TournamentLinkedResultInput[]
+): NextRoundPool {
+  const winners: string[] = [];
+  for (const match of [...roundMatches].sort((a, b) => a.slot - b.slot)) {
+    if (!tournamentMatchIsPlayed(match, results)) return { ok: false, reason: "round_incomplete" };
+    const winnerId = tournamentMatchWinnerId(match, results);
+    if (!winnerId) return { ok: false, reason: "draw_blocks" };
+    if (!winners.includes(winnerId)) winners.push(winnerId);
+  }
+  const unpaired = unpairedClubIdsInRound(roundClubIds, roundMatches);
+  const clubIds = [...winners];
+  for (const id of unpaired) {
+    if (!clubIds.includes(id)) clubIds.push(id);
+  }
+  return { ok: true, clubIds };
+}
+
+/**
+ * Vainqueur du tournoi = vainqueur PLAYED de la finale persistée :
+ * dernier tour = exactement 1 match, pool du tour = 2 clubs.
+ * Pas de finale inventée, pas de couronne si un club du pool n'a pas joué.
+ */
+export function tournamentChampionClubId(
+  matches: readonly TournamentMatchInput[],
+  results: readonly TournamentLinkedResultInput[],
+  roundClubs: readonly TournamentRoundClubInput[] = []
+): string | null {
+  const latest = latestRoundNumber(matches);
+  if (latest == null) return null;
+  const latestMatches = matchesInRound(matches, latest);
+  if (latestMatches.length !== 1) return null;
+  const pool = clubIdsInRound(roundClubs, latest);
+  if (pool.length > 0 && pool.length !== 2) return null;
+  if (pool.length === 0) {
+    const fromMatches = new Set<string>();
+    fromMatches.add(latestMatches[0].club_a_id);
+    fromMatches.add(latestMatches[0].club_b_id);
+    if (fromMatches.size !== 2) return null;
+  }
+  return tournamentMatchWinnerId(latestMatches[0], results);
+}
+
+export type ScheduleRoundPlan =
+  | { ok: true; intent: "first" | "next"; round: number; clubIds: string[] }
+  | { ok: false; reason: ScheduleBlockReason };
+
+export function canScheduleRound(input: {
+  actorId: string;
+  createdBy: string;
+  status: string;
+  kind: string;
+  registeredClubIds: readonly string[];
+  matches: readonly TournamentMatchInput[];
+  results: readonly TournamentLinkedResultInput[];
+  roundClubs: readonly TournamentRoundClubInput[];
+}): ScheduleRoundPlan {
+  if (input.kind !== TOURNAMENT_KIND) return { ok: false, reason: "not_a_tournament" };
+  if (input.actorId !== input.createdBy) return { ok: false, reason: "not_owner" };
+  if (input.status !== "OPEN") return { ok: false, reason: "not_open" };
+
+  if (input.matches.length === 0) {
+    if (input.registeredClubIds.length < MIN_CLUBS_TO_SCHEDULE) return { ok: false, reason: "need_two_clubs" };
+    return { ok: true, intent: "first", round: FIRST_TOURNAMENT_ROUND, clubIds: [...input.registeredClubIds] };
+  }
+
+  if (tournamentChampionClubId(input.matches, input.results, input.roundClubs)) {
+    return { ok: false, reason: "already_complete" };
+  }
+
+  const latest = latestRoundNumber(input.matches);
+  if (latest == null) return { ok: false, reason: "need_two_clubs" };
+  const latestMatches = matchesInRound(input.matches, latest);
+  let pool = clubIdsInRound(input.roundClubs, latest);
+  if (pool.length === 0) {
+    const fromMatches = new Set<string>();
+    for (const match of latestMatches) {
+      fromMatches.add(match.club_a_id);
+      fromMatches.add(match.club_b_id);
+    }
+    pool = [...fromMatches];
+  }
+
+  const nextPool = nextRoundClubIds(latestMatches, pool, input.results);
+  if (!nextPool.ok) return { ok: false, reason: nextPool.reason };
+  if (nextPool.clubIds.length < MIN_CLUBS_TO_SCHEDULE) return { ok: false, reason: "need_two_advancing" };
+  if (input.matches.some((match) => match.round === latest + 1)) {
+    return { ok: false, reason: "already_scheduled" };
+  }
+  return { ok: true, intent: "next", round: latest + 1, clubIds: nextPool.clubIds };
+}
+
+export function scheduleCtaLabel(intent: "first" | "next"): string {
+  return intent === "next" ? TOURNAMENT_COPY.scheduleNextCta : TOURNAMENT_COPY.scheduleCta;
+}
+
 export function canShowTournamentBracket(matches: readonly unknown[]): boolean {
   return matches.length > 0;
 }
@@ -341,6 +506,7 @@ const REQUIRED_SQL_FRAGMENTS = [
   "and kind = 'competition'",
   "tournament_match_insert_scheduled_only",
   "tournament_matches_mark_played",
+  "create table if not exists public.tournament_round_clubs",
 ] as const;
 
 const FORBIDDEN_SQL_FRAGMENTS = [

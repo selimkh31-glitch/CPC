@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
 import type { TournamentCreateStatus } from "@/lib/tournaments";
-import type { CompetitionClubRow, CompetitionRow, TournamentMatchRow } from "@/lib/types";
+import type { CompetitionClubRow, CompetitionRow, TournamentMatchRow, TournamentRoundClubRow } from "@/lib/types";
 
 const TOURNAMENT_LIST_SELECT =
   "*, clubs:competition_clubs(*, club:clubs(id, name)), creator:users!competitions_created_by_fkey(id, username)";
@@ -45,9 +45,11 @@ function invalidateTournamentQueries(queryClient: ReturnType<typeof useQueryClie
   queryClient.invalidateQueries({ queryKey: ["competition"] });
   queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
   queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
+  queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
   if (tournamentId) {
     queryClient.invalidateQueries({ queryKey: ["tournament", tournamentId] });
     queryClient.invalidateQueries({ queryKey: ["tournament-matches", tournamentId] });
+    queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs", tournamentId] });
     queryClient.invalidateQueries({ queryKey: ["competition", tournamentId] });
   }
 }
@@ -106,6 +108,23 @@ export function useTournamentMatches(tournamentId: string | null) {
   });
 }
 
+/** Pool persisté par tour (snapshot au tirage). */
+export function useTournamentRoundClubs(tournamentId: string | null) {
+  return useQuery({
+    queryKey: ["tournament-round-clubs", tournamentId],
+    enabled: Boolean(tournamentId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tournament_round_clubs")
+        .select("id, competition_id, round, club_id, created_at")
+        .eq("competition_id", tournamentId!)
+        .order("round", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TournamentRoundClubRow[];
+    },
+  });
+}
+
 export function useCreateTournament(_userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -131,6 +150,8 @@ export function useScheduleTournamentRound() {
       return callEdgeFunction<{
         matches: TournamentMatchRow[];
         unpairedClubIds: string[];
+        round: number;
+        intent: "first" | "next";
       }>("schedule-tournament-round", { tournamentId: input.tournamentId });
     },
     onSuccess: (_data, input) => {

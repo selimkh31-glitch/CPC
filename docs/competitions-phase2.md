@@ -41,7 +41,7 @@ correctement le MVP.
 
 ## 2. Tournament Engine (section 17-18)
 
-**V1 livrée (0029)** : pas de table `tournaments` dupliquée. Un tournoi = `competitions.kind = TOURNAMENT` (statuts DRAFT|OPEN|CLOSED, inscriptions `competition_clubs`). Paires = `tournament_matches` (`club_a_id`, `club_b_id`, `round`, `slot`, `status` SCHEDULED|PLAYED). Aucun score sur cette table — scores / vainqueurs depuis `match_results` liés (`competition_id` + `opponent_club_id`). Génération du 1er tour : Edge `schedule-tournament-round` (clubs inscrits, ≥2, créateur, OPEN). UI `/tournaments` + `/tournaments/[id]`. Ligues multiples : toujours hors scope.
+**V1 livrée (0029)** : pas de table `tournaments` dupliquée. Un tournoi = `competitions.kind = TOURNAMENT` (statuts DRAFT|OPEN|CLOSED, inscriptions `competition_clubs`). Paires = `tournament_matches`. Pool par tour = `tournament_round_clubs`. Scores / vainqueurs depuis `match_results` liés. 1er tour et tours suivants : Edge `schedule-tournament-round` (persisté). Vainqueur du tournoi = finale PLAYED (1 match, pool 2). UI `/tournaments` + `/tournaments/[id]`. Ligues multiples : toujours hors scope.
 
 Schéma plus large encore non construit (formats GROUP_STAGE, round 2 auto, seed) :
 

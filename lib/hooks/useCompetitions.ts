@@ -32,12 +32,14 @@ function invalidateCompetitionQueries(queryClient: ReturnType<typeof useQueryCli
   queryClient.invalidateQueries({ queryKey: ["tournaments"] });
   queryClient.invalidateQueries({ queryKey: ["tournament"] });
   queryClient.invalidateQueries({ queryKey: ["tournament-matches"] });
+  queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
   queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
   queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
   if (competitionId) {
     queryClient.invalidateQueries({ queryKey: ["competition", competitionId] });
     queryClient.invalidateQueries({ queryKey: ["tournament", competitionId] });
     queryClient.invalidateQueries({ queryKey: ["tournament-matches", competitionId] });
+    queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs", competitionId] });
   }
 }
 

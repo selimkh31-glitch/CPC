@@ -5,12 +5,14 @@
 import {
   canInsertTournament,
   canScheduleFirstRound,
+  canScheduleRound,
   canShowTournamentBracket,
   FIRST_TOURNAMENT_ROUND,
   isTournamentCreateStatus,
   isTournamentKind,
   isTournamentMatchStatus,
   MIN_CLUBS_TO_SCHEDULE,
+  nextRoundClubIds,
   normalizeTournamentName,
   scheduleBlockHttpStatus,
   scheduleBlockMessage,
@@ -19,6 +21,7 @@ import {
   TOURNAMENT_KIND,
   TOURNAMENT_NAME_MAX,
   TOURNAMENT_STATUS_LABELS,
+  tournamentChampionClubId,
   tournamentDetailHref,
   tournamentMatchIsPlayed,
   tournamentMatchScoreLabel,
@@ -300,6 +303,168 @@ test("bracket uniquement si des rows existent ; unpaired hors tableau", () => {
   assert.equal(unpaired[0], "gamma", "gamma");
 });
 
+const WIN_AB = {
+  club_id: "alpha",
+  opponent_club_id: "beta",
+  competition_id: "t1",
+  outcome: "WIN" as const,
+  our_score: 2,
+  opponent_score: 0,
+};
+const WIN_CD = {
+  club_id: "gamma",
+  opponent_club_id: "delta",
+  competition_id: "t1",
+  outcome: "WIN" as const,
+  our_score: 1,
+  opponent_score: 0,
+};
+const MATCH_CD = {
+  id: "m2",
+  competition_id: "t1",
+  round: 1,
+  slot: 1,
+  club_a_id: "delta",
+  club_b_id: "gamma",
+  status: "SCHEDULED",
+};
+
+test("tour suivant : vainqueurs PLAYED + unpaired du pool ; unplayed/nul bloquent", () => {
+  const four = nextRoundClubIds(
+    [MATCH_AB, MATCH_CD],
+    ["alpha", "beta", "gamma", "delta"],
+    [WIN_AB, WIN_CD]
+  );
+  assert.equal(four.ok, true, "4 clubs both played");
+  if (four.ok) {
+    assert.equal(four.clubIds.length, 2, "two winners");
+    assert.true(four.clubIds.includes("alpha"), "alpha");
+    assert.true(four.clubIds.includes("gamma"), "gamma");
+  }
+  const incomplete = nextRoundClubIds([MATCH_AB, MATCH_CD], ["alpha", "beta", "gamma", "delta"], [WIN_AB]);
+  assert.equal(incomplete.ok, false, "one unplayed");
+  if (!incomplete.ok) assert.equal(incomplete.reason, "round_incomplete", "unplayed reason");
+  const draw = nextRoundClubIds(
+    [MATCH_AB],
+    ["alpha", "beta"],
+    [
+      {
+        club_id: "alpha",
+        opponent_club_id: "beta",
+        competition_id: "t1",
+        outcome: "DRAW",
+        our_score: 1,
+        opponent_score: 1,
+      },
+    ]
+  );
+  assert.equal(draw.ok, false, "draw blocks");
+  if (!draw.ok) assert.equal(draw.reason, "draw_blocks", "draw reason");
+  const odd = nextRoundClubIds([MATCH_AB], ["alpha", "beta", "gamma"], [WIN_AB]);
+  assert.equal(odd.ok, true, "winner + unpaired");
+  if (odd.ok) {
+    assert.equal(odd.clubIds.length, 2, "A + C");
+    assert.true(odd.clubIds.includes("alpha"), "winner");
+    assert.true(odd.clubIds.includes("gamma"), "unpaired advances to play, not as fake winner");
+  }
+});
+
+test("vainqueur du tournoi : finale persistée 1 match / pool 2 / résultat PLAYED", () => {
+  const r1 = [MATCH_AB, MATCH_CD];
+  const poolR1 = [
+    { competition_id: "t1", round: 1, club_id: "alpha" },
+    { competition_id: "t1", round: 1, club_id: "beta" },
+    { competition_id: "t1", round: 1, club_id: "gamma" },
+    { competition_id: "t1", round: 1, club_id: "delta" },
+  ];
+  assert.equal(tournamentChampionClubId(r1, [WIN_AB, WIN_CD], poolR1), null, "semi not final");
+  const final = {
+    id: "m3",
+    competition_id: "t1",
+    round: 2,
+    slot: 0,
+    club_a_id: "alpha",
+    club_b_id: "gamma",
+    status: "SCHEDULED",
+  };
+  const poolR2 = [
+    { competition_id: "t1", round: 2, club_id: "alpha" },
+    { competition_id: "t1", round: 2, club_id: "gamma" },
+  ];
+  assert.equal(tournamentChampionClubId([final], [], poolR2), null, "final unplayed");
+  const finalWin = {
+    club_id: "alpha",
+    opponent_club_id: "gamma",
+    competition_id: "t1",
+    outcome: "WIN",
+    our_score: 3,
+    opponent_score: 1,
+  };
+  assert.equal(tournamentChampionClubId([final], [finalWin], poolR2), "alpha", "champion");
+  const threePool = [
+    { competition_id: "t1", round: 1, club_id: "alpha" },
+    { competition_id: "t1", round: 1, club_id: "beta" },
+    { competition_id: "t1", round: 1, club_id: "gamma" },
+  ];
+  assert.equal(tournamentChampionClubId([MATCH_AB], [WIN_AB], threePool), null, "3-club R1 not a final");
+});
+
+test("canScheduleRound : 1er tour puis tour suivant depuis PLAYED, pas de décor", () => {
+  const first = canScheduleRound({
+    actorId: "u",
+    createdBy: "u",
+    status: "OPEN",
+    kind: "TOURNAMENT",
+    registeredClubIds: ["alpha", "beta", "gamma", "delta"],
+    matches: [],
+    results: [],
+    roundClubs: [],
+  });
+  assert.equal(first.ok, true, "first");
+  if (first.ok) {
+    assert.equal(first.intent, "first", "intent first");
+    assert.equal(first.round, FIRST_TOURNAMENT_ROUND, "r1");
+  }
+  const wait = canScheduleRound({
+    actorId: "u",
+    createdBy: "u",
+    status: "OPEN",
+    kind: "TOURNAMENT",
+    registeredClubIds: ["alpha", "beta", "gamma", "delta"],
+    matches: [MATCH_AB, MATCH_CD],
+    results: [WIN_AB],
+    roundClubs: [
+      { competition_id: "t1", round: 1, club_id: "alpha" },
+      { competition_id: "t1", round: 1, club_id: "beta" },
+      { competition_id: "t1", round: 1, club_id: "gamma" },
+      { competition_id: "t1", round: 1, club_id: "delta" },
+    ],
+  });
+  assert.equal(wait.ok, false, "wait unplayed");
+  if (!wait.ok) assert.equal(wait.reason, "round_incomplete", "incomplete");
+  const next = canScheduleRound({
+    actorId: "u",
+    createdBy: "u",
+    status: "OPEN",
+    kind: "TOURNAMENT",
+    registeredClubIds: ["alpha", "beta", "gamma", "delta"],
+    matches: [MATCH_AB, MATCH_CD],
+    results: [WIN_AB, WIN_CD],
+    roundClubs: [
+      { competition_id: "t1", round: 1, club_id: "alpha" },
+      { competition_id: "t1", round: 1, club_id: "beta" },
+      { competition_id: "t1", round: 1, club_id: "gamma" },
+      { competition_id: "t1", round: 1, club_id: "delta" },
+    ],
+  });
+  assert.equal(next.ok, true, "next ok");
+  if (next.ok) {
+    assert.equal(next.intent, "next", "intent next");
+    assert.equal(next.round, 2, "r2");
+    assert.equal(next.clubIds.length, 2, "two finalists");
+  }
+});
+
 test("détail /tournaments/[id] ; liste si id absent", () => {
   assert.equal(tournamentDetailHref("t-1"), "/tournaments/t-1", "detail");
   assert.equal(tournamentDetailHref(""), "/tournaments", "empty");
@@ -313,7 +478,8 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide",
   assert.false(TOURNAMENT_COPY.notPlayed.includes("0-0"), "no 0-0 copy");
   assert.false(TOURNAMENT_COPY.bracketEmpty.includes("0-0"), "no fake score empty");
   assert.true(TOURNAMENT_COPY.bracketEmpty.includes("enregistrées"), "persisted only");
-  assert.true(TOURNAMENT_COPY.progressionHint.includes("0-0 inventé"), "honest progression");
+  assert.true(TOURNAMENT_COPY.championEmpty.includes("finale"), "champion empty");
+  assert.false(TOURNAMENT_COPY.championEmpty.includes("0-0"), "no fake champion score");
   assert.equal(TOURNAMENT_STATUS_LABELS.OPEN, "Ouvert", "open label");
   assert.false(TOURNAMENT_COPY.subtitle.includes("%"), "no percent");
 });
@@ -332,6 +498,7 @@ test("SQL 0029 : kind + tournament_matches ; refuse table tournaments dupliquée
     and kind = 'COMPETITION'
     tournament_match_insert_scheduled_only
     tournament_matches_mark_played
+    create table if not exists public.tournament_round_clubs
   `;
   assert.equal(tournamentV1SqlIssues(valid).join(" | "), "", "contrat 0029");
   const withDup = `${valid}\ncreate table if not exists public.tournaments (id uuid);`;

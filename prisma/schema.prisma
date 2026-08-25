@@ -262,6 +262,7 @@ model Club {
   competitionClubs        CompetitionClub[]
   tournamentMatchesAsA    TournamentMatch[]  @relation("TournamentMatchClubA")
   tournamentMatchesAsB    TournamentMatch[]  @relation("TournamentMatchClubB")
+  tournamentRoundClubs    TournamentRoundClub[]
   // Social Foundations — au plus une conversation CLUB par club (index
   // unique partiel posé en SQL, non exprimable ici — voir migration RLS).
   // Phase 2 : aucune Edge Function ne provisionne encore cette conversation
@@ -831,6 +832,7 @@ model Competition {
   clubs   CompetitionClub[]
   matchResults MatchResult[]
   tournamentMatches TournamentMatch[]
+  tournamentRoundClubs TournamentRoundClub[]
 
   @@index([status])
   @@index([createdBy])
@@ -858,6 +860,21 @@ model TournamentMatch {
   @@unique([competitionId, round, slot])
   @@index([competitionId])
   @@map("tournament_matches")
+}
+
+model TournamentRoundClub {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  round         Int
+  clubId        String   @map("club_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, round, clubId])
+  @@index([competitionId, round])
+  @@map("tournament_round_clubs")
 }
 
 model CompetitionClub {
