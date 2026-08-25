@@ -275,19 +275,15 @@ function linkedCompetitionStackHref(
   return `/competitions/${competitionId}`;
 }
 
-function isCompetitionStackHref(href: string): boolean {
-  return (
-    href === "/competitions" ||
-    href.startsWith("/competitions/") ||
-    href === "/tournaments" ||
-    href.startsWith("/tournaments/")
-  );
-}
-
 /**
- * Deep link MATCH_FINALIZED : compétition ou tournoi si competition_id réel
- * (kind TOURNAMENT → `/tournaments/[id]`), sinon `/match` (Mode Club).
- * Jamais `/notifications`.
+ * Deep link MATCH_FINALIZED — VIEW du résultat, pas « aller enregistrer ».
+ * competitionId + kind TOURNAMENT → `/tournaments/[id]`.
+ * competitionId sinon → `/competitions/[id]`.
+ * sinon clubId (club enregistreur, toujours posé par matchFinalizedNotificationData)
+ * → `/club/[id]` (stack partagé, MatchHistoryList). Jamais `/match` ni
+ * `/match-sheet` : `/match` est la feuille, vide après finalize.
+ * sinon (ni clubId ni competitionId) → `/notifications`.
+ * Pas de competitionLinkedMatchNav (envoie les managers enregistreurs vers `/match`).
  */
 export function matchFinalizedHref(
   data: Record<string, unknown> | null | undefined,
@@ -297,23 +293,27 @@ export function matchFinalizedHref(
   if (competitionId) {
     return linkedCompetitionStackHref(competitionId, competitionKindFromNotificationData(data));
   }
-  return "/match";
+  const clubId = clubIdFromNotificationData(data);
+  if (clubId) return `/club/${clubId}`;
+  return "/notifications";
 }
 
+/**
+ * Tap MATCH_FINALIZED : même dest que matchFinalizedHref.
+ * requireClubMode false + selectClubId null — MEMBER / manager adverse
+ * (ClubModeLayout peut forcer PLAYER) doivent quand même pousser. Un
+ * pendingNav `requireClubMode: true` resterait bloqué et pourrait partir plus tard.
+ */
 export function matchFinalizedNotificationNav(
   type: string,
   data: Record<string, unknown> | null | undefined,
   mode: "PLAYER" | "CLUB" = "CLUB"
 ): MatchFinalizedNotificationNav | null {
   if (type !== "MATCH_FINALIZED") return null;
-  const href = matchFinalizedHref(data, mode);
-  if (isCompetitionStackHref(href)) {
-    return { href, selectClubId: null, requireClubMode: false };
-  }
   return {
-    href: "/match",
-    selectClubId: clubIdFromNotificationData(data),
-    requireClubMode: true,
+    href: matchFinalizedHref(data, mode),
+    selectClubId: null,
+    requireClubMode: false,
   };
 }
 

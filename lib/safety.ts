@@ -19,7 +19,9 @@ export * from "../supabase/functions/_shared/safety";
  * n'a pas le statut d'invitation. L'appelant doit passer en Mode Club et
  * sélectionner `data.clubId` (voir recruitmentNotificationNav).
  * MATCH_FINALIZED → `/tournaments/[id]` si kind TOURNAMENT, sinon
- * `/competitions/[id]` si `competitionId`, sinon `/match` (feuille Mode Club).
+ * `/competitions/[id]` si `competitionId`, sinon `/club/[id]` (historique
+ * du club enregistreur). Sans clubId ni competitionId → `/notifications`.
+ * Jamais `/match` (feuille, pas le résultat).
  * COMPETITION_CLUB_REGISTERED → même stack selon kind.
  * TOURNAMENT_ROUND_SCHEDULED → `/tournaments/[id]`. Pas d'écran mort.
  */
