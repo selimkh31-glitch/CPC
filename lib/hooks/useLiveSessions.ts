@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { isLiveActive } from "@/lib/live";
 import { invokeExpireStaleLiveSessions } from "@/lib/liveJanitor";
+import { isClubHiddenByBlock } from "@/lib/safety";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 import type { ClubSessionRow } from "@/lib/types";
 
@@ -73,8 +74,7 @@ export function useLiveSessions() {
         (row) =>
           isLiveActive(row, now) &&
           (row.needed_positions?.length ?? 0) > 0 &&
-          !blocked.has(row.club?.owner_id ?? "") &&
-          !blocked.has(row.club?.owner?.id ?? "")
+          !isClubHiddenByBlock(row.club, blocked)
       );
     },
   });

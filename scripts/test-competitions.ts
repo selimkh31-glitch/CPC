@@ -302,6 +302,12 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de % inventé", () => {
   assert.false(COMPETITION_COPY.standingsEmpty.includes("%"), "no percent standings");
 });
 
+test("liste/inscription : clubs inscrits = noms, pas de CTA contact à inventer", () => {
+  assert.true(COMPETITION_COPY.registerCta.toLowerCase().includes("club"), "register club");
+  assert.false(COMPETITION_COPY.registerCta.toLowerCase().includes("message"), "no dm cta");
+  assert.false(COMPETITION_COPY.title.toLowerCase().includes("message"), "no message title");
+});
+
 test("SQL fondation : tables + unique + RLS ; refuse standings / alter match_results", () => {
   const valid = `
     create table if not exists public.competitions (id uuid);

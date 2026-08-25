@@ -10,6 +10,7 @@ import { sortClubRoster } from "@/lib/clubProfile";
 import { useUpdateMember } from "@/lib/hooks/useClubs";
 import { useReleaseMember } from "@/lib/hooks/useDepartures";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
+import { shouldHideContactCta } from "@/lib/safety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 import type { ClubMemberRow, ClubRole } from "@/lib/types";
@@ -128,7 +129,7 @@ export function MembersPanel({
                     {showDm ? (
                       <StartDirectMessageButton
                         otherUserId={m.user_id}
-                        blocked={Boolean(blockedIds?.includes(m.user_id))}
+                        blocked={shouldHideContactCta(m.user_id, blockedIds)}
                       />
                     ) : null}
                     {manage}

@@ -10,6 +10,7 @@ import { ReviewForm } from "@/components/profile/ReviewForm";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
+import { shouldHideContactCta } from "@/lib/safety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -24,7 +25,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
   const iBlockedThem = Boolean(myBlocks?.some((row) => row.blocked_id === userId));
-  const blockedEitherWay = Boolean(blockedIds?.includes(userId));
+  const blockedEitherWay = shouldHideContactCta(userId, blockedIds);
 
   if (isError) {
     return (
