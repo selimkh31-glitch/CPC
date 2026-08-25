@@ -2,6 +2,8 @@
  * Tests de lib/social.ts — labels chat, filtre block DM / membres de groupe.
  * Sans réseau. Lancer : npx tsx scripts/test-social.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   BLOCKED_DM_COPY,
   CLUB_CONVERSATION_COPY,
@@ -78,6 +80,18 @@ function direct(id: string, selfId: string, peer: UserRow): ConversationRow {
   };
 }
 
+function groupConversation(group?: ConversationRow["group"]): ConversationRow {
+  return {
+    id: "g",
+    type: "GROUP",
+    club_id: null,
+    group_id: "g1",
+    created_by: "a",
+    created_at: "",
+    group,
+  };
+}
+
 console.log("lib/social.ts");
 
 test("getDirectConversationPeer ignore self et les GROUP", () => {
@@ -87,17 +101,55 @@ test("getDirectConversationPeer ignore self et les GROUP", () => {
   assert.equal(getDirectConversationPeer({ ...dm, type: "GROUP" }, "a"), null, "group");
 });
 
-test("conversationListLabel — DIRECT / GROUP / CLUB, pas de présence inventée", () => {
+test("conversationListLabel — DIRECT / GROUP hydraté / CLUB inchangé", () => {
   const peer = user("b", "Striker27");
   assert.equal(conversationListLabel(direct("c1", "a", peer), "a"), "Striker27", "dm");
   assert.equal(
-    conversationListLabel(
-      { id: "g", type: "GROUP", club_id: null, group_id: "g1", created_by: "a", created_at: "" },
-      "a"
-    ),
-    "Groupe",
-    "group"
+    conversationListLabel(groupConversation({ id: "g1", name: "Les habitués" }), "a"),
+    "Les habitués",
+    "real group"
   );
+  assert.equal(
+    conversationListLabel(groupConversation({ id: "g1", name: "  After hours  " }), "a"),
+    "After hours",
+    "trimmed"
+  );
+  assert.equal(conversationListLabel(groupConversation(), "a"), "Groupe", "missing");
+  assert.equal(conversationListLabel(groupConversation(null), "a"), "Groupe", "null embed");
+  assert.equal(
+    conversationListLabel(groupConversation({ id: "g1", name: "" }), "a"),
+    "Groupe",
+    "empty"
+  );
+  assert.equal(
+    conversationListLabel(groupConversation({ id: "g1", name: "   " }), "a"),
+    "Groupe",
+    "whitespace"
+  );
+  const withMembers: ConversationRow = {
+    ...groupConversation({ id: "g1", name: "Les habitués" }),
+    members: [
+      {
+        id: "m1",
+        conversation_id: "g",
+        user_id: "a",
+        role: "OWNER",
+        joined_at: "",
+        last_read_at: null,
+        user: user("a", "Alice27"),
+      },
+      {
+        id: "m2",
+        conversation_id: "g",
+        user_id: "b",
+        role: "MEMBER",
+        joined_at: "",
+        last_read_at: null,
+        user: peer,
+      },
+    ],
+  };
+  assert.equal(conversationListLabel(withMembers, "a"), "Les habitués", "not member usernames");
   assert.equal(
     conversationListLabel(
       { id: "cl", type: "CLUB", club_id: "club1", group_id: null, created_by: "a", created_at: "" },
@@ -106,6 +158,22 @@ test("conversationListLabel — DIRECT / GROUP / CLUB, pas de présence inventé
     "Club Pro Clubs",
     "club"
   );
+});
+
+test("useConversations / useConversation hydratent groups(id,name)", () => {
+  const chat = readFileSync(`${process.cwd()}/lib/hooks/useChat.ts`, "utf8");
+  const social = readFileSync(`${process.cwd()}/lib/social.ts`, "utf8");
+  const list = readFileSync(`${process.cwd()}/app/conversations.tsx`, "utf8");
+  const thread = readFileSync(`${process.cwd()}/app/conversation/[id].tsx`, "utf8");
+  assert.true(chat.includes("groups(id,name)"), "hydrate join");
+  assert.true(chat.includes("CONVERSATION_SELECT"), "shared select");
+  assert.true(chat.includes("useConversations"), "list hook");
+  assert.true(chat.includes("useConversation"), "thread hook");
+  assert.false(chat.includes("club:clubs"), "no club join this tree");
+  assert.true(social.includes("honestGroupConversationName"), "honest group name");
+  assert.false(social.includes('"Groupe Pro Clubs"'), "no fake group fallback");
+  assert.true(list.includes("conversationListLabel"), "list helper");
+  assert.true(thread.includes("conversationListLabel"), "header helper");
 });
 
 test("filtre DM bloqués ; GROUP et CLUB restent visibles", () => {

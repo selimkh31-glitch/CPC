@@ -66,11 +66,20 @@ export function getDirectConversationPeer(conversation: ConversationRow, selfUse
   return other?.user ?? null;
 }
 
+/** Nom de groupe affichable : trim, jamais un placeholder inventé. Vide → null. */
+function honestGroupConversationName(name: string | null | undefined): string | null {
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function conversationListLabel(conversation: ConversationRow, selfUserId: string): string {
   if (conversation.type === "DIRECT") {
     return getDirectConversationPeer(conversation, selfUserId)?.username ?? "Joueur Pro Clubs";
   }
-  if (conversation.type === "GROUP") return "Groupe";
+  if (conversation.type === "GROUP") {
+    return honestGroupConversationName(conversation.group?.name) ?? "Groupe";
+  }
   if (conversation.type === "CLUB") return "Club Pro Clubs";
   return "Conversation";
 }
