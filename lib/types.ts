@@ -43,6 +43,8 @@ export interface VerifiedStats {
   matchesPlayedRecent?: number;
   noShowsDetected?: number;
   lastSyncedAt?: string;
+  /** Matchs EA déjà agrégés — skip incrémental, pas une identité joueur. */
+  importedMatchIds?: string[];
 }
 
 export interface UserRow {

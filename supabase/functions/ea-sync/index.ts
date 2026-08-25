@@ -1,20 +1,20 @@
 import { jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient } from "../_shared/supabase.ts";
-import { FEATURE_EA_STATS, fetchVerifiedClubStats } from "../_shared/ea.ts";
+import { FEATURE_EA_STATS } from "../_shared/ea.ts";
+import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
+import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
 
 /**
- * Job planifié quotidien (section 4) — cron Supabase (pg_cron -> pg_net, voir
- * README > "Cron jobs"). Récupère les stats EA des clubs liés et les met en
- * cache dans Supabase. L'app mobile ne lit JAMAIS l'API EA directement.
- * Protégé par CRON_SECRET (header Authorization: Bearer <secret>).
+ * Job planifié quotidien — cron Supabase (pg_cron -> pg_net). Récupère les
+ * stats EA des clubs liés via ProClubsEAProvider.getClubMatches (max 10+10
+ * league+friendly) et met en cache dans Supabase. Skip incrémental des
+ * matchId déjà dans verified_stats.importedMatchIds. L'app mobile ne lit
+ * JAMAIS proclubs directement. Protégé par CRON_SECRET.
  */
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET");
   const auth = req.headers.get("authorization");
-  // `cronSecret` absent -> toujours refuser, même si `auth` vaut littéralement
-  // "Bearer undefined" (ce que donnerait une comparaison naïve avec un secret
-  // non configuré).
   if (!cronSecret || auth !== `Bearer ${cronSecret}`) return jsonResponse({ error: "Non autorisé" }, 401);
   if (!FEATURE_EA_STATS) return jsonResponse({ skipped: true, reason: "FEATURE_EA_STATS désactivé" });
 
@@ -33,19 +33,26 @@ Deno.serve(async (req) => {
   let failed = 0;
 
   for (const [eaClubId, users] of byClub) {
-    const statsByName = await fetchVerifiedClubStats(eaClubId);
-    if (!statsByName) {
+    const matches = await eaProvider.getClubMatches(eaClubId);
+    if (!matches) {
       failed += users.length;
       continue; // fallback silencieux : on garde les anciennes valeurs en cache
     }
 
     for (const u of users) {
-      const mine = statsByName[u.username.trim().toLowerCase()];
+      const mine = buildVerifiedStatsForPlayer(
+        matches,
+        u.username,
+        u.verified_stats,
+        eaProvider.name,
+        eaClubId,
+        "common-gen5"
+      );
       if (!mine) continue;
 
       const { data: reviews } = await admin.from("reviews").select("*").eq("target_user_id", u.id);
       const reliabilityScore = computeReliabilityScore({
-        reviews: (reviews ?? []).map((r: any) => ({
+        reviews: (reviews ?? []).map((r: { rating_skill: number; rating_behavior: number; showed_up: boolean }) => ({
           ratingSkill: r.rating_skill,
           ratingBehavior: r.rating_behavior,
           showedUp: r.showed_up,

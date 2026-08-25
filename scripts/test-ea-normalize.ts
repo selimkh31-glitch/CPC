@@ -10,11 +10,20 @@
  */
 import {
   aggregatePlayerStats,
+  confirmClubInSearch,
   normalizeClub,
   normalizeClubStats,
   normalizeMatch,
   normalizePlayerMatchStats,
+  normalizeSearchResults,
 } from "../supabase/functions/_shared/ea/normalize";
+import {
+  buildVerifiedStatsForPlayer,
+  collectMatchIds,
+  filterNewMatches,
+  mergeVerifiedStats,
+  readImportedMatchIds,
+} from "../supabase/functions/_shared/ea/verified";
 
 const assert = {
   deepEqual(actual: unknown, expected: unknown, label: string) {
@@ -60,6 +69,74 @@ test("club EA — payload non-objet (null/undefined/string) -> null, jamais d'ex
   assert.deepEqual(normalizeClub(null, "proclubs-community", null), null, "null");
   assert.deepEqual(normalizeClub(undefined, "proclubs-community", null), null, "undefined");
   assert.deepEqual(normalizeClub("oops", "proclubs-community", null), null, "string");
+});
+
+// --- normalizeSearchResults / confirmClubInSearch -----------------------------
+
+test("search results — liste complète, jamais silent list[0]", () => {
+  const clubs = normalizeSearchResults(
+    [
+      { clubId: "1", name: "Alpha" },
+      { clubId: "2", name: "Alpha United" },
+    ],
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.deepEqual(clubs.map((c) => c.externalId), ["1", "2"], "deux candidats");
+  assert.deepEqual(clubs.map((c) => c.name), ["Alpha", "Alpha United"], "noms");
+});
+
+test("search results — forme { clubs: [...] }, ids numériques", () => {
+  const clubs = normalizeSearchResults(
+    { clubs: [{ id: 10, clubName: "FC A" }, { clubId: "11", name: "FC B" }] },
+    "proclubs-community",
+    null
+  );
+  assert.deepEqual(clubs.map((c) => c.externalId), ["10", "11"], "ids");
+});
+
+test("search results — payload vide/malformé -> liste vide, pas de club inventé", () => {
+  assert.deepEqual(normalizeSearchResults(null, "proclubs-community", null), [], "null");
+  assert.deepEqual(normalizeSearchResults(undefined, "proclubs-community", null), [], "undefined");
+  assert.deepEqual(normalizeSearchResults({}, "proclubs-community", null), [], "objet vide");
+  assert.deepEqual(normalizeSearchResults({ clubs: null }, "proclubs-community", null), [], "clubs null");
+  assert.deepEqual(normalizeSearchResults("oops", "proclubs-community", null), [], "string");
+  assert.deepEqual(normalizeSearchResults({ clubs: "nope" }, "proclubs-community", null), [], "clubs non-array");
+});
+
+test("search results — id sans nom + fallbackName (terme cherché), jamais un fake id", () => {
+  const clubs = normalizeSearchResults(
+    [{ clubId: "55" }, { clubId: "56", name: "Réel" }],
+    "proclubs-community",
+    null,
+    "Les Invincibles"
+  );
+  assert.deepEqual(clubs.map((c) => c.externalId), ["55", "56"], "deux ids");
+  assert.deepEqual(clubs[0]?.name, "Les Invincibles", "fallback terme cherché");
+  assert.deepEqual(clubs[1]?.name, "Réel", "nom EA conservé");
+});
+
+test("search results — mix valide/invalide, déduplique par id", () => {
+  const clubs = normalizeSearchResults(
+    [{ name: "Sans id" }, { clubId: "7", name: "OK" }, { clubId: "7", name: "Doublon" }, null],
+    "proclubs-community",
+    null
+  );
+  assert.deepEqual(clubs.map((c) => c.externalId), ["7"], "un seul id 7");
+  assert.deepEqual(clubs[0]?.name, "OK", "premier occurrence conservée");
+});
+
+test("confirmClubInSearch — id connu vs id inconnu (rejet link)", () => {
+  const candidates = normalizeSearchResults(
+    [{ clubId: "1", name: "Alpha" }, { clubId: "2", name: "Beta" }],
+    "proclubs-community",
+    null
+  );
+  assert.deepEqual(confirmClubInSearch(candidates, "1")?.externalId, "1", "match");
+  assert.deepEqual(confirmClubInSearch(candidates, " 2 ")?.externalId, "2", "trim");
+  assert.deepEqual(confirmClubInSearch(candidates, "99"), null, "inconnu rejeté");
+  assert.deepEqual(confirmClubInSearch(candidates, ""), null, "vide rejeté");
+  assert.deepEqual(confirmClubInSearch([], "1"), null, "liste vide");
 });
 
 // --- normalizeClubStats ------------------------------------------------------
@@ -136,6 +213,11 @@ test("match EA — payload totalement malformé (tableau, string, null) -> null"
   assert.deepEqual(normalizeMatch(null, "clubA", "proclubs-community", null), null, "null");
 });
 
+test("match EA — matchId numérique converti en string (skip incrémental)", () => {
+  const match = normalizeMatch({ matchId: 4242, players: {} }, "clubA", "proclubs-community", null);
+  assert.deepEqual(match?.matchId, "4242", "matchId string");
+});
+
 // --- aggregatePlayerStats ------------------------------------------------------
 //
 // Régression : ProClubsEAProvider.getPlayerStats indexait auparavant
@@ -196,6 +278,106 @@ test("aggregatePlayerStats — ratings absents sur tous les matchs -> avgRating 
   const matches = [match({ p1: { name: "Selim", goals: 1, rating: null } })];
   const stats = aggregatePlayerStats(matches, "Selim", "proclubs-community", "clubA", "common-gen5");
   assert.deepEqual(stats?.avgRating, null, "avgRating null");
+});
+
+// --- incremental skip / verified_stats.importedMatchIds -----------------------
+
+function matchWithId(
+  matchId: string | number | undefined,
+  players: Record<string, { name: string; goals?: number; assists?: number; cleansheetsAny?: number; rating?: number | null }>
+) {
+  return normalizeMatch(
+    { matchId, matchType: "leagueMatch", players: { clubA: players } },
+    "clubA",
+    "proclubs-community",
+    "common-gen5"
+  )!;
+}
+
+test("filterNewMatches — skip les matchId déjà dans importedMatchIds", () => {
+  const m1 = matchWithId("m1", { p1: { name: "Selim", goals: 1 } });
+  const m2 = matchWithId("m2", { p1: { name: "Selim", goals: 2 } });
+  const fresh = filterNewMatches([m1, m2], ["m1"]);
+  assert.deepEqual(fresh.map((m) => m.matchId), ["m2"], "m1 sauté");
+});
+
+test("filterNewMatches — match sans matchId reste dans la fenêtre (impossible à skip)", () => {
+  const noId = matchWithId(undefined, { p1: { name: "Selim", goals: 1 } });
+  const known = matchWithId("m1", { p1: { name: "Selim", goals: 9 } });
+  const fresh = filterNewMatches([noId, known], ["m1"]);
+  assert.deepEqual(fresh.length, 1, "un seul restant");
+  assert.deepEqual(fresh[0]?.matchId, null, "celui sans id");
+});
+
+test("readImportedMatchIds — JSON malformé / partiel -> [] ou ids string uniques", () => {
+  assert.deepEqual(readImportedMatchIds(null), [], "null");
+  assert.deepEqual(readImportedMatchIds({}), [], "objet vide");
+  assert.deepEqual(readImportedMatchIds({ importedMatchIds: "m1" }), [], "non-array");
+  assert.deepEqual(readImportedMatchIds({ importedMatchIds: ["m1", " m1 ", 2, ""] }), ["m1"], "dédup + ignore non-string");
+});
+
+test("buildVerifiedStatsForPlayer — skip incrémental, merge, noShowsDetected=0", () => {
+  const m1 = matchWithId("m1", { p1: { name: "Selim", goals: 2, assists: 1, rating: 8 } });
+  const m2 = matchWithId("m2", { p1: { name: "Selim", goals: 1, assists: 0, rating: 6 } });
+  const first = buildVerifiedStatsForPlayer([m1, m2], "Selim", null, "proclubs-community", "clubA", "common-gen5", "2026-01-01T00:00:00.000Z");
+  assert.ok(first, "first non-null");
+  assert.deepEqual(first?.goals, 3, "goals fenêtre initiale");
+  assert.deepEqual(first?.importedMatchIds, ["m1", "m2"], "ids enregistrés");
+  assert.deepEqual(first?.noShowsDetected, 0, "EA ne fournit pas noShows");
+
+  const m3 = matchWithId("m3", { p1: { name: "Selim", goals: 4, assists: 2, rating: 9 } });
+  const second = buildVerifiedStatsForPlayer(
+    [m1, m2, m3],
+    "Selim",
+    first,
+    "proclubs-community",
+    "clubA",
+    "common-gen5",
+    "2026-01-02T00:00:00.000Z"
+  );
+  assert.ok(second, "second non-null");
+  assert.deepEqual(second?.goals, 7, "m1/m2 skip, +4 de m3");
+  assert.deepEqual(second?.assists, 3, "assists accumulés");
+  assert.deepEqual(second?.matchesPlayed, 3, "3 matchs distincts");
+  assert.deepEqual(second?.importedMatchIds, ["m1", "m2", "m3"], "ids fusionnés");
+  assert.deepEqual(second?.matchesPlayedRecent, 1, "seulement le nouveau");
+  assert.deepEqual(second?.noShowsDetected, 0, "toujours 0");
+});
+
+test("buildVerifiedStatsForPlayer — tout déjà importé -> null (garde le cache)", () => {
+  const m1 = matchWithId("m1", { p1: { name: "Selim", goals: 2 } });
+  const stats = buildVerifiedStatsForPlayer(
+    [m1],
+    "Selim",
+    { importedMatchIds: ["m1"], goals: 2, matchesPlayed: 1 },
+    "proclubs-community",
+    "clubA",
+    "common-gen5"
+  );
+  assert.deepEqual(stats, null, "rien de nouveau");
+});
+
+test("mergeVerifiedStats / collectMatchIds — ids nouveaux uniquement", () => {
+  const merged = mergeVerifiedStats(
+    {
+      goals: 1,
+      assists: 0,
+      cleanSheets: 0,
+      matchesPlayed: 1,
+      avgRating: 7,
+      matchesPlayedRecent: 1,
+      noShowsDetected: 0,
+      lastSyncedAt: "t0",
+      importedMatchIds: ["m1"],
+    },
+    { goals: 2, assists: 1, cleanSheets: 0, matchesPlayed: 1, avgRating: 9 },
+    ["m1", "m2"],
+    "t1"
+  );
+  assert.deepEqual(merged.goals, 3, "merge goals");
+  assert.deepEqual(merged.importedMatchIds, ["m1", "m2"], "m1 pas dupliqué");
+  assert.deepEqual(merged.avgRating, 8, "(7+9)/2");
+  assert.deepEqual(collectMatchIds([matchWithId("m2", { p1: { name: "X" } })]), ["m2"], "collect");
 });
 
 console.log(`\n${passed} test(s) passés.`);

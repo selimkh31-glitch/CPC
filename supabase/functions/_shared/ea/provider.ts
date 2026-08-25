@@ -44,8 +44,11 @@ export class NotImplementedError extends Error {
 export interface EAProvider {
   readonly name: EAProviderName;
 
-  /** Recherche d'un club EA par nom (déjà utilisé en prod via link-ea-club). */
-  searchClub(clubName: string, platform?: string): Promise<EAClub | null>;
+  /**
+   * Recherche de clubs EA par nom — LISTE complète, jamais le premier hit.
+   * `null` = source indisponible / flag off ; `[]` = aucun candidat honnête.
+   */
+  searchClub(clubName: string, platform?: string): Promise<EAClub[] | null>;
 
   /** READY FOR PROVIDER — aucun endpoint "club par id" validé aujourd'hui. */
   getClub(clubId: string, platform?: string): Promise<EAClub | null>;
@@ -60,8 +63,8 @@ export interface EAProvider {
    *  matchs mais ce serait une inférence, pas une vraie liste d'effectif EA). */
   getClubMembers(clubId: string, platform?: string): Promise<EAPlayer[] | null>;
 
-  /** Stats d'un joueur, agrégées depuis les matchs du club (même logique que
-   *  fetchVerifiedClubStats, scopée à un seul joueur et normalisée). */
+  /** Stats d'un joueur, agrégées depuis les matchs du club (égalité
+   *  username == playername, jamais une clé persona). */
   getPlayerStats(clubId: string, playerName: string, platform?: string): Promise<EAPlayerStats | null>;
 
   /** READY FOR PROVIDER — /members/career/stats jamais appelé/validé ici. */
