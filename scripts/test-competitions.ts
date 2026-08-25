@@ -14,6 +14,7 @@ import {
   competitionRegisterCtaKind,
   competitionsFoundationSqlIssues,
   computeCompetitionStandings,
+  computeStandingsFromLinkedResults,
   COMPETITION_COPY,
   COMPETITION_NAME_MAX,
   COMPETITION_POINTS,
@@ -280,6 +281,10 @@ test("scorer W/D/L déterministe — win 3, draw 1, loss 0 ; ignore non liés ; 
     0,
     "unlinked opponent ignored"
   );
+  const viaGeneric = computeStandingsFromLinkedResults(rows, (row) =>
+    hasLinkedCompetitionResults([row], "c1")
+  );
+  assert.equal(JSON.stringify(viaGeneric), JSON.stringify(computeCompetitionStandings(rows, "c1")), "same scorer family");
 });
 
 test("tie-break déterministe : points, GD, GF, puis clubId", () => {

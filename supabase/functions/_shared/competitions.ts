@@ -336,6 +336,44 @@ function applyOutcome(standing: CompetitionStandingRow, outcome: MatchResultOutc
   else standing.losses += 1;
 }
 
+/** Tri unique : points → GD → GF → clubId. Famille scorer compétitions + classement CPC. */
+export function compareStandingRows(a: CompetitionStandingRow, b: CompetitionStandingRow): number {
+  if (b.points !== a.points) return b.points - a.points;
+  const gdA = a.goalsFor - a.goalsAgainst;
+  const gdB = b.goalsFor - b.goalsAgainst;
+  if (gdB !== gdA) return gdB - gdA;
+  if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+  return a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0;
+}
+
+/**
+ * Scorer unique : chaque ligne incluse crédite les deux clubs (W=3 D=1 L=0).
+ * Clubs sans match inclus : absents (pas de row 0-0-0 inventée).
+ * Ne lit jamais season_stats.
+ */
+export function computeStandingsFromLinkedResults(
+  rows: readonly LinkedMatchResultInput[],
+  include: (row: LinkedMatchResultInput) => boolean
+): CompetitionStandingRow[] {
+  const byClub = new Map<string, CompetitionStandingRow>();
+
+  for (const row of rows) {
+    if (!include(row) || !isMatchResultOutcome(row.outcome)) continue;
+    const opponentId = row.opponent_club_id;
+    if (typeof opponentId !== "string" || opponentId.length === 0 || opponentId === row.club_id) {
+      continue;
+    }
+    const home = byClub.get(row.club_id) ?? emptyStanding(row.club_id);
+    const away = byClub.get(opponentId) ?? emptyStanding(opponentId);
+    applyOutcome(home, row.outcome, row.our_score, row.opponent_score);
+    applyOutcome(away, inverseMatchOutcome(row.outcome), row.opponent_score, row.our_score);
+    byClub.set(row.club_id, home);
+    byClub.set(opponentId, away);
+  }
+
+  return [...byClub.values()].sort(compareStandingRows);
+}
+
 /**
  * Classement déterministe depuis les match_results liés uniquement.
  * Chaque ligne crédite les deux clubs (enregistreur + adverse). Clubs
@@ -347,28 +385,7 @@ export function computeCompetitionStandings(
   rows: readonly LinkedMatchResultInput[],
   competitionId: string
 ): CompetitionStandingRow[] {
-  const byClub = new Map<string, CompetitionStandingRow>();
-
-  for (const row of rows) {
-    if (!isLinkedCompetitionResult(row, competitionId)) continue;
-    const outcome = row.outcome as MatchResultOutcome;
-    const opponentId = row.opponent_club_id as string;
-    const home = byClub.get(row.club_id) ?? emptyStanding(row.club_id);
-    const away = byClub.get(opponentId) ?? emptyStanding(opponentId);
-    applyOutcome(home, outcome, row.our_score, row.opponent_score);
-    applyOutcome(away, inverseMatchOutcome(outcome), row.opponent_score, row.our_score);
-    byClub.set(row.club_id, home);
-    byClub.set(opponentId, away);
-  }
-
-  return [...byClub.values()].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    const gdA = a.goalsFor - a.goalsAgainst;
-    const gdB = b.goalsFor - b.goalsAgainst;
-    if (gdB !== gdA) return gdB - gdA;
-    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-    return a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0;
-  });
+  return computeStandingsFromLinkedResults(rows, (row) => isLinkedCompetitionResult(row, competitionId));
 }
 
 export type LinkedMatchStatus = "recorded" | "incomplete";

@@ -1,25 +1,23 @@
 /**
  * Ligues (`/leagues`) — écran hors tab bar (`href: null`).
  *
- * Classement live uniquement si les lignes sont calculées depuis les
- * résultats Pro Clubs que CPC enregistre (`match_results` via
- * `finalize_match`). Ce n'est pas le cas aujourd'hui.
+ * Deux surfaces distinctes :
+ * 1) Classement saison (`season_stats`) — HONNÊTEMENT VIDE. Writers réels
+ *    (aucun n'agrège `match_results`) : `prisma/seed.ts`, `ea-sync`,
+ *    `season-ranking`. `mvp_count` n'est jamais incrémenté hors seed.
+ *    `canShowLiveLeagueRanking()` reste false.
+ * 2) Classement clubs CPC (`lib/rankings.ts`) — depuis `match_results` avec
+ *    `opponent_club_id` seulement. Pas `season_stats`. Pas une ligue EA.
  *
- * Writers réels de `season_stats` (aucun n'agrège `match_results`) :
- * - `prisma/seed.ts` — faker (hors prod)
- * - `ea-sync` — formule goals×4 + assists×3 + cleanSheets×2 (payload club EA,
- *   rapprochement username, pas un id joueur vérifié)
- * - `season-ranking` — percentiles de `division` sur ces points
- * `mvp_count` n'est jamais incrémenté hors seed. `/leagues` n'affiche pas
- * de classement live (`season_stats` ≠ `match_results`). Le classement
- * compétition vit sur `/competitions`, uniquement depuis des résultats liés.
+ * Le classement compétition vit sur `/competitions`, uniquement depuis des
+ * résultats liés.
  */
 import { canFillStandingsFromMatchResults } from "./competitions";
 
 export const LEAGUE_COPY = {
   title: "Ligues",
-  empty: "Nous n'avons pas de classement réel tant que les résultats Pro Clubs ne sont pas liés.",
-  emptyHint: "Pas de points, divisions, buteurs ou MVP inventés. Les matchs que CPC enregistre ne remplissent pas encore un classement.",
+  empty: "Nous n'avons pas de classement de ligue saison réel tant que les stats saison ne viennent pas des résultats Pro Clubs.",
+  emptyHint: "Pas de points, divisions, buteurs ou MVP inventés. Les stats saison (seed / sync EA) ne remplissent pas ce tableau.",
 } as const;
 
 /** Tab bar joueur : Ligues reste hors onglets (deep link `/leagues` seulement). */
@@ -29,9 +27,10 @@ export const LEAGUES_TAB_HREF: null = null;
 export const SEASON_STATS_WRITTEN_FROM_MATCH_RESULTS = false;
 
 /**
- * Afficher « Classement général » seulement si on peut le remplir depuis
+ * Afficher « Classement général » saison seulement si on peut le remplir depuis
  * les matchs enregistrés ET que `season_stats` (ou équivalent) en est dérivé.
  * Défaut actuel : false. Ne jamais court-circuiter avec du seed / EA / fake.
+ * Le tableau clubs CPC (`canShowCpcClubRanking`) est un autre gate.
  */
 export function canShowLiveLeagueRanking(
   input: {

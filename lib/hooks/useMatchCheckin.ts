@@ -180,6 +180,7 @@ export function useFinalizeMatch(clubId: string) {
       queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
       queryClient.invalidateQueries({ queryKey: ["player-match-history"] });
       queryClient.invalidateQueries({ queryKey: ["club-match-history"] });
+      queryClient.invalidateQueries({ queryKey: ["cpc-club-ranking-results"] });
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
