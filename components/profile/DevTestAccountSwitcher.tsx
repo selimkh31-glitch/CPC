@@ -56,7 +56,9 @@ export function DevTestAccountSwitcher() {
             <Text className="text-base font-bold text-accent">
               {busy === account.email ? "Connexion…" : account.label}
             </Text>
-            <Text className="text-xs text-fg-subtle">{account.email}</Text>
+            <Text className="text-xs text-fg-subtle">
+              {account.username} · {account.email}
+            </Text>
           </Pressable>
         ))}
       </View>

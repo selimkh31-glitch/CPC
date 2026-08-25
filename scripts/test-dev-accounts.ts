@@ -1,10 +1,13 @@
 /**
- * Comptes test DEV — emails figés, switcher __DEV__, pas de wipe DB.
+ * Comptes test DEV — 13 emails seedés CoS, switcher __DEV__, pas de wipe DB.
  * Lancer : npx tsx scripts/test-dev-accounts.ts
  */
 // @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
 import { readFileSync } from "fs";
-import { CPC_DEV_TEST_ACCOUNT_EMAILS } from "../lib/devTestAccounts";
+import {
+  CPC_DEV_TEST_ACCOUNT_EMAILS,
+  CPC_DEV_TEST_SEED,
+} from "../lib/devTestAccounts";
 
 const root = process.cwd();
 
@@ -33,15 +36,47 @@ function read(rel: string) {
   return readFileSync(`${root}/${rel}`, "utf8");
 }
 
+const SEEDED_EMAILS = [
+  "test-manager@cpc.dev",
+  "test-gardien@cpc.dev",
+  "test-dc@cpc.dev",
+  "test-ag@cpc.dev",
+  "test-ad@cpc.dev",
+  "test-mdc@cpc.dev",
+  "test-mc@cpc.dev",
+  "test-moc@cpc.dev",
+  "test-mg@cpc.dev",
+  "test-md@cpc.dev",
+  "test-agile@cpc.dev",
+  "test-ail@cpc.dev",
+  "test-bu@cpc.dev",
+] as const;
+
 console.log("Comptes test DEV");
 
-test("emails figés pour le seed CoS", () => {
-  assert.equal(CPC_DEV_TEST_ACCOUNT_EMAILS.length, 5, "count");
-  assert.true(CPC_DEV_TEST_ACCOUNT_EMAILS.includes("test-manager@cpc.dev"), "manager");
-  assert.true(CPC_DEV_TEST_ACCOUNT_EMAILS.includes("test-gardien@cpc.dev"), "gardien");
-  assert.true(CPC_DEV_TEST_ACCOUNT_EMAILS.includes("test-defenseur@cpc.dev"), "defenseur");
-  assert.true(CPC_DEV_TEST_ACCOUNT_EMAILS.includes("test-milieu@cpc.dev"), "milieu");
-  assert.true(CPC_DEV_TEST_ACCOUNT_EMAILS.includes("test-attaquant@cpc.dev"), "attaquant");
+test("emails figés pour le seed CoS — 13, ordre exact, pas les anciens 5", () => {
+  assert.equal(CPC_DEV_TEST_ACCOUNT_EMAILS.length, 13, "count");
+  assert.equal(CPC_DEV_TEST_SEED.length, 13, "seed count");
+  for (let i = 0; i < SEEDED_EMAILS.length; i += 1) {
+    assert.equal(CPC_DEV_TEST_ACCOUNT_EMAILS[i], SEEDED_EMAILS[i], `email ${i}`);
+    assert.equal(CPC_DEV_TEST_SEED[i].email, SEEDED_EMAILS[i], `seed email ${i}`);
+  }
+  const blob = CPC_DEV_TEST_ACCOUNT_EMAILS.join(" ");
+  assert.false(blob.includes("test-defenseur@cpc.dev"), "no test-defenseur");
+  assert.false(blob.includes("test-milieu@cpc.dev"), "no test-milieu");
+  assert.false(blob.includes("test-attaquant@cpc.dev"), "no test-attaquant");
+});
+
+test("usernames cpc_* et postes du seed", () => {
+  assert.equal(CPC_DEV_TEST_SEED[0].username, "cpc_manager", "manager user");
+  assert.equal(CPC_DEV_TEST_SEED[0].position, "CM", "manager pos");
+  assert.equal(CPC_DEV_TEST_SEED[1].username, "cpc_gk", "gk");
+  assert.equal(CPC_DEV_TEST_SEED[1].position, "GK", "gk pos");
+  assert.equal(CPC_DEV_TEST_SEED[2].username, "cpc_cb", "cb");
+  assert.equal(CPC_DEV_TEST_SEED[12].username, "cpc_st", "st");
+  assert.equal(CPC_DEV_TEST_SEED[12].position, "ST", "st pos");
+  assert.equal(CPC_DEV_TEST_SEED[7].label, "Meneur", "cam label");
+  assert.equal(CPC_DEV_TEST_SEED[10].email, "test-agile@cpc.dev", "lw email");
 });
 
 test("switcher Profil + Club, jamais LIVE, jamais wipe DB", () => {
@@ -57,6 +92,7 @@ test("switcher Profil + Club, jamais LIVE, jamais wipe DB", () => {
   assert.true(switcher.includes("__DEV__"), "dev guard");
   assert.true(switcher.includes("signInWithPassword"), "existing auth");
   assert.true(switcher.includes("signOut"), "reload session");
+  assert.true(switcher.includes("CPC_DEV_TEST_ACCOUNTS"), "uses accounts list");
   assert.false(/from\(['\"]rpc/.test(switcher), "no rpc wipe");
   assert.false(switcher.includes("delete("), "no delete");
   assert.false(switcher.includes("truncate"), "no truncate");
