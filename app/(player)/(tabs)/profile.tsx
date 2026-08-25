@@ -9,6 +9,7 @@ import { MyClubsList } from "@/components/club/MyClubsList";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
+import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
@@ -74,6 +75,9 @@ export default function ProfileTabScreen() {
           <SocialShortcuts />
           <View className="mt-2">
             <CompetitionsLink />
+          </View>
+          <View className="mt-2">
+            <TournamentsLink />
           </View>
         </View>
 

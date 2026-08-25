@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Trophy } from "lucide-react-native";
 import { EmptyState } from "@/components/ui/Screen";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
+import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { LEAGUE_COPY } from "@/lib/leagues";
 
 /**
@@ -21,6 +22,9 @@ export default function LeaguesScreen() {
         <EmptyState title={LEAGUE_COPY.empty} subtitle={LEAGUE_COPY.emptyHint} />
         <View className="mt-4">
           <CompetitionsLink />
+        </View>
+        <View className="mt-2">
+          <TournamentsLink />
         </View>
       </ScrollView>
     </SafeAreaView>

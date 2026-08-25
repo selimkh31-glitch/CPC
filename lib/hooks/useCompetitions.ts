@@ -20,6 +20,7 @@ function normalizeCompetition(row: CompetitionRow): CompetitionRow {
   }));
   return {
     ...row,
+    kind: row.kind === "TOURNAMENT" ? "TOURNAMENT" : "COMPETITION",
     clubs,
     creator: unwrapOne(row.creator as CompetitionRow["creator"] | CompetitionRow["creator"][] | null),
   };
@@ -28,10 +29,15 @@ function normalizeCompetition(row: CompetitionRow): CompetitionRow {
 function invalidateCompetitionQueries(queryClient: ReturnType<typeof useQueryClient>, competitionId?: string) {
   queryClient.invalidateQueries({ queryKey: ["competitions"] });
   queryClient.invalidateQueries({ queryKey: ["competition"] });
+  queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+  queryClient.invalidateQueries({ queryKey: ["tournament"] });
+  queryClient.invalidateQueries({ queryKey: ["tournament-matches"] });
   queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
   queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
   if (competitionId) {
     queryClient.invalidateQueries({ queryKey: ["competition", competitionId] });
+    queryClient.invalidateQueries({ queryKey: ["tournament", competitionId] });
+    queryClient.invalidateQueries({ queryKey: ["tournament-matches", competitionId] });
   }
 }
 
@@ -46,6 +52,7 @@ export function useCompetitions() {
       const { data, error } = await supabase
         .from("competitions")
         .select(COMPETITION_LIST_SELECT)
+        .eq("kind", "COMPETITION")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []).map((row) => normalizeCompetition(row as CompetitionRow));

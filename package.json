@@ -68,6 +68,7 @@
     "test:profile-identity": "tsx scripts/test-profile-identity.ts",
     "test:club-identity": "tsx scripts/test-club-identity.ts",
     "test:competitions": "tsx scripts/test-competitions.ts",
+    "test:tournaments": "tsx scripts/test-tournaments.ts",
     "test:leagues": "tsx scripts/test-leagues.ts",
     "test:match-history": "tsx scripts/test-match-history.ts",
     "test:finalize-match": "tsx scripts/test-finalize-match.ts",

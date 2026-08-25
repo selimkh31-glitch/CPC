@@ -70,7 +70,15 @@ npx prisma db execute --file supabase/migrations/0026_competitions_foundation.sq
 npx prisma db execute --file supabase/migrations/0027_match_result_competition_link.sql --schema prisma/schema.prisma
 ```
 
-Puis déployer `create-competition`, **redéployer** `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés. Après RPC `finalize_match` réussie, l’Edge crée une notif in-app `MATCH_FINALIZED` (membres des deux clubs, **sauf le recorder**) ; un échec notify n’annule pas le résultat. Après INSERT `competition_clubs` réussi, `register-competition-club` crée une notif in-app `COMPETITION_CLUB_REGISTERED` (`created_by` + OWNER/MANAGER du club, dédupliqués) ; un échec notify n’annule pas l’inscription. **Pas de SQL** pour cette notif : `notifications.type` est du texte libre (0025), comme `MESSAGE_RECEIVED` / `MATCH_FINALIZED`. **Pas de 0029.**
+Puis déployer `create-competition`, **redéployer** `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés. Après RPC `finalize_match` réussie, l’Edge crée une notif in-app `MATCH_FINALIZED` (membres des deux clubs, **sauf le recorder**) ; un échec notify n’annule pas le résultat. Après INSERT `competition_clubs` réussi, `register-competition-club` crée une notif in-app `COMPETITION_CLUB_REGISTERED` (`created_by` + OWNER/MANAGER du club, dédupliqués) ; un échec notify n’annule pas l’inscription. **Pas de SQL** pour cette notif : `notifications.type` est du texte libre (0025), comme `MESSAGE_RECEIVED` / `MATCH_FINALIZED`.
+
+**Tournois V1 (0029)** — un tournoi EST une compétition (`kind=TOURNAMENT`), pas une 2e table. Paires = `tournament_matches` (SCHEDULED|PLAYED). Scores / vainqueurs = `match_results` liés. **Pas** `prisma migrate deploy`.
+
+```bash
+npx prisma db execute --file supabase/migrations/0029_tournaments_v1.sql --schema prisma/schema.prisma
+```
+
+Puis déployer `create-tournament` et `schedule-tournament-round`. **Redéployer** `create-competition` (pose `kind=COMPETITION`) et `register-competition-club` (copy 409 tournoi). Ligues restent off. Aucun score 0-0 inventé.
 
 **Conversation club (0028)** — après 0016–0017 (tables + RLS chat). Get-or-create `start_club_conversation`, pas de nouvelle table.
 
@@ -105,8 +113,10 @@ supabase/functions/
   scout-report/               GET  — Scout Report IA (Pro only)
   moderate/                    POST — modération générique
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
-  create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN)
+  create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN, kind COMPETITION)
+  create-tournament/           POST — crée un tournoi (même table competitions, kind TOURNAMENT)
   register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409 ; notif COMPETITION_CLUB_REGISTERED après INSERT
+  schedule-tournament-round/   POST — génère le 1er tour (tournament_matches SCHEDULED) depuis les clubs inscrits
   start-direct-conversation/   POST — get-or-create DM
   start-club-conversation/     POST — get-or-create conversation CLUB (0028)
 ```
@@ -116,7 +126,7 @@ Déploiement :
 ```bash
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook create-competition register-competition-club
+npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook create-competition register-competition-club create-tournament schedule-tournament-round
 npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=...
 ```
 

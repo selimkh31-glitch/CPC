@@ -236,6 +236,15 @@ function RootNavigator() {
           name="competitions/[id]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
         />
+        {/* Tournois V1 — même stack, pas un onglet. kind=TOURNAMENT sur competitions. */}
+        <Stack.Screen
+          name="tournaments/index"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Tournois" }}
+        />
+        <Stack.Screen
+          name="tournaments/[id]"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+        />
       </Stack.Protected>
 
       {/* Hors de tout Stack.Protected : accessible sans session (deep link

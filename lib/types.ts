@@ -367,18 +367,35 @@ export interface SeasonStatRow {
   user?: UserRow;
 }
 
-/** Compétitions virtuelles EA SPORTS FC 27 Pro Clubs — fondation (0026). */
+/** Compétitions virtuelles EA SPORTS FC 27 Pro Clubs — fondation (0026 + kind 0029). */
 export type CompetitionStatus = "DRAFT" | "OPEN" | "CLOSED";
+export type CompetitionKind = "COMPETITION" | "TOURNAMENT";
+export type TournamentMatchStatus = "SCHEDULED" | "PLAYED";
 
 export interface CompetitionRow {
   id: string;
   name: string;
   status: CompetitionStatus;
+  kind: CompetitionKind;
   created_by: string;
   created_at: string;
   updated_at: string;
   clubs?: CompetitionClubRow[];
   creator?: Pick<UserRow, "id" | "username"> | null;
+  matches?: TournamentMatchRow[];
+}
+
+export interface TournamentMatchRow {
+  id: string;
+  competition_id: string;
+  round: number;
+  slot: number;
+  club_a_id: string;
+  club_b_id: string;
+  status: TournamentMatchStatus;
+  created_at: string;
+  club_a?: Pick<ClubRow, "id" | "name"> | null;
+  club_b?: Pick<ClubRow, "id" | "name"> | null;
 }
 
 export interface CompetitionClubRow {
