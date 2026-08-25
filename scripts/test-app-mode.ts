@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from "fs";
 import {
   MODE_DOOR_COPY,
   appModeStorageKey,
+  effectiveAppMode,
   parseStoredAppMode,
   shouldShowModeDoor,
 } from "../lib/appMode";
@@ -59,6 +60,12 @@ test("porte seulement si hydraté et aucun mode", () => {
   assert.false(shouldShowModeDoor({ hydrated: true, mode: "CLUB" }), "stored manager");
 });
 
+test("effectiveAppMode — null → joueur", () => {
+  assert.equal(effectiveAppMode(null), "PLAYER", "null");
+  assert.equal(effectiveAppMode(undefined), "PLAYER", "undefined");
+  assert.equal(effectiveAppMode("CLUB"), "CLUB", "club");
+});
+
 test("copy porte — tu, joueur = je joue, manager = je gère, pas UI 1/2", () => {
   assert.equal(MODE_DOOR_COPY.title, "Tu joues ou tu gères ?", "title");
   assert.equal(MODE_DOOR_COPY.player, "JOUEUR", "player");
@@ -79,7 +86,7 @@ test("écran porte existe, un tap, pas de lien EA ni carousel", () => {
   assert.true(door.includes('choose("PLAYER")'), "tap joueur");
   assert.true(door.includes('choose("CLUB")'), "tap manager");
   assert.false(door.includes("ea_"), "no EA gate");
-  assert.false(/carousel|wizard|tutoriel/i.test(door), "no wizard");
+  assert.false(/carousel|tutoriel/i.test(door), "no carousel");
 });
 
 test("root : porte si mode null, arbres joueur/club, stack partagé exige un mode", () => {

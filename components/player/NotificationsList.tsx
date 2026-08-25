@@ -22,6 +22,7 @@ import {
 } from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
+import { effectiveAppMode } from "@/lib/appMode";
 import type { NotificationRow } from "@/lib/types";
 
 /** Liste des notifications in-app — extraite de app/notifications.tsx pour l'onglet Activité. */
@@ -53,21 +54,22 @@ export function NotificationsList() {
       setPendingNav({ href: recruitment.href, requireClubMode: recruitment.requireClubMode });
       return;
     }
-    const matchNav = matchFinalizedNotificationNav(item.type, item.data, mode);
+    const life = effectiveAppMode(mode);
+    const matchNav = matchFinalizedNotificationNav(item.type, item.data, life);
     if (matchNav) {
       if (matchNav.selectClubId) setSelectedManagedClubId(matchNav.selectClubId);
       if (matchNav.requireClubMode) setMode("CLUB");
       setPendingNav({ href: matchNav.href, requireClubMode: matchNav.requireClubMode });
       return;
     }
-    const tournamentNav = tournamentRoundScheduledNotificationNav(item.type, item.data, mode);
+    const tournamentNav = tournamentRoundScheduledNotificationNav(item.type, item.data, life);
     if (tournamentNav) {
       if (tournamentNav.selectClubId) setSelectedManagedClubId(tournamentNav.selectClubId);
       if (tournamentNav.requireClubMode) setMode("CLUB");
       setPendingNav({ href: tournamentNav.href, requireClubMode: tournamentNav.requireClubMode });
       return;
     }
-    router.push(inAppNotificationHref(item.type, item.data, mode) as any);
+    router.push(inAppNotificationHref(item.type, item.data, life) as any);
   };
 
   if (isLoading) {

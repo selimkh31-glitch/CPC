@@ -27,3 +27,8 @@ export function appModeStorageKey(userId: string): string {
 export function shouldShowModeDoor(input: { hydrated: boolean; mode: AppMode | null }): boolean {
   return input.hydrated && input.mode === null;
 }
+
+/** Dest notifications / hrefs : sans mode choisi, on reste joueur. */
+export function effectiveAppMode(mode: AppMode | null | undefined): AppMode {
+  return mode === "CLUB" ? "CLUB" : "PLAYER";
+}
