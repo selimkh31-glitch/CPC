@@ -16,6 +16,8 @@ import {
   isPersistedMatchOutcome,
   type MatchHistoryResultInput,
 } from "../lib/matchHistory";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -265,6 +267,35 @@ test("adversaire club : nom MINI seulement si opponent_club_id + nom hydraté", 
   });
   assert.equal(idOnly[0].opponentClubId, "club-b", "id known");
   assert.equal(idOnly[0].opponentClubName, null, "nom non hydraté → omis");
+});
+
+test("noms manquants ou placeholder → omis, jamais Club Pro Clubs", () => {
+  const missing = buildPlayerMatchHistory({
+    participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+    results: [result({ id: "r1", match_checkin_id: "c1" })],
+  });
+  assert.equal(missing[0].clubName, null, "own name omitted");
+  assert.equal(missing[0].scoreLine, "3 — 1", "score réel conservé");
+
+  const placeholders = buildPlayerMatchHistory({
+    participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+    results: [result({ id: "r1", match_checkin_id: "c1", opponent_club_id: "club-b" })],
+    clubNames: { "club-a": "Club Pro Clubs", "club-b": "Club" },
+  });
+  assert.equal(placeholders[0].clubName, null, "own placeholder omitted");
+  assert.equal(placeholders[0].opponentClubName, null, "opponent placeholder omitted");
+
+  const clubPlaceholder = buildClubMatchHistory({
+    clubId: "club-a",
+    clubName: "Club Pro Clubs",
+    results: [result({ id: "ours", match_checkin_id: "c1", club_id: "club-a" })],
+  });
+  assert.equal(clubPlaceholder[0].clubName, null, "club profile placeholder omitted");
+  assert.equal(clubPlaceholder[0].scoreLine, "3 — 1", "club score réel");
+
+  const src = readFileSync(`${process.cwd()}/lib/matchHistory.ts`, "utf8");
+  assert.true(src.includes("tournamentClubDisplayName"), "shared helper");
+  assert.false(src.includes('"Club Pro Clubs"'), "no fallback literal");
 });
 
 console.log(`\n${passed} test(s) passés.`);

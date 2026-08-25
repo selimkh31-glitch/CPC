@@ -18,6 +18,7 @@ import {
   type CompetitionStandingRow,
   type LinkedMatchResultInput,
 } from "./competitions";
+import { tournamentClubDisplayName } from "./tournaments";
 
 export type CpcClubStandingRow = CompetitionStandingRow;
 
@@ -118,8 +119,6 @@ export function clubRankingRowHref(
   clubName?: string | null
 ): `/club/${string}` | null {
   if (!isRealClubId(clubId)) return null;
-  if (typeof clubName !== "string" || !clubName.trim() || clubName.trim() === "Club Pro Clubs") {
-    return null;
-  }
+  if (!tournamentClubDisplayName(clubName)) return null;
   return `/club/${clubId.trim()}`;
 }

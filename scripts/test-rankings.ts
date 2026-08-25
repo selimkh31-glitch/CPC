@@ -18,6 +18,8 @@ import {
   matchResultsHasSeasonId,
 } from "../lib/rankings";
 import { PLAYER_MATCH_HISTORY_JOIN } from "../lib/matchHistory";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -226,9 +228,22 @@ test("ligne classement : tap club seulement si UUID réel + nom chargé — jama
   assert.equal(clubRankingRowHref("not-a-uuid", "Invincibles"), null, "bad id");
   assert.equal(clubRankingRowHref(id, ""), null, "empty name");
   assert.equal(clubRankingRowHref(id, "Club Pro Clubs"), null, "fallback name");
+  assert.equal(clubRankingRowHref(id, "Club"), null, "generic Club");
+  assert.equal(clubRankingRowHref(id, "  Club Pro Clubs  "), null, "trimmed fallback");
   assert.equal(clubRankingRowHref(id, null), null, "no name");
   const href = clubRankingRowHref(id, "Invincibles");
   assert.false(Boolean(href && href.includes("/profile/")), "not player profile");
+});
+
+test("écran classement : ClubCard MINI si nom réel, jamais placeholder Club Pro Clubs", () => {
+  const ranking = readFileSync(`${process.cwd()}/components/rankings/CpcClubRanking.tsx`, "utf8");
+  assert.true(ranking.includes("tournamentClubDisplayName"), "honest name");
+  assert.true(ranking.includes("buildClubCardData"), "ClubCard builder");
+  assert.true(ranking.includes('variant="mini"'), "MINI density");
+  assert.true(ranking.includes("clubRankingRowHref"), "href doctrine");
+  assert.false(ranking.includes('"Club Pro Clubs"'), "no placeholder literal");
+  assert.false(ranking.includes("?? \"Club Pro Clubs\""), "no display fallback");
+  assert.false(ranking.includes("0-0-0"), "no fake 0-0-0");
 });
 
 console.log(`\n${passed} tests OK`);

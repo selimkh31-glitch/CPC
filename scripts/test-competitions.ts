@@ -36,6 +36,8 @@ import {
   registerBlockMessage,
   uniqueViolationHttpStatus,
 } from "../lib/competitions";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -540,6 +542,25 @@ test("SQL 0027 : ALTER match_results + finalize étendu ; pas de table standings
   assert.true(matchResultLinkSqlIssues(withStandings).some((i) => i.startsWith("interdit:")), "no standings table");
   const clientInsert = `${valid}\ncreate policy x on public.match_results for insert to authenticated with check (true);`;
   assert.true(matchResultLinkSqlIssues(clientInsert).some((i) => i.includes("insert")), "no client insert");
+});
+
+test("classement / inscrits : ClubCard MINI si nom réel, jamais placeholder Club Pro Clubs", () => {
+  const standings = readFileSync(`${process.cwd()}/components/competitions/CompetitionStandings.tsx`, "utf8");
+  const participants = readFileSync(`${process.cwd()}/components/competitions/CompetitionParticipants.tsx`, "utf8");
+
+  assert.true(standings.includes("tournamentClubDisplayName"), "standings honest name");
+  assert.true(standings.includes("buildClubCardData"), "standings ClubCard builder");
+  assert.true(standings.includes('variant="mini"'), "standings MINI");
+  assert.true(standings.includes("clubRankingRowHref"), "standings href");
+  assert.false(standings.includes('"Club Pro Clubs"'), "no placeholder literal in standings");
+  assert.false(standings.includes("?? \"Club Pro Clubs\""), "no standings fallback");
+  assert.false(standings.includes("0-0-0"), "no fake 0-0-0 in standings");
+
+  assert.true(participants.includes("tournamentClubDisplayName"), "participants honest name");
+  assert.true(participants.includes("buildClubCardData"), "participants ClubCard");
+  assert.true(participants.includes('variant="mini"'), "participants MINI");
+  assert.false(participants.includes('"Club Pro Clubs"'), "no placeholder literal in participants");
+  assert.false(participants.includes("|| \"Club Pro Clubs\""), "no participants fallback");
 });
 
 console.log(`\n${passed} tests OK`);

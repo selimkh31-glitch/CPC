@@ -4,9 +4,10 @@ import { ClubCard } from "@/components/club/ClubCard";
 import { COMPETITION_COPY } from "@/lib/competitions";
 import { buildClubCardData } from "@/lib/clubCard";
 import { clubRankingRowHref } from "@/lib/rankings";
+import { tournamentClubDisplayName } from "@/lib/tournaments";
 import type { CompetitionClubRow } from "@/lib/types";
 
-/** Clubs inscrits = lignes réelles `competition_clubs` + nom du club, jamais inventés. */
+/** Clubs inscrits = lignes réelles `competition_clubs` + nom hydraté. Sans nom réel : pas de carte. */
 export function CompetitionParticipants({ clubs }: { clubs: CompetitionClubRow[] | undefined }) {
   const rows = clubs ?? [];
   return (
@@ -19,8 +20,9 @@ export function CompetitionParticipants({ clubs }: { clubs: CompetitionClubRow[]
       ) : (
         <View className="gap-1.5">
           {rows.map((row) => {
-            const name = row.club?.name?.trim() || "Club Pro Clubs";
-            const href = clubRankingRowHref(row.club_id, row.club?.name);
+            const name = tournamentClubDisplayName(row.club?.name);
+            if (!name) return null;
+            const href = clubRankingRowHref(row.club_id, name);
             return (
               <ClubCard
                 key={row.id}

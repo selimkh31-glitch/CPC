@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Text, View } from "react-native";
+import { router } from "expo-router";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -10,7 +11,9 @@ import { timeAgo } from "@/lib/utils";
 import { buildClubCardData } from "@/lib/clubCard";
 import { useMyApplications, useWithdrawApplication, useMyApplicationStatusUpdates } from "@/lib/hooks/useApplications";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { clubRankingRowHref } from "@/lib/rankings";
 import { toast } from "@/lib/toast";
+import { tournamentClubDisplayName } from "@/lib/tournaments";
 import type { ApplicationStatus } from "@/lib/types";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -67,43 +70,59 @@ export function MyApplicationsList() {
 
   return (
     <View className="gap-3">
-      {applications.map((app) => (
-        <ClubCard
-          key={app.id}
-          data={buildClubCardData(app.club ?? { id: app.club_id, name: "Club" })}
-          variant="mini"
-          rightSlot={<Badge tone={STATUS_TONES[app.status]}>{STATUS_LABELS[app.status]}</Badge>}
-          footer={
-            <View className="mt-1">
-              <Text className="text-xs text-fg-muted">
-                {POSITION_LABELS[app.position]} · {timeAgo(app.created_at)}
+      {applications.map((app) => {
+        const display = tournamentClubDisplayName(app.club?.name);
+        const href = display ? clubRankingRowHref(app.club_id, display) : null;
+        const rightSlot = <Badge tone={STATUS_TONES[app.status]}>{STATUS_LABELS[app.status]}</Badge>;
+        const footer = (
+          <View className="mt-1">
+            <Text className="text-xs text-fg-muted">
+              {POSITION_LABELS[app.position]} · {timeAgo(app.created_at)}
+            </Text>
+            {app.message ? (
+              <Text numberOfLines={2} className="mt-1 text-sm text-fg-muted">
+                &quot;{app.message}&quot;
               </Text>
-              {app.message ? (
-                <Text numberOfLines={2} className="mt-1 text-sm text-fg-muted">
-                  &quot;{app.message}&quot;
-                </Text>
-              ) : null}
-              {app.status === "PENDING" ? (
-                <Button
-                  variant="secondary"
-                  className="mt-3"
-                  loading={withdraw.isPending && withdraw.variables === app.id}
-                  disabled={withdraw.isPending}
-                  onPress={() => {
-                    if (withdraw.isPending) return;
-                    withdraw.mutate(app.id, {
-                      onSuccess: () => toast.info("Candidature retirée."),
-                      onError: (err: any) => toast.error(err.message ?? "Erreur"),
-                    });
-                  }}
-                >
-                  Retirer ma candidature
-                </Button>
-              ) : null}
+            ) : null}
+            {app.status === "PENDING" ? (
+              <Button
+                variant="secondary"
+                className="mt-3"
+                loading={withdraw.isPending && withdraw.variables === app.id}
+                disabled={withdraw.isPending}
+                onPress={() => {
+                  if (withdraw.isPending) return;
+                  withdraw.mutate(app.id, {
+                    onSuccess: () => toast.info("Candidature retirée."),
+                    onError: (err: any) => toast.error(err.message ?? "Erreur"),
+                  });
+                }}
+              >
+                Retirer ma candidature
+              </Button>
+            ) : null}
+          </View>
+        );
+        if (!display) {
+          return (
+            <View key={app.id} className="rounded-2xl border border-accent/30 bg-bg-card px-3 py-2">
+              <View className="min-h-[44px] flex-row items-center justify-end">{rightSlot}</View>
+              {footer}
             </View>
-          }
-        />
-      ))}
+          );
+        }
+        return (
+          <ClubCard
+            key={app.id}
+            data={buildClubCardData({ ...(app.club ?? { id: app.club_id }), id: app.club_id, name: display })}
+            variant="mini"
+            interactive={Boolean(href)}
+            onPress={href ? () => router.push(href) : undefined}
+            rightSlot={rightSlot}
+            footer={footer}
+          />
+        );
+      })}
     </View>
   );
 }

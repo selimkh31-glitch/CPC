@@ -31,6 +31,7 @@ import {
   unpairedRegisteredClubIds,
   tournamentClubDisplayName,
   collectTournamentClubNames,
+  rememberClubDisplayName,
   tournamentBracketRecordingClubId,
 } from "../lib/tournaments";
 import { competitionLinkedMatchNav } from "../lib/competitions";
@@ -507,6 +508,12 @@ test("noms hydratés : refuse Club Pro Clubs / Club ; omet si vide", () => {
   assert.equal(names.has("ghost"), false, "no placeholder registered");
   assert.equal(names.has("generic"), false, "no Club");
   assert.equal(names.has("missing"), false, "no blank");
+  const remembered = new Map<string, string>();
+  rememberClubDisplayName(remembered, "ok", "  Rival FC  ");
+  rememberClubDisplayName(remembered, "ph", "Club Pro Clubs");
+  rememberClubDisplayName(remembered, "", "Alpha");
+  assert.equal(remembered.get("ok"), "Rival FC", "remember real");
+  assert.equal(remembered.has("ph"), false, "remember skips placeholder");
   assert.equal(names.has("delta"), false, "no placeholder match side");
 });
 

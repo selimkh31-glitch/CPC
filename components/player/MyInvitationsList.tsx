@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import { router } from "expo-router";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -10,7 +11,9 @@ import { timeAgo } from "@/lib/utils";
 import { buildClubCardData } from "@/lib/clubCard";
 import { useMyInvitations, useRespondInvitation, useRespondTransitionInvitation } from "@/lib/hooks/useInvitations";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { clubRankingRowHref } from "@/lib/rankings";
 import { toast } from "@/lib/toast";
+import { tournamentClubDisplayName } from "@/lib/tournaments";
 import type { InvitationStatus } from "@/lib/types";
 
 const STATUS_LABELS: Record<InvitationStatus, string> = {
@@ -82,40 +85,54 @@ export function MyInvitationsList() {
       {invitations.map((inv) => {
         const isTransition = Boolean(inv.departure_request_id);
         const pending = isTransition ? respondTransition.isPending : respond.isPending;
+        const display = tournamentClubDisplayName(inv.club?.name);
+        const href = display ? clubRankingRowHref(inv.club_id, display) : null;
+        const rightSlot = (
+          <View className="flex-row items-center gap-1.5">
+            {isTransition ? <Badge tone="pro">Transition</Badge> : null}
+            <Badge tone={STATUS_TONES[inv.status]}>{STATUS_LABELS[inv.status]}</Badge>
+          </View>
+        );
+        const footer = (
+          <View className="mt-1">
+            <Text className="text-xs text-fg-muted">
+              {inviteLabel(inv.slot_id, inv.club?.formation ?? null)} · {timeAgo(inv.created_at)}
+            </Text>
+            {inv.status === "RESERVED" ? (
+              <Text className="mt-3 text-sm text-fg-muted">
+                Réservé pour ce club — tu restes membre de ton club actuel jusqu&apos;à ta libération effective (après
+                ton prochain match validé).
+              </Text>
+            ) : null}
+            {inv.status === "PENDING" ? (
+              <View className="mt-3 flex-row gap-2">
+                <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition)}>
+                  Refuser
+                </Button>
+                <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition)}>
+                  {isTransition ? "Réserver ma place" : "Accepter"}
+                </Button>
+              </View>
+            ) : null}
+          </View>
+        );
+        if (!display) {
+          return (
+            <View key={inv.id} className="rounded-2xl border border-accent/30 bg-bg-card px-3 py-2">
+              <View className="min-h-[44px] flex-row items-center justify-end">{rightSlot}</View>
+              {footer}
+            </View>
+          );
+        }
         return (
           <ClubCard
             key={inv.id}
-            data={buildClubCardData(inv.club ?? { id: inv.club_id, name: "Club" })}
+            data={buildClubCardData({ ...(inv.club ?? { id: inv.club_id }), id: inv.club_id, name: display })}
             variant="mini"
-            rightSlot={
-              <View className="flex-row items-center gap-1.5">
-                {isTransition ? <Badge tone="pro">Transition</Badge> : null}
-                <Badge tone={STATUS_TONES[inv.status]}>{STATUS_LABELS[inv.status]}</Badge>
-              </View>
-            }
-            footer={
-              <View className="mt-1">
-                <Text className="text-xs text-fg-muted">
-                  {inviteLabel(inv.slot_id, inv.club?.formation ?? null)} · {timeAgo(inv.created_at)}
-                </Text>
-                {inv.status === "RESERVED" ? (
-                  <Text className="mt-3 text-sm text-fg-muted">
-                    Réservé pour ce club — tu restes membre de ton club actuel jusqu&apos;à ta libération effective (après
-                    ton prochain match validé).
-                  </Text>
-                ) : null}
-                {inv.status === "PENDING" ? (
-                  <View className="mt-3 flex-row gap-2">
-                    <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition)}>
-                      Refuser
-                    </Button>
-                    <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition)}>
-                      {isTransition ? "Réserver ma place" : "Accepter"}
-                    </Button>
-                  </View>
-                ) : null}
-              </View>
-            }
+            interactive={Boolean(href)}
+            onPress={href ? () => router.push(href) : undefined}
+            rightSlot={rightSlot}
+            footer={footer}
           />
         );
       })}
