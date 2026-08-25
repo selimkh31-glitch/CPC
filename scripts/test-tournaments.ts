@@ -33,6 +33,9 @@ import {
   collectTournamentClubNames,
   rememberClubDisplayName,
   tournamentBracketRecordingClubId,
+  tournamentUnplayedRecordNav,
+  scheduledTournamentCompetitionId,
+  canAutoSelectScheduledTournament,
 } from "../lib/tournaments";
 import { competitionLinkedMatchNav } from "../lib/competitions";
 // @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
@@ -408,6 +411,15 @@ test("vainqueur du tournoi : finale persistée 1 match / pool 2 / résultat PLAY
     opponent_score: 1,
   };
   assert.equal(tournamentChampionClubId([final], [finalWin], poolR2), "alpha", "champion");
+  const finalDraw = {
+    club_id: "alpha",
+    opponent_club_id: "gamma",
+    competition_id: "t1",
+    outcome: "DRAW",
+    our_score: 1,
+    opponent_score: 1,
+  };
+  assert.equal(tournamentChampionClubId([final], [finalDraw], poolR2), null, "draw not champion");
   const threePool = [
     { competition_id: "t1", round: 1, club_id: "alpha" },
     { competition_id: "t1", round: 1, club_id: "beta" },
@@ -556,6 +568,161 @@ test("tap paire : recording club seulement si match_results PLAYED lié", () => 
   assert.false((asViewer?.href ?? "").includes("match-sheet"), "not match-sheet");
 });
 
+test("paire pas encore jouée : CTA /match seulement si club géré, jamais competitionLinkedMatchNav", () => {
+  assert.equal(tournamentBracketRecordingClubId(MATCH_AB, []), null, "unplayed recording");
+  const asA = tournamentUnplayedRecordNav({
+    clubAId: "alpha",
+    clubBId: "beta",
+    managedClubIds: ["alpha"],
+  });
+  assert.equal(asA?.href, "/match", "manager a → match");
+  assert.equal(asA?.selectClubId, "alpha", "select a");
+  assert.equal(asA?.requireClubMode, true, "club mode");
+  const asB = tournamentUnplayedRecordNav({
+    clubAId: "alpha",
+    clubBId: "beta",
+    managedClubIds: ["beta"],
+  });
+  assert.equal(asB?.selectClubId, "beta", "manager b");
+  const both = tournamentUnplayedRecordNav({
+    clubAId: "alpha",
+    clubBId: "beta",
+    managedClubIds: ["beta", "alpha"],
+  });
+  assert.equal(both?.selectClubId, "alpha", "both → club_a stable");
+  const viewer = tournamentUnplayedRecordNav({
+    clubAId: "alpha",
+    clubBId: "beta",
+    managedClubIds: ["other"],
+  });
+  assert.equal(viewer, null, "pas manager → pas de CTA");
+  assert.equal(
+    tournamentUnplayedRecordNav({ clubAId: "alpha", clubBId: "beta", managedClubIds: [] }),
+    null,
+    "aucun club géré"
+  );
+});
+
+test("pré-sélection finalize : seulement une paire SCHEDULED persistée sur un tournoi OPEN", () => {
+  const openT = { id: "t1", kind: "TOURNAMENT", status: "OPEN" };
+  const openComp = { id: "c1", kind: "COMPETITION", status: "OPEN" };
+  const scheduled = {
+    competition_id: "t1",
+    club_a_id: "alpha",
+    club_b_id: "beta",
+    status: "SCHEDULED",
+  };
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [openT],
+      scheduledMatches: [scheduled],
+    }),
+    "t1",
+    "pairing exists"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "beta",
+      opponentClubId: "alpha",
+      openCompetitions: [openT],
+      scheduledMatches: [scheduled],
+    }),
+    "t1",
+    "order inverted"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: null,
+      openCompetitions: [openT],
+      scheduledMatches: [scheduled],
+    }),
+    null,
+    "no opponent → no invent"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [openT],
+      scheduledMatches: [],
+    }),
+    null,
+    "registered but no pairing"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "gamma",
+      openCompetitions: [openT],
+      scheduledMatches: [scheduled],
+    }),
+    null,
+    "other opponent"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [openT],
+      scheduledMatches: [{ ...scheduled, status: "PLAYED" }],
+    }),
+    null,
+    "PLAYED ≠ SCHEDULED"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [openComp],
+      scheduledMatches: [{ ...scheduled, competition_id: "c1" }],
+    }),
+    null,
+    "not a tournament"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [{ ...openT, status: "CLOSED" }],
+      scheduledMatches: [scheduled],
+    }),
+    null,
+    "closed tournament"
+  );
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: "alpha",
+      opponentClubId: "beta",
+      openCompetitions: [openT, { id: "t2", kind: "TOURNAMENT", status: "OPEN" }],
+      scheduledMatches: [
+        scheduled,
+        { competition_id: "t2", club_a_id: "alpha", club_b_id: "beta", status: "SCHEDULED" },
+      ],
+    }),
+    null,
+    "two tournaments → no invent"
+  );
+});
+
+test("auto-sélection : un échec de lecture des paires n'est pas « aucune paire »", () => {
+  const ready = {
+    competitionsLoading: false,
+    competitionsError: false,
+    competitions: [{ id: "t1" }],
+    pairingsLoading: false,
+    pairingsError: false,
+  };
+  assert.true(canAutoSelectScheduledTournament(ready), "ready");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, pairingsError: true }), "pairing error waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, pairingsLoading: true }), "pairing loading waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitionsLoading: true }), "competitions loading waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitionsError: true }), "competitions error waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitions: undefined }), "no competitions yet");
+});
+
 test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide", () => {
   assert.true(TOURNAMENT_COPY.subtitle.includes("EA SPORTS FC 27 Pro Clubs"), "fc27");
   assert.true(TOURNAMENT_COPY.needTwoClubs.includes("deux clubs"), "two clubs");
@@ -586,9 +753,33 @@ test("écran tournoi : matchs liés + ClubCard MINI, jamais fallback Club Pro Cl
   assert.true(bracket.includes("TournamentClubMini"), "bracket mini cards");
   assert.true(bracket.includes("competitionLinkedMatchNav"), "played pair reuses competition nav");
   assert.true(bracket.includes("tournamentBracketRecordingClubId"), "played gate");
+  assert.true(bracket.includes("tournamentUnplayedRecordNav"), "unplayed CTA helper");
+  assert.true(bracket.includes("TOURNAMENT_COPY.recordResultCta"), "record result CTA");
   assert.true(bracket.includes("TOURNAMENT_COPY.notPlayed"), "honest unplayed copy");
   assert.false(bracket.includes("Club Pro Clubs"), "no placeholder in bracket");
   assert.false(bracket.includes('"Club"'), "no Club fallback in bracket");
+
+  const scheduleFn = readFileSync(`${root}/supabase/functions/schedule-tournament-round/index.ts`, "utf8");
+  assert.true(scheduleFn.includes("TOURNAMENT_ROUND_SCHEDULED") || scheduleFn.includes("notifyTournamentRoundScheduled"), "notify after schedule");
+  assert.true(scheduleFn.includes("notifyUser"), "notifyUser");
+  assert.true(scheduleFn.includes("[schedule-tournament-round] notify exception"), "notify failure logged");
+  assert.true(scheduleFn.includes("return jsonResponse"), "response after notify");
+
+  const picker = readFileSync(`${root}/components/club/FinalizeMatchLinkFields.tsx`, "utf8");
+  assert.true(picker.includes("scheduledTournamentCompetitionId"), "auto-select helper");
+  assert.true(picker.includes("useScheduledTournamentPairings"), "persisted pairings");
+  assert.true(picker.includes("canAutoSelectScheduledTournament"), "wait on pairing error");
+  assert.true(picker.includes("pairings.isError"), "do not lock key on pairing error");
+  assert.true(picker.includes("COMPETITION_COPY.competitionNone"), "friendly still optional");
+
+  const checkin = readFileSync(`${root}/components/club/MatchCheckinPanel.tsx`, "utf8");
+  assert.true(
+    checkin.includes("Passe le club en recrutement LIVE pour lancer un match"),
+    "LIVE check-in copy unchanged"
+  );
+
+  const list = readFileSync(`${root}/components/player/NotificationsList.tsx`, "utf8");
+  assert.true(list.includes("tournamentRoundScheduledNotificationNav"), "pending-nav tournament schedule");
 
   assert.true(progression.includes("TournamentClubMini"), "progression mini cards");
   assert.false(progression.includes("Club Pro Clubs"), "no placeholder in progression");

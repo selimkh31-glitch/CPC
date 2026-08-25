@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 import { Input, Label } from "@/components/ui/Input";
@@ -8,7 +8,8 @@ import { CLUB_NAME_SEARCH_MIN, useClubNameSearch } from "@/lib/hooks/useClubName
 import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import { COMPETITION_COPY } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
-import { TOURNAMENT_COPY } from "@/lib/tournaments";
+import { scheduledTournamentCompetitionId, canAutoSelectScheduledTournament, TOURNAMENT_COPY } from "@/lib/tournaments";
+import { useScheduledTournamentPairings } from "@/lib/hooks/useTournaments";
 import type { ClubRow, CompetitionRow } from "@/lib/types";
 
 export function OpponentClubPicker({
@@ -95,18 +96,57 @@ export function OptionalCompetitionPicker({
     opponentClubId ? clubId : null,
     opponentClubId
   );
+  const pairings = useScheduledTournamentPairings(clubId, opponentClubId);
   const competitions = data ?? [];
+  const lastAutoKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!opponentClubId) {
+      lastAutoKeyRef.current = null;
       if (selectedId) onSelect(null);
       return;
     }
-    if (isLoading || isError || !data) return;
-    if (selectedId && !data.some((c) => c.id === selectedId)) {
-      onSelect(null);
+    if (
+      !canAutoSelectScheduledTournament({
+        competitionsLoading: isLoading,
+        competitionsError: isError,
+        competitions: data,
+        pairingsLoading: pairings.isLoading,
+        pairingsError: pairings.isError,
+      }) ||
+      !data
+    ) {
+      return;
     }
-  }, [isLoading, isError, selectedId, data, onSelect, opponentClubId]);
+    const key = `${clubId}:${opponentClubId}`;
+    if (lastAutoKeyRef.current === key) {
+      if (selectedId && !data.some((c) => c.id === selectedId)) onSelect(null);
+      return;
+    }
+    lastAutoKeyRef.current = key;
+    const suggested = scheduledTournamentCompetitionId({
+      recordingClubId: clubId,
+      opponentClubId,
+      openCompetitions: data,
+      scheduledMatches: pairings.data ?? [],
+    });
+    if (suggested) {
+      if (suggested !== selectedId) onSelect(suggested);
+      return;
+    }
+    if (selectedId && !data.some((c) => c.id === selectedId)) onSelect(null);
+  }, [
+    isLoading,
+    isError,
+    selectedId,
+    data,
+    onSelect,
+    opponentClubId,
+    clubId,
+    pairings.isLoading,
+    pairings.isError,
+    pairings.data,
+  ]);
 
   return (
     <View>

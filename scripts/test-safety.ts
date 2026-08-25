@@ -14,6 +14,12 @@ import {
   competitionClubRegisteredCopy,
   competitionClubRegisteredHref,
   competitionClubRegisteredRecipientIds,
+  tournamentRoundScheduledCopy,
+  tournamentRoundScheduledHref,
+  tournamentRoundScheduledNotificationData,
+  tournamentRoundScheduledNotificationNav,
+  tournamentRoundScheduledRecipientIds,
+  tournamentRoundScheduledClubIds,
   NOTIFICATION_TYPE_LABELS,
   notificationHref,
   notificationTitle,
@@ -280,6 +286,96 @@ test("competitionClubRegisteredRecipientIds — created_by + OWNER/MANAGER, pas 
     competitionClubRegisteredRecipientIds({ createdBy: "", clubMembers: [] }).join(","),
     "",
     "empty"
+  );
+});
+
+test("TOURNAMENT_ROUND_SCHEDULED — type, label FR, href /tournaments/[id] jamais /notifications", () => {
+  assert.true(isNotificationType("TOURNAMENT_ROUND_SCHEDULED"), "known type");
+  assert.equal(NOTIFICATION_TYPE_LABELS.TOURNAMENT_ROUND_SCHEDULED, "Tour programmé", "label");
+  assert.equal(notificationTitle("TOURNAMENT_ROUND_SCHEDULED", "x"), "Tour programmé", "title");
+  assert.equal(
+    notificationHref("TOURNAMENT_ROUND_SCHEDULED", { competitionId: "t-1", kind: "TOURNAMENT", round: 1 }),
+    "/tournaments/t-1",
+    "href"
+  );
+  assert.equal(notificationHref("TOURNAMENT_ROUND_SCHEDULED", {}), "/tournaments", "href empty");
+  assert.equal(notificationHref("TOURNAMENT_ROUND_SCHEDULED", { competitionId: "" }), "/tournaments", "empty id");
+  assert.false(
+    notificationHref("TOURNAMENT_ROUND_SCHEDULED", { competitionId: "t-1", kind: "TOURNAMENT", round: 1 }).includes(
+      "/notifications"
+    ),
+    "not dump"
+  );
+  assert.equal(
+    tournamentRoundScheduledHref({ competitionId: "t-1", kind: "TOURNAMENT", round: 2 }),
+    "/tournaments/t-1",
+    "helper"
+  );
+  assert.equal(tournamentRoundScheduledHref({}), "/tournaments", "helper empty");
+  assert.equal(
+    inAppNotificationHref(
+      "TOURNAMENT_ROUND_SCHEDULED",
+      { competitionId: "t-1", kind: "TOURNAMENT", round: 1 },
+      "PLAYER"
+    ),
+    "/tournaments/t-1",
+    "in-app player"
+  );
+  assert.equal(
+    inAppNotificationHref("TOURNAMENT_ROUND_SCHEDULED", { competitionId: "t-1", kind: "TOURNAMENT" }, "CLUB"),
+    "/tournaments/t-1",
+    "in-app club"
+  );
+  assert.equal(
+    inAppNotificationHref("TOURNAMENT_ROUND_SCHEDULED", {}, "PLAYER"),
+    "/tournaments",
+    "in-app sans id ≠ /notifications"
+  );
+  const nav = tournamentRoundScheduledNotificationNav(
+    "TOURNAMENT_ROUND_SCHEDULED",
+    { competitionId: "t-1", kind: "TOURNAMENT", round: 1 },
+    "PLAYER"
+  );
+  assert.equal(nav?.href, "/tournaments/t-1", "nav href");
+  assert.equal(nav?.requireClubMode, false, "tournament stack sans forcer Club");
+  assert.equal(nav?.selectClubId, null, "pas de club dans data");
+  assert.equal(tournamentRoundScheduledNotificationNav("MATCH_FINALIZED", { competitionId: "t-1" }, "CLUB"), null, "not this type");
+  const copy = tournamentRoundScheduledCopy({ tournamentName: "  Coupe du jeudi  ", round: 2 });
+  assert.equal(copy.type, "TOURNAMENT_ROUND_SCHEDULED", "copy type");
+  assert.equal(copy.title, "Tour programmé", "copy title");
+  assert.equal(copy.body, "Le tour 2 de Coupe du jeudi est programmé.", "copy body");
+  assert.equal(
+    tournamentRoundScheduledCopy({ tournamentName: "   ", round: 1 }).body,
+    "Le tour 1 de ce tournoi est programmé.",
+    "copy fallback name"
+  );
+  const payload = tournamentRoundScheduledNotificationData({ competitionId: "t-1", round: 1 });
+  assert.equal(payload.competitionId, "t-1", "data id");
+  assert.equal(payload.kind, "TOURNAMENT", "data kind");
+  assert.equal(payload.round, 1, "data round");
+});
+
+test("tournamentRoundScheduledRecipientIds — OWNER/MANAGER des paires, skip actor, pas MEMBER", () => {
+  assert.equal(tournamentRoundScheduledClubIds([{ clubAId: "a", clubBId: "b" }, { clubAId: "a", clubBId: "c" }]).sort().join(","), "a,b,c", "unique clubs");
+  const ids = tournamentRoundScheduledRecipientIds({
+    actorId: "creator",
+    clubMembers: [
+      { userId: "creator", role: "OWNER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "member", role: "MEMBER" },
+      { userId: "owner-b", role: "OWNER" },
+      { userId: "manager", role: "MANAGER" },
+      { userId: "", role: "OWNER" },
+    ],
+  }).sort();
+  assert.equal(ids.join(","), "manager,owner-b", "union minus actor/member/dup");
+  assert.equal(
+    tournamentRoundScheduledRecipientIds({
+      actorId: "creator",
+      clubMembers: [{ userId: "creator", role: "OWNER" }],
+    }).join(","),
+    "",
+    "actor only"
   );
 });
 

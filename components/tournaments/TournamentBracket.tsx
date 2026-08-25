@@ -15,6 +15,7 @@ import {
   tournamentBracketRecordingClubId,
   tournamentMatchScoreLabel,
   tournamentMatchWinnerId,
+  tournamentUnplayedRecordNav,
   unpairedClubIdsInRound,
 } from "@/lib/tournaments";
 import { competitionLinkedMatchNav } from "@/lib/competitions";
@@ -32,6 +33,8 @@ const MINI_FLAT = "border-0 bg-transparent px-0 py-0";
  * Tableau = lignes tournament_matches persistées uniquement.
  * Scores / vainqueurs = match_results liés. Unplayed → « pas encore joué ».
  * Clubs = ClubCard MINI hydratés. Tap paire PLAYED = competitionLinkedMatchNav.
+ * Paire pas encore jouée : CTA « Enregistrer le résultat » si le viewer gère
+ * club_a ou club_b (pending-nav `/match`), sinon non interactif.
  */
 export function TournamentBracket({
   tournament,
@@ -168,9 +171,16 @@ export function TournamentBracket({
                     const nameA = names.get(match.club_a_id);
                     const nameB = names.get(match.club_b_id);
                     const recordingClubId = tournamentBracketRecordingClubId(match, linked);
-                    const nav = recordingClubId
+                    const playedNav = recordingClubId
                       ? competitionLinkedMatchNav({ recordingClubId, managedClubIds })
                       : null;
+                    const recordNav = recordingClubId
+                      ? null
+                      : tournamentUnplayedRecordNav({
+                          clubAId: match.club_a_id,
+                          clubBId: match.club_b_id,
+                          managedClubIds,
+                        });
                     const accessibility = [nameA, nameB ? `vs ${nameB}` : null, score]
                       .filter(Boolean)
                       .join(" ");
@@ -181,7 +191,7 @@ export function TournamentBracket({
                             <TournamentClubMini
                               clubId={match.club_a_id}
                               name={nameA}
-                              interactive={!nav}
+                              interactive={!playedNav}
                               className={MINI_FLAT}
                             />
                           </View>
@@ -190,7 +200,7 @@ export function TournamentBracket({
                             <TournamentClubMini
                               clubId={match.club_b_id}
                               name={nameB}
-                              interactive={!nav}
+                              interactive={!playedNav}
                               className={MINI_FLAT}
                             />
                           </View>
@@ -202,16 +212,30 @@ export function TournamentBracket({
                             <TournamentClubMini
                               clubId={winnerId}
                               name={names.get(winnerId)}
-                              interactive={!nav}
+                              interactive={!playedNav}
                               className={MINI_FLAT}
                             />
                           </View>
                         ) : score !== TOURNAMENT_COPY.notPlayed ? (
                           <Text className="mt-0.5 text-xs text-fg-subtle">{TOURNAMENT_COPY.drawNoWinner}</Text>
                         ) : null}
+                        {recordNav ? (
+                          <Button
+                            variant="secondary"
+                            className="mt-2 min-h-[44px]"
+                            accessibilityLabel={TOURNAMENT_COPY.recordResultCta}
+                            onPress={() => {
+                              if (recordNav.selectClubId) setSelectedManagedClubId(recordNav.selectClubId);
+                              setMode("CLUB");
+                              setPendingNav({ href: recordNav.href, requireClubMode: true });
+                            }}
+                          >
+                            {TOURNAMENT_COPY.recordResultCta}
+                          </Button>
+                        ) : null}
                       </>
                     );
-                    if (!nav) {
+                    if (!playedNav) {
                       return (
                         <View key={match.id} className="rounded-xl border border-border bg-bg-elevated px-3 py-2">
                           {body}
@@ -223,13 +247,13 @@ export function TournamentBracket({
                         key={match.id}
                         onPress={() => {
                           Haptics.selectionAsync();
-                          if (nav.requireClubMode) {
-                            if (nav.selectClubId) setSelectedManagedClubId(nav.selectClubId);
+                          if (playedNav.requireClubMode) {
+                            if (playedNav.selectClubId) setSelectedManagedClubId(playedNav.selectClubId);
                             setMode("CLUB");
-                            setPendingNav({ href: nav.href, requireClubMode: true });
+                            setPendingNav({ href: playedNav.href, requireClubMode: true });
                             return;
                           }
-                          router.push(nav.href as any);
+                          router.push(playedNav.href as any);
                         }}
                         accessibilityRole="button"
                         accessibilityLabel={accessibility}

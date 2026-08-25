@@ -93,6 +93,7 @@ export const TOURNAMENT_COPY = {
   matchesLoadError: "Impossible de charger les matchs du tournoi.",
   linkedResultCta: "Voir le tournoi",
   kindLabel: "Tournoi",
+  recordResultCta: "Enregistrer le résultat",
 } as const;
 
 export const TOURNAMENT_STATUS_LABELS: Record<"DRAFT" | "OPEN" | "CLOSED", string> = {
@@ -336,6 +337,92 @@ export function tournamentBracketRecordingClubId(
   results: readonly TournamentLinkedResultInput[]
 ): string | null {
   return linkedResultForPair(results, match.competition_id, match.club_a_id, match.club_b_id)?.club_id ?? null;
+}
+
+export type TournamentUnplayedRecordNav = {
+  href: "/match";
+  selectClubId: string;
+  requireClubMode: true;
+};
+
+/**
+ * Paire pas encore jouée : CTA `/match` seulement si le viewer gère club_a
+ * ou club_b. Pas de `competitionLinkedMatchNav` (pas de résultat enregistré).
+ * Les deux clubs gérés → club_a (ordre stable). Sinon null (non interactif).
+ */
+export function tournamentUnplayedRecordNav(input: {
+  clubAId: string;
+  clubBId: string;
+  managedClubIds: readonly string[];
+}): TournamentUnplayedRecordNav | null {
+  const managed = new Set(input.managedClubIds.filter((id) => id.length > 0));
+  if (managed.has(input.clubAId)) {
+    return { href: "/match", selectClubId: input.clubAId, requireClubMode: true };
+  }
+  if (managed.has(input.clubBId)) {
+    return { href: "/match", selectClubId: input.clubBId, requireClubMode: true };
+  }
+  return null;
+}
+
+/**
+ * Pré-sélection finalize : uniquement un tournoi OPEN où une ligne
+ * `tournament_matches` SCHEDULED existe pour (recording, opponent).
+ * Pas de paire inventée, pas de compétition obligatoire pour un amical.
+ * Plusieurs tournois distincts → null (on n'en choisit pas un au hasard).
+ */
+export function scheduledTournamentCompetitionId(input: {
+  recordingClubId: string;
+  opponentClubId: string | null | undefined;
+  openCompetitions: readonly { id: string; kind?: string | null; status?: string | null }[];
+  scheduledMatches: readonly {
+    competition_id: string;
+    club_a_id: string;
+    club_b_id: string;
+    status: string;
+  }[];
+}): string | null {
+  const recordingClubId = input.recordingClubId.trim();
+  const opponentClubId = input.opponentClubId?.trim() ?? "";
+  if (!recordingClubId || !opponentClubId || recordingClubId === opponentClubId) return null;
+
+  const openTournamentIds = new Set(
+    input.openCompetitions
+      .filter((row) => row.id && row.kind === TOURNAMENT_KIND && (row.status == null || row.status === "OPEN"))
+      .map((row) => row.id)
+  );
+  if (openTournamentIds.size === 0) return null;
+
+  const matched = new Set<string>();
+  for (const match of input.scheduledMatches) {
+    if (match.status !== "SCHEDULED") continue;
+    if (!openTournamentIds.has(match.competition_id)) continue;
+    const pair =
+      (match.club_a_id === recordingClubId && match.club_b_id === opponentClubId) ||
+      (match.club_a_id === opponentClubId && match.club_b_id === recordingClubId);
+    if (!pair) continue;
+    matched.add(match.competition_id);
+    if (matched.size > 1) return null;
+  }
+  if (matched.size !== 1) return null;
+  return [...matched][0] ?? null;
+}
+
+/**
+ * Auto-sélection finalize : n'agit que quand les paires SCHEDULED sont
+ * réellement lues. Un échec réseau n'est pas « aucune paire » — on attend
+ * un refetch plutôt que de verrouiller la clé.
+ */
+export function canAutoSelectScheduledTournament(input: {
+  competitionsLoading: boolean;
+  competitionsError: boolean;
+  competitions: readonly unknown[] | undefined;
+  pairingsLoading: boolean;
+  pairingsError: boolean;
+}): boolean {
+  if (input.pairingsLoading || input.pairingsError) return false;
+  if (input.competitionsLoading || input.competitionsError || !input.competitions) return false;
+  return true;
 }
 
 /** Joué = un match_results lié existe. Le statut PLAYED seul ne suffit pas (pas de score inventé). */

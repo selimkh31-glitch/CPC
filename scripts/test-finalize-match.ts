@@ -37,7 +37,9 @@ import {
   matchFinalizedNotificationNav,
   matchFinalizedRecipientIds,
   otherIdsFromBlocks,
+  tournamentRoundScheduledHref,
 } from "../lib/safety";
+import { scheduledTournamentCompetitionId } from "../lib/tournaments";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -436,6 +438,18 @@ test("UX copy FR : scores / compétition / invitations — pas de bouton mort si
   assert.true(FINALIZE_MATCH_COPY.competitionNeedOpponent.includes("club adverse"), "compétition après adverse");
   assert.true(FINALIZE_MATCH_COPY.invitationsHint.includes("Recrutement"), "invitations");
   assert.false(FINALIZE_MATCH_COPY.scoresRequired.includes("0-0"), "pas 0-0");
+  assert.equal(
+    scheduledTournamentCompetitionId({
+      recordingClubId: CLUB_A,
+      opponentClubId: null,
+      openCompetitions: [{ id: COMP, kind: "TOURNAMENT", status: "OPEN" }],
+      scheduledMatches: [],
+    }),
+    null,
+    "amical : pas de compétition inventée"
+  );
+  assert.equal(tournamentRoundScheduledHref({ competitionId: COMP, kind: "TOURNAMENT" }), `/tournaments/${COMP}`, "href tournoi");
+  assert.false(tournamentRoundScheduledHref({ competitionId: COMP }).includes("/notifications"), "pas dump");
 });
 
 console.log(`\n${passed} test(s) passés.`);

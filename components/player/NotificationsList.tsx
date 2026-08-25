@@ -18,6 +18,7 @@ import {
   inAppNotificationHref,
   matchFinalizedNotificationNav,
   notificationTitle,
+  tournamentRoundScheduledNotificationNav,
 } from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
@@ -57,6 +58,13 @@ export function NotificationsList() {
       if (matchNav.selectClubId) setSelectedManagedClubId(matchNav.selectClubId);
       if (matchNav.requireClubMode) setMode("CLUB");
       setPendingNav({ href: matchNav.href, requireClubMode: matchNav.requireClubMode });
+      return;
+    }
+    const tournamentNav = tournamentRoundScheduledNotificationNav(item.type, item.data, mode);
+    if (tournamentNav) {
+      if (tournamentNav.selectClubId) setSelectedManagedClubId(tournamentNav.selectClubId);
+      if (tournamentNav.requireClubMode) setMode("CLUB");
+      setPendingNav({ href: tournamentNav.href, requireClubMode: tournamentNav.requireClubMode });
       return;
     }
     router.push(inAppNotificationHref(item.type, item.data, mode) as any);

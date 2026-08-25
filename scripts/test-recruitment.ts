@@ -85,6 +85,11 @@ test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
     null,
     "register not recruitment"
   );
+  assert.equal(
+    recruitmentNotificationNav("TOURNAMENT_ROUND_SCHEDULED", { competitionId: "t-1", kind: "TOURNAMENT", round: 1 }),
+    null,
+    "tournament schedule not recruitment"
+  );
 });
 
 console.log(`\n${passed} tests recruitment OK`);
