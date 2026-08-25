@@ -94,35 +94,98 @@ async function run() {
           { matchId: "L1", matchType: "leagueMatch", players: { clubA: { p1: { playername: "Selim", goals: 1 } } } },
         ]);
       }
+      if (url.includes("playoffMatch")) return jsonResponse([]);
       return jsonResponse([
         { matchId: "F1", matchType: "friendlyMatch", players: { clubA: { p1: { playername: "Selim", goals: 2 } } } },
         "garbage",
       ]);
     });
     const matches = await provider.getClubMatches("clubA");
-    assert.deepEqual(matches?.map((m) => m.matchId), ["L1", "F1"], "10+10 dual GET");
+    assert.deepEqual(matches?.map((m) => m.matchId), ["L1", "F1"], "league+friendly+playoff");
+  });
+
+  await test("getClubMatches — inclut playoffMatch", async () => {
+    mockFetch((url) => {
+      if (url.includes("playoffMatch")) {
+        return jsonResponse([
+          { matchId: "P1", matchType: "playoffMatch", players: { clubA: { p1: { playername: "Selim" } } } },
+        ]);
+      }
+      return jsonResponse([]);
+    });
+    const matches = await provider.getClubMatches("clubA");
+    assert.deepEqual(matches?.map((m) => m.matchId), ["P1"], "playoff");
+    assert.deepEqual(matches?.[0]?.matchType, "playoffMatch", "type");
+  });
+
+  await test("getClub — /clubs/info indexé par clubId", async () => {
+    mockFetch(() => jsonResponse({ "2582784": { clubId: 2582784, name: "United", customKit: { crestAssetId: "19" } } }));
+    const club = await provider.getClub("2582784");
+    assert.deepEqual(club?.name, "United", "name");
+    assert.deepEqual(club?.crestId, "19", "crest");
+  });
+
+  await test("getClub — payload vide -> null, pas de club inventé", async () => {
+    mockFetch(() => jsonResponse({}));
+    assert.deepEqual(await provider.getClub("2582784"), null, "null");
+  });
+
+  await test("getClubStats — overallStats tableau", async () => {
+    mockFetch(() => jsonResponse([{ clubId: "2582784", wins: "10", losses: "3", ties: "2", gamesPlayed: "15" }]));
+    const stats = await provider.getClubStats("2582784");
+    assert.deepEqual(stats?.wins, 10, "wins");
+    assert.deepEqual(stats?.draws, 2, "ties");
+    assert.deepEqual(stats?.gamesPlayed, 15, "gamesPlayed");
+  });
+
+  await test("getClubMembers — liste vide reste vide", async () => {
+    mockFetch(() => jsonResponse({ members: [] }));
+    assert.deepEqual(await provider.getClubMembers("2582784"), [], "vide");
+  });
+
+  await test("getClubMembers — playername, jamais la clé persona", async () => {
+    mockFetch(() =>
+      jsonResponse({
+        members: [{ name: "Selim", proPos: "ST", gamesPlayed: "8", blazeId: "persona-do-not-use" }],
+      })
+    );
+    const members = await provider.getClubMembers("2582784");
+    assert.deepEqual(members?.map((m) => m.name), ["Selim"], "name");
+    assert.deepEqual(members?.[0]?.proPosition, "ST", "proPos");
+    assert.deepEqual((members?.[0] as { blazeId?: unknown })?.blazeId, undefined, "pas de blazeId persisté");
+  });
+
+  await test("getClubCareerStats / getPlayerCareerStats — club-scoped /api/fc", async () => {
+    mockFetch(() =>
+      jsonResponse({
+        members: [
+          { name: "Selim", gamesPlayed: "40", goals: "20" },
+          { name: "Alex", gamesPlayed: "3" },
+        ],
+      })
+    );
+    const all = await provider.getClubCareerStats("2582784");
+    assert.deepEqual(all?.map((c) => c.externalId), ["Selim", "Alex"], "liste");
+    const one = await provider.getPlayerCareerStats("2582784", "selim");
+    assert.deepEqual(one?.gamesPlayed, 40, "filtre playername");
+    assert.deepEqual(await provider.getPlayerCareerStats("2582784", "inconnu"), null, "absent");
   });
 
   await test("getPlayerStats — rapprochement par playername, pas la clé persona", async () => {
     mockFetch((url) => {
-      if (url.includes("friendlyMatch")) return jsonResponse([]);
-      return jsonResponse([
-        { matchId: "m1", matchType: "leagueMatch", players: { clubA: { persona99: { playername: "Selim", goals: 3 } } } },
-      ]);
+      if (url.includes("leagueMatch")) {
+        return jsonResponse([
+          { matchId: "m1", matchType: "leagueMatch", players: { clubA: { persona99: { playername: "Selim", goals: 3 } } } },
+        ]);
+      }
+      return jsonResponse([]);
     });
     const stats = await provider.getPlayerStats("clubA", "selim");
     assert.deepEqual(stats?.goals, 3, "goals");
     assert.deepEqual(stats?.matchesPlayed, 1, "matches");
   });
 
-  const stubs = [
-    "getClub",
-    "getClubStats",
-    "getClubMembers",
-    "getPlayerCareerStats",
-    "getLeaderboard",
-    "getPlayoffData",
-  ] as const;
+  const stubs = ["getLeaderboard", "getPlayoffData"] as const;
 
   for (const method of stubs) {
     await test(`stub ${method} lève NotImplementedError`, async () => {

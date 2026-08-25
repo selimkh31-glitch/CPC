@@ -2,15 +2,16 @@ import { jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient } from "../_shared/supabase.ts";
 import { FEATURE_EA_STATS } from "../_shared/ea.ts";
 import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
+import { ingestEaClubFromProvider } from "../_shared/ea/ingest.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
 
 /**
- * Job planifié quotidien — cron Supabase (pg_cron -> pg_net). Récupère les
- * stats EA des clubs liés via ProClubsEAProvider.getClubMatches (max 10+10
- * league+friendly) et met en cache dans Supabase. Skip incrémental des
- * matchId déjà dans verified_stats.importedMatchIds. L'app mobile ne lit
- * JAMAIS proclubs directement. Protégé par CRON_SECRET.
+ * Job planifié quotidien — cron Supabase (pg_cron -> pg_net). Ingest
+ * unofficial /api/fc (snapshot club, membres, carrière, matchs ligue/
+ * amical/playoff) dans ea_imported_*. Skip matchId déjà en table.
+ * verified_stats du user : skip incrémental importedMatchIds.
+ * L'app mobile ne lit JAMAIS proclubs.ea.com. Protégé par CRON_SECRET.
  */
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET");
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
   let failed = 0;
 
   for (const [eaClubId, users] of byClub) {
-    const matches = await eaProvider.getClubMatches(eaClubId);
+    const { matches } = await ingestEaClubFromProvider(admin, eaProvider, eaClubId, "common-gen5");
     if (!matches) {
       failed += users.length;
       continue; // fallback silencieux : on garde les anciennes valeurs en cache

@@ -3,6 +3,7 @@ import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { FEATURE_EA_STATS } from "../_shared/ea.ts";
 import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
 import { confirmClubInSearch } from "../_shared/ea/normalize.ts";
+import { ingestEaClubFromProvider } from "../_shared/ea/ingest.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
 import { requireEnum, requireString, ValidationError } from "../_shared/validate.ts";
@@ -14,6 +15,8 @@ const LINK_ACTIONS = ["search", "link"] as const;
  *  - search : { eaClubName } → candidats { clubId, name }, aucun write.
  *  - link   : { eaClubId, eaClubName } → re-search, l'id doit matcher, puis
  *             update de la ligne CALLER seulement (USERNAME_EQUALITY).
+ * Ingest unofficial /api/fc (info, overallStats, members, career, matches)
+ * dans ea_imported_* ; verified_stats du caller seulement.
  * Best-effort : EA down → liste vide / synced:false, cache précédent conservé.
  */
 Deno.serve(async (req) => {
@@ -89,7 +92,12 @@ Deno.serve(async (req) => {
     .update({ ea_club_linked: confirmed.externalId, ea_identity_kind: "USERNAME_EQUALITY" })
     .eq("id", user.id);
 
-  const matches = await eaProvider.getClubMatches(confirmed.externalId);
+  const { matches } = await ingestEaClubFromProvider(
+    admin,
+    eaProvider,
+    confirmed.externalId,
+    confirmed.externalPlatform ?? "common-gen5"
+  );
   if (matches === null) {
     return jsonResponse({ eaClubId: confirmed.externalId, synced: false, stats: null });
   }

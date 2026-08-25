@@ -890,3 +890,71 @@ model CompetitionClub {
   @@index([clubId])
   @@map("competition_clubs")
 }
+
+// ------------------------------------------------------------------
+// Import unofficial proclubs.ea.com/api/fc (0030_ea_proclubs_import.sql).
+// Miroir Prisma — NE PAS prisma migrate deploy (Option B). Import non
+// vérifié ; identité joueur = playername, jamais une clé persona login.
+// ------------------------------------------------------------------
+
+model EaImportedClub {
+  eaClubId    String   @map("ea_club_id")
+  platform    String   @default("common-gen5")
+  name        String?
+  crestId     String?  @map("crest_id")
+  wins        Int?
+  losses      Int?
+  draws       Int?
+  titlesWon   Int?     @map("titles_won")
+  gamesPlayed Int?     @map("games_played")
+  source      String   @default("unofficial_api_fc")
+  unverified  Boolean  @default(true)
+  importedAt  DateTime @default(now()) @map("imported_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  @@id([eaClubId, platform])
+  @@map("ea_imported_clubs")
+}
+
+model EaImportedMember {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eaClubId           String   @map("ea_club_id")
+  platform           String   @default("common-gen5")
+  playername         String
+  proPosition        String?  @map("pro_position")
+  proName            String?  @map("pro_name")
+  gamesPlayed        Int?     @map("games_played")
+  goals              Int?
+  assists            Int?
+  ratingAve          Float?   @map("rating_ave")
+  careerGamesPlayed  Int?     @map("career_games_played")
+  careerGoals        Int?     @map("career_goals")
+  careerAssists      Int?     @map("career_assists")
+  careerRatingAve    Float?   @map("career_rating_ave")
+  careerProOverall   Int?     @map("career_pro_overall")
+  source             String   @default("unofficial_api_fc")
+  unverified         Boolean  @default(true)
+  importedAt         DateTime @default(now()) @map("imported_at")
+  updatedAt          DateTime @default(now()) @map("updated_at")
+
+  @@unique([eaClubId, platform, playername])
+  @@index([eaClubId, platform])
+  @@map("ea_imported_members")
+}
+
+model EaImportedMatch {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eaClubId   String   @map("ea_club_id")
+  eaMatchId  String   @map("ea_match_id")
+  platform   String   @default("common-gen5")
+  matchType  String   @map("match_type")
+  playedAt   String?  @map("played_at")
+  players    Json     @default("{}")
+  source     String   @default("unofficial_api_fc")
+  unverified Boolean  @default(true)
+  importedAt DateTime @default(now()) @map("imported_at")
+
+  @@unique([eaClubId, platform, eaMatchId])
+  @@index([eaClubId, platform, importedAt])
+  @@map("ea_imported_matches")
+}

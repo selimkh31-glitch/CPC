@@ -54,6 +54,8 @@
     "test:m2-player-search": "tsx scripts/test-m2-player-search.ts",
     "test:ea-normalize": "tsx scripts/test-ea-normalize.ts",
     "test:ea-provider": "tsx scripts/test-ea-provider.ts",
+    "test:ea-http": "tsx scripts/test-ea-http.ts",
+    "test:ea-ingest": "tsx scripts/test-ea-ingest.ts",
     "test:ovr": "tsx scripts/test-ovr.ts",
     "test:reliability": "tsx scripts/test-reliability.ts",
     "test:player-card": "tsx scripts/test-player-card.ts",
