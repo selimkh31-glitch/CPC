@@ -7,20 +7,16 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { CompetitionParticipants } from "@/components/competitions/CompetitionParticipants";
 import { CompetitionRegisterCta } from "@/components/competitions/CompetitionRegisterCta";
-import { CompetitionStandings } from "@/components/competitions/CompetitionStandings";
+import { TournamentBracket } from "@/components/tournaments/TournamentBracket";
+import { TournamentProgression } from "@/components/tournaments/TournamentProgression";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyClubs } from "@/lib/hooks/useClubs";
-import { useCompetition, useRegisterCompetitionClub } from "@/lib/hooks/useCompetitions";
+import { useRegisterCompetitionClub } from "@/lib/hooks/useCompetitions";
 import { useCompetitionLinkedResults } from "@/lib/hooks/useCompetitionResults";
+import { useScheduleTournamentRound, useTournament, useTournamentMatches, useTournamentRoundClubs } from "@/lib/hooks/useTournaments";
 import { toast } from "@/lib/toast";
-import {
-  COMPETITION_COPY,
-  COMPETITION_STATUS_LABELS,
-  competitionCreatorLabel,
-  competitionRegisterCtaKind,
-  type CompetitionStatus,
-} from "@/lib/competitions";
-import { tournamentDetailHref } from "@/lib/tournaments";
+import { competitionCreatorLabel, competitionDetailHref, competitionRegisterCtaKind, type CompetitionStatus } from "@/lib/competitions";
+import { TOURNAMENT_COPY, TOURNAMENT_STATUS_LABELS } from "@/lib/tournaments";
 
 function statusTone(status: CompetitionStatus): "accent" | "neutral" | "warn" {
   if (status === "OPEN") return "accent";
@@ -29,21 +25,24 @@ function statusTone(status: CompetitionStatus): "accent" | "neutral" | "warn" {
 }
 
 /**
- * Détail d'une compétition — stack `/competitions/[id]`, pas un onglet.
- * Statut, créateur, participants réels, classement lié, CTA inscrire si éligible.
+ * Détail d'un tournoi — stack `/tournaments/[id]`, pas un onglet.
+ * Tableau = tournament_matches persistés. Scores = match_results liés.
  */
-export default function CompetitionDetailScreen() {
+export default function TournamentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const competitionId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null;
+  const tournamentId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null;
   const { session } = useAuth();
-  const { data: competition, isLoading, isError, refetch } = useCompetition(competitionId);
+  const { data: tournament, isLoading, isError, refetch } = useTournament(tournamentId);
+  const matchesQuery = useTournamentMatches(tournamentId);
+  const roundClubsQuery = useTournamentRoundClubs(tournamentId);
   const { data: managedClubs } = useMyClubs(session?.user.id ?? null);
   const register = useRegisterCompetitionClub();
+  const schedule = useScheduleTournamentRound();
   const clubs = managedClubs ?? [];
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const clubId = selectedClubId ?? clubs[0]?.id ?? null;
   const selectedClub = clubs.find((c) => c.id === clubId) ?? null;
-  const linkedIds = useMemo(() => (competitionId ? [competitionId] : []), [competitionId]);
+  const linkedIds = useMemo(() => (tournamentId ? [tournamentId] : []), [tournamentId]);
   const linkedResults = useCompetitionLinkedResults(linkedIds);
 
   if (isLoading) {
@@ -59,34 +58,31 @@ export default function CompetitionDetailScreen() {
   if (isError) {
     return (
       <View className="flex-1 bg-bg p-4">
-        <ErrorState message={COMPETITION_COPY.detailLoadError} onRetry={refetch} />
+        <ErrorState message={TOURNAMENT_COPY.detailLoadError} onRetry={refetch} />
       </View>
     );
   }
 
-  if (!competition) {
+  if (!tournament) {
     return (
       <View className="flex-1 bg-bg p-4">
-        <EmptyState
-          title={COMPETITION_COPY.competitionNotFound}
-          subtitle={COMPETITION_COPY.subtitle}
-        />
+        <EmptyState title={TOURNAMENT_COPY.tournamentNotFound} subtitle={TOURNAMENT_COPY.subtitle} />
       </View>
     );
   }
 
-  if (competition.kind === "TOURNAMENT") {
-    return <Redirect href={tournamentDetailHref(competition.id)} />;
+  if (tournament.kind && tournament.kind !== "TOURNAMENT") {
+    return <Redirect href={competitionDetailHref(tournament.id)} />;
   }
 
-  const registeredIds = (competition.clubs ?? []).map((row) => row.club_id);
+  const registeredIds = (tournament.clubs ?? []).map((row) => row.club_id);
   const already = selectedClub ? registeredIds.includes(selectedClub.id) : false;
   const kind = competitionRegisterCtaKind({
-    status: competition.status,
+    status: tournament.status,
     hasManagedClub: Boolean(selectedClub),
     alreadyRegistered: already,
   });
-  const creator = competitionCreatorLabel(competition, session?.user.id ?? null);
+  const creator = competitionCreatorLabel(tournament, session?.user.id ?? null);
 
   return (
     <ScrollView
@@ -94,17 +90,17 @@ export default function CompetitionDetailScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: competition.name }} />
+      <Stack.Screen options={{ title: tournament.name }} />
       <Card className="mb-4">
         <View className="mb-3 flex-row items-start justify-between gap-2">
-          <Text className="min-w-0 flex-1 font-display text-2xl text-fg">{competition.name}</Text>
-          <Badge tone={statusTone(competition.status)}>{COMPETITION_STATUS_LABELS[competition.status]}</Badge>
+          <Text className="min-w-0 flex-1 font-display text-2xl text-fg">{tournament.name}</Text>
+          <Badge tone={statusTone(tournament.status)}>{TOURNAMENT_STATUS_LABELS[tournament.status]}</Badge>
         </View>
         <Text className="text-xs text-fg-subtle">
-          {COMPETITION_COPY.creatorLabel} · {creator}
+          {TOURNAMENT_COPY.creatorLabel} · {creator}
         </Text>
-        {competition.status === "OPEN" ? (
-          <Text className="mt-2 text-xs text-fg-muted">{COMPETITION_COPY.openJoinHint}</Text>
+        {tournament.status === "OPEN" ? (
+          <Text className="mt-2 text-xs text-fg-muted">{TOURNAMENT_COPY.openJoinHint}</Text>
         ) : null}
       </Card>
 
@@ -136,22 +132,27 @@ export default function CompetitionDetailScreen() {
       ) : null}
 
       <Card className="mb-4">
-        <CompetitionParticipants clubs={competition.clubs} />
+        <CompetitionParticipants clubs={tournament.clubs} />
         <View className="mt-3">
           <CompetitionRegisterCta
             kind={kind}
             clubName={selectedClub?.name}
             loading={register.isPending}
             showNoManagedClub
+            alreadyRegisteredLabel={TOURNAMENT_COPY.alreadyRegistered}
+            draftLabel={TOURNAMENT_COPY.draftCannotRegister}
+            closedLabel={TOURNAMENT_COPY.closedCannotRegister}
+            noManagedClubLabel={TOURNAMENT_COPY.noManagedClub}
+            registerCtaLabel={TOURNAMENT_COPY.registerCta}
             onRegister={() => {
               if (!selectedClub) {
-                toast.error(COMPETITION_COPY.noManagedClub);
+                toast.error(TOURNAMENT_COPY.noManagedClub);
                 return;
               }
               register.mutate(
-                { competitionId: competition.id, clubId: selectedClub.id },
+                { competitionId: tournament.id, clubId: selectedClub.id },
                 {
-                  onSuccess: () => toast.success(COMPETITION_COPY.registered),
+                  onSuccess: () => toast.success(TOURNAMENT_COPY.registered),
                   onError: (err: unknown) => {
                     toast.error(err instanceof Error ? err.message : "Erreur");
                   },
@@ -162,13 +163,38 @@ export default function CompetitionDetailScreen() {
         </View>
       </Card>
 
-      <Card>
-        <CompetitionStandings
-          competition={competition}
+      <Card className="mb-4">
+        <TournamentBracket
+          tournament={tournament}
+          matches={matchesQuery.data}
+          roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
-          isLoading={linkedResults.isLoading}
-          isError={linkedResults.isError}
-          onRetry={() => linkedResults.refetch()}
+          viewerId={session?.user.id ?? null}
+          isLoading={matchesQuery.isLoading}
+          isError={matchesQuery.isError}
+          onRetry={() => matchesQuery.refetch()}
+          scheduling={schedule.isPending}
+          onSchedule={() => {
+            schedule.mutate(
+              { tournamentId: tournament.id },
+              {
+                onSuccess: (data) =>
+                  toast.success(data.intent === "next" ? TOURNAMENT_COPY.scheduledNext : TOURNAMENT_COPY.scheduled),
+                onError: (err: unknown) => {
+                  toast.error(err instanceof Error ? err.message : "Erreur");
+                },
+              }
+            );
+          }}
+        />
+      </Card>
+
+      <Card>
+        <TournamentProgression
+          tournament={tournament}
+          matches={matchesQuery.data}
+          roundClubs={roundClubsQuery.data}
+          results={linkedResults.data}
         />
       </Card>
     </ScrollView>

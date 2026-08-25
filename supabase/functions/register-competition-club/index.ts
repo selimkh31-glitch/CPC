@@ -9,6 +9,7 @@ import {
   registerBlockMessage,
   uniqueViolationHttpStatus,
 } from "../_shared/competitions.ts";
+import { TOURNAMENT_COPY, TOURNAMENT_KIND } from "../_shared/tournaments.ts";
 import {
   competitionClubRegisteredCopy,
   competitionClubRegisteredNotificationData,
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
 
   const { data: competition, error: competitionError } = await admin
     .from("competitions")
-    .select("id, status, name, created_by")
+    .select("id, status, name, created_by, kind")
     .eq("id", competitionId)
     .maybeSingle();
   if (competitionError) return jsonResponse({ error: competitionError.message }, 500);
@@ -67,7 +68,15 @@ Deno.serve(async (req) => {
     alreadyRegistered: false,
   });
   if (!gate.ok) {
-    return jsonResponse({ error: registerBlockMessage(gate.reason) }, registerBlockHttpStatus(gate.reason));
+    const tournamentCopy = competition.kind === TOURNAMENT_KIND;
+    const message = tournamentCopy
+      ? gate.reason === "already_registered"
+        ? TOURNAMENT_COPY.registerConflict
+        : gate.reason === "not_manager"
+          ? TOURNAMENT_COPY.notManager
+          : TOURNAMENT_COPY.notOpen
+      : registerBlockMessage(gate.reason);
+    return jsonResponse({ error: message }, registerBlockHttpStatus(gate.reason));
   }
 
   const { data, error } = await admin
@@ -76,9 +85,12 @@ Deno.serve(async (req) => {
     .select()
     .single();
 
+  const registerConflictCopy =
+    competition.kind === TOURNAMENT_KIND ? TOURNAMENT_COPY.registerConflict : COMPETITION_COPY.registerConflict;
+
   if (error) {
     const conflict = uniqueViolationHttpStatus(error.code);
-    if (conflict) return jsonResponse({ error: COMPETITION_COPY.registerConflict }, conflict);
+    if (conflict) return jsonResponse({ error: registerConflictCopy }, conflict);
     return jsonResponse({ error: error.message }, 500);
   }
 

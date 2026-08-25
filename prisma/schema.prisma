@@ -260,6 +260,9 @@ model Club {
   matchResults            MatchResult[]
   matchResultsAsOpponent  MatchResult[]      @relation("MatchResultOpponent")
   competitionClubs        CompetitionClub[]
+  tournamentMatchesAsA    TournamentMatch[]  @relation("TournamentMatchClubA")
+  tournamentMatchesAsB    TournamentMatch[]  @relation("TournamentMatchClubB")
+  tournamentRoundClubs    TournamentRoundClub[]
   // Social Foundations — au plus une conversation CLUB par club (index
   // unique partiel posé en SQL, non exprimable ici — voir migration RLS).
   // Phase 2 : aucune Edge Function ne provisionne encore cette conversation
@@ -819,6 +822,8 @@ model Competition {
   name      String
   // DRAFT | OPEN | CLOSED — CHECK SQL (0026), pas un enum PG (comme ea_identity_kind).
   status    String   @default("DRAFT")
+  // COMPETITION | TOURNAMENT — CHECK SQL (0029). Un tournoi EST une compétition.
+  kind      String   @default("COMPETITION")
   createdBy String   @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -826,10 +831,50 @@ model Competition {
   creator User              @relation("CompetitionsCreated", fields: [createdBy], references: [id], onDelete: Cascade)
   clubs   CompetitionClub[]
   matchResults MatchResult[]
+  tournamentMatches TournamentMatch[]
+  tournamentRoundClubs TournamentRoundClub[]
 
   @@index([status])
   @@index([createdBy])
+  @@index([kind])
   @@map("competitions")
+}
+
+// Miroir de supabase/migrations/0029_tournaments_v1.sql — NE PAS prisma migrate
+// deploy (Option B). Aucun score ici : scores / vainqueurs = match_results liés.
+model TournamentMatch {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  round         Int
+  slot          Int
+  clubAId       String   @map("club_a_id") @db.Uuid
+  clubBId       String   @map("club_b_id") @db.Uuid
+  // SCHEDULED | PLAYED — PLAYED seulement via trigger match_results (0029).
+  status        String   @default("SCHEDULED")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  clubA       Club        @relation("TournamentMatchClubA", fields: [clubAId], references: [id], onDelete: Cascade)
+  clubB       Club        @relation("TournamentMatchClubB", fields: [clubBId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, round, slot])
+  @@index([competitionId])
+  @@map("tournament_matches")
+}
+
+model TournamentRoundClub {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  round         Int
+  clubId        String   @map("club_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, round, clubId])
+  @@index([competitionId, round])
+  @@map("tournament_round_clubs")
 }
 
 model CompetitionClub {

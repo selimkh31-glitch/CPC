@@ -20,7 +20,8 @@ Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable
 | **0027** `opponent_club_id` + `competition_id` ; classement compétition **seulement** depuis des `match_results` liés | **Appliqué en prod** par CoS sur le PC fondateur (projet `cfgvtyxiggewauevvigm`). Pas d’horodatage de deploy dans git. |
 | **0028** conversation club (`start_club_conversation` + sync `club_members`) | **Appliqué** par CoS sur le PC fondateur (même projet). |
 | Edge `start-club-conversation` | **Déployée** par CoS (PC fondateur). |
-| Notifs `MATCH_FINALIZED` + `COMPETITION_CLUB_REGISTERED` | **Dans le code** du tip. Edges `finalize-match` et `register-competition-club` **redéployées** par CoS (PC fondateur). Pas de SQL 0029 (`notifications.type` = texte libre 0025). |
+| Notifs `MATCH_FINALIZED` + `COMPETITION_CLUB_REGISTERED` | **Dans le code** du tip. Edges `finalize-match` et `register-competition-club` **redéployées** par CoS (PC fondateur). Pas de SQL dédié notif (`notifications.type` = texte libre 0025). |
+| **0029** tournois V1 (`competitions.kind` + `tournament_matches`) | **À appliquer par CoS** (Option B). Pas encore en prod tant que non exécuté. |
 | Block sur recherche d’adversaire + annuaire clubs | **Dans le tip** (PR #18). Même règle LIVE/matching, les deux sens. |
 | Historique de matchs réel ClubPro Card / profil club | **Dans le tip** (PR #19). `finalize_match` seulement ; vide honnête ; jamais un faux 0-0. |
 | Clavier sur sheets (LIVE / filtres / finalisation) | **Dans le tip** (PR #20). Android `softwareKeyboardLayoutMode: resize` → **rebuild Dev Client** pour l’appliquer. |
@@ -29,7 +30,7 @@ Ne pas force-push. Ne pas supprimer les tags `stable-pre-social-phase` / `stable
 | Test iPhone | **Encore à faire** (EAS Dev Client). **Pas d’Expo Go.** |
 | Ligues ranking | **Toujours off** (`canShowLiveLeagueRanking()` false ; `season_stats` ≠ `match_results`). |
 | Passer Pro | **Toujours désactivé** (`FEATURE_REVENUECAT` off → CTA FR, pas de paiement fictif). |
-| Brackets / tournois | **Absents** (pas de table, pas d’UI). Doc conception seulement : `docs/competitions-phase2.md`. |
+| Brackets / tournois | **V1** : kind TOURNAMENT sur `competitions` + `tournament_matches` persistés. Scores seulement depuis `match_results` liés. SQL **0029 à appliquer**. |
 | Quota fictif | **Aucun** inventé. Gating Free réel = `FREE_APPLICATIONS_PER_DAY` (3) côté `apply`. Pas de jauge théâtre, pas de quota Pro simulé. |
 
 ---
@@ -106,7 +107,7 @@ Hors séquence : PR **#1** (env cloud), PR **#4** (fix manager). Ne pas les glis
 
 ## 4. Migrations prod (Option B)
 
-Source SQL = `supabase/migrations/`. Miroir Prisma dans `schema.prisma` seulement — **ne pas** `prisma migrate deploy` pour 0021–0028 (double-apply).
+Source SQL = `supabase/migrations/`. Miroir Prisma dans `schema.prisma` seulement — **ne pas** `prisma migrate deploy` pour 0021–0029 (double-apply).
 
 L’agent **n’applique pas** le SQL en production. Projet distant réel : `cfgvtyxiggewauevvigm` (`supabase/config.toml`).
 
@@ -120,6 +121,21 @@ npx prisma db execute --file supabase/migrations/0028_club_conversation.sql --sc
 
 0026 est le prérequis de 0027 (`competitions` / `competition_clubs`). 0027 en prod implique 0026 en place. **Windows :** PowerShell, même commande `npx prisma db execute --file ...` (pas `prisma migrate deploy`).
 
+**0029 tournois V1 — à appliquer par CoS (pas l'agent) :**
+
+```bash
+npx prisma db execute --file supabase/migrations/0029_tournaments_v1.sql --schema prisma/schema.prisma
+```
+
+Puis :
+
+```bash
+npx supabase functions deploy create-tournament schedule-tournament-round
+npx supabase functions deploy create-competition register-competition-club
+```
+
+Sans 0029 : `kind` / `tournament_matches` absents → liste/création tournoi échoue. Ne **pas** `prisma migrate deploy`. Ligues inchangées (`season_stats` off).
+
 | Fichier | Origine | Rôle | Prod 25 août après-midi |
 |---|---|---|---|
 | `0021_live_expiry_player_live.sql` | PR #2 (merged dans la base) | `expires_at`, `player_sessions`, unique PENDING apply | déjà (base #2) |
@@ -130,11 +146,12 @@ npx prisma db execute --file supabase/migrations/0028_club_conversation.sql --sc
 | `0026_competitions_foundation.sql` | PR #9 | `competitions` + `competition_clubs` (unique paire) | prérequis de 0027 |
 | **`0027_match_result_competition_link.sql`** | **PR #14** | **`match_results.opponent_club_id` + `competition_id` (nullable FKs). CHECK adverse ≠ club. Trigger : si compétition, les deux clubs sont dans `competition_clubs`. `finalize_match` étendu. Pas de table standings.** | **Appliqué par CoS (PC fondateur)** |
 | **`0028_club_conversation.sql`** | **PR #15** | **Get-or-create conversation `CLUB` (RPC `start_club_conversation`) + sync `club_members` → `conversation_members`. Pas de nouvelle table / pas de 2e chat.** | **Appliqué par CoS (PC fondateur)** |
+| **`0029_tournaments_v1.sql`** | Tournois V1 | **`competitions.kind` COMPETITION\|TOURNAMENT + `tournament_matches` (paires SCHEDULED\|PLAYED) + `tournament_round_clubs` (pool par tour). Pas de table `tournaments` dupliquée. Pas de scores sur les paires. PLAYED via trigger `match_results`. Vainqueur = finale PLAYED.** | **À appliquer par CoS** |
 
 Sans 0027 : `finalize-match` enverrait `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas — **ce n’est plus le cas en prod** (0027 appliqué + Edge redéployée).  
 Sans 0028 : le bouton Conversation du club échouerait — **ce n’est plus le cas en prod** (0028 + `start-club-conversation` déployée).
 
-Pas de migration dédiée pour `MESSAGE_RECEIVED`, `MATCH_FINALIZED` ni `COMPETITION_CLUB_REGISTERED` : `notifications.type` est du texte libre (0025, CHECK `char_length(type) > 0` seulement — pas d’enum PG). **Pas de 0029.**  
+Pas de migration dédiée pour `MESSAGE_RECEIVED`, `MATCH_FINALIZED` ni `COMPETITION_CLUB_REGISTERED` : `notifications.type` est du texte libre (0025, CHECK `char_length(type) > 0` seulement — pas d’enum PG).  
 PR **#5** / **#18–#21** : aucune migration (UX / safety client / history / clavier / perf).
 
 ---
@@ -170,6 +187,8 @@ npx supabase functions deploy \
   expire-live-sessions \
   create-competition \
   register-competition-club \
+  create-tournament \
+  schedule-tournament-round \
   notify-message-received \
   start-club-conversation
 ```
@@ -184,7 +203,8 @@ npx supabase functions deploy \
 | `launch-match-checkin` | true | Session LIVE → check-in (`match_checkins`) |
 | `finalize-match` | true | Check-in → `match_results` (score / outcome serveur / club adverse / compétition optionnelle) + notif in-app `MATCH_FINALIZED` après RPC |
 | `expire-live-sessions` | **`verify_jwt = false`** (auth `CRON_SECRET`) | Janitor LIVE ; pg_cron SQL 0023 est l’alternative |
-| `create-competition` / `register-competition-club` | true | Fondation #9. `register-competition-club` notifie `COMPETITION_CLUB_REGISTERED` (après INSERT réel). Pas de SQL. |
+| `create-competition` / `register-competition-club` | true | Fondation #9. `register-competition-club` notifie `COMPETITION_CLUB_REGISTERED` (après INSERT réel). `create-competition` pose `kind=COMPETITION`. |
+| `create-tournament` / `schedule-tournament-round` | true | Tournois V1 (0029). Création kind=TOURNAMENT ; 1er tour persisté dans `tournament_matches`. |
 | `notify-message-received` | true | Notif in-app DM (#10) |
 | `start-club-conversation` | true | Get-or-create conversation CLUB (0028) |
 
@@ -324,7 +344,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 - Créer une compétition (DRAFT ou OPEN), la voir dans la liste.
 - OWNER/MANAGER : inscrire un club géré sur une OPEN. Doublon → **409**, pas une 2ᵉ ligne.
 - Classement **seulement** s’il existe au moins un `match_results` avec `competition_id` **et** `opponent_club_id`. Sinon copy honnête, **pas** de rows 0-0-0, **pas** de `season_stats`.
-- **Pas de brackets / tournois.**
+- **Tournois V1** : même table, `kind=TOURNAMENT`. Stack `/tournaments/[id]`. Tableau = paires `tournament_matches` uniquement. Tours : 1er depuis clubs inscrits ; suivants depuis vainqueurs **PLAYED** (+ pool `tournament_round_clubs`). Vainqueur du tournoi = finale persistée (1 match, pool 2, résultat lié). Unplayed = « pas encore joué ».
 
 ### Notifications (#10 + #11 + MATCH_FINALIZED + COMPETITION_CLUB_REGISTERED)
 
@@ -355,7 +375,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 - Expo Go, CPCP, stats EA inventées.
 - Classement Ligues (`season_stats` / `/leagues`) — **toujours off**.
 - Passer Pro — **toujours désactivé** (pas de paiement fictif, pas de quota Pro simulé).
-- Brackets / tournois — **absents**.
+- Bracket décoratif / clubs inventés / 0-0 sur un match non joué — **interdit**.
 - Quota fictif — **aucun** (seul le plafond Free réel 3 candidatures / jour côté `apply`).
 
 ---
@@ -368,7 +388,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 | Android clavier resize | Code + `app.json` dans le tip ; **rebuild Dev Client** si le binaire actuel n’a pas la config native. |
 | Ligues ranking | **Off.** `canShowLiveLeagueRanking()` false. Pas de `season_stats` depuis `match_results`. |
 | Passer Pro | **Désactivé.** `FEATURE_REVENUECAT` off. |
-| Tournament brackets | **Pas construits.** |
+| Tournois V1 | **Code dans cette branche.** SQL **0029 + Edges à déployer par CoS**. Pas de round 2 auto, pas de seed. |
 | Quota fictif | **Pas inventé.** |
 | Merge #14 → `social-ea-foundations-phase-2` | **Interdit** pour cette pile. |
 

@@ -110,6 +110,13 @@ verify_jwt = true
 [functions.register-competition-club]
 verify_jwt = true
 
+# Tournois V1 — compétition kind=TOURNAMENT + génération 1er tour (JWT session).
+[functions.create-tournament]
+verify_jwt = true
+
+[functions.schedule-tournament-round]
+verify_jwt = true
+
 # DM réel — notif in-app MESSAGE_RECEIVED après INSERT client (JWT session).
 [functions.notify-message-received]
 verify_jwt = true

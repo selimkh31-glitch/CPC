@@ -12,31 +12,45 @@ export function CompetitionRegisterCta({
   loading,
   onRegister,
   showNoManagedClub = false,
+  registerCtaLabel,
+  alreadyRegisteredLabel,
+  draftLabel,
+  closedLabel,
+  noManagedClubLabel,
 }: {
   kind: CompetitionRegisterCtaKind;
   clubName?: string | null;
   loading?: boolean;
   onRegister?: () => void;
   showNoManagedClub?: boolean;
+  registerCtaLabel?: string;
+  alreadyRegisteredLabel?: string;
+  draftLabel?: string;
+  closedLabel?: string;
+  noManagedClubLabel?: string;
 }) {
   if (kind === "register") {
     return (
       <Button loading={loading} onPress={onRegister} variant="secondary">
-        {clubName ? `Inscrire ${clubName}` : COMPETITION_COPY.registerCta}
+        {clubName ? `Inscrire ${clubName}` : (registerCtaLabel ?? COMPETITION_COPY.registerCta)}
       </Button>
     );
   }
   if (kind === "already_registered") {
-    return <Text className="text-xs font-bold text-accent">{COMPETITION_COPY.alreadyRegistered}</Text>;
+    return (
+      <Text className="text-xs font-bold text-accent">
+        {alreadyRegisteredLabel ?? COMPETITION_COPY.alreadyRegistered}
+      </Text>
+    );
   }
   if (kind === "draft") {
-    return <Text className="text-xs text-fg-muted">{COMPETITION_COPY.draftCannotRegister}</Text>;
+    return <Text className="text-xs text-fg-muted">{draftLabel ?? COMPETITION_COPY.draftCannotRegister}</Text>;
   }
   if (kind === "closed") {
-    return <Text className="text-xs text-fg-muted">{COMPETITION_COPY.closedCannotRegister}</Text>;
+    return <Text className="text-xs text-fg-muted">{closedLabel ?? COMPETITION_COPY.closedCannotRegister}</Text>;
   }
   if (kind === "no_managed_club" && showNoManagedClub) {
-    return <Text className="text-xs text-fg-muted">{COMPETITION_COPY.noManagedClub}</Text>;
+    return <Text className="text-xs text-fg-muted">{noManagedClubLabel ?? COMPETITION_COPY.noManagedClub}</Text>;
   }
   return null;
 }
