@@ -1,9 +1,11 @@
 import type { EAProvider } from "./provider.ts";
 import type { EAClub, EAClubStats, EAMatch, EAPlayer, EAPlayerCareerStats } from "./types.ts";
+import { getLiveEaTitle, PRODUCT_EA_TITLE } from "./title.ts";
 
 export const EA_IMPORT_SOURCE = "unofficial_api_fc";
 
 export interface EaImportedClubRow {
+  ea_title: string;
   ea_club_id: string;
   platform: string;
   name: string | null;
@@ -20,6 +22,7 @@ export interface EaImportedClubRow {
 }
 
 export interface EaImportedMemberRow {
+  ea_title: string;
   ea_club_id: string;
   platform: string;
   playername: string;
@@ -41,6 +44,7 @@ export interface EaImportedMemberRow {
 }
 
 export interface EaImportedMatchRow {
+  ea_title: string;
   ea_club_id: string;
   ea_match_id: string;
   platform: string;
@@ -53,10 +57,23 @@ export interface EaImportedMatchRow {
 }
 
 export interface IngestPlan {
+  eaTitle: string;
   clubRow: EaImportedClubRow | null;
   memberRows: EaImportedMemberRow[];
   newMatches: EaImportedMatchRow[];
   skippedMatchCount: number;
+}
+
+/** Payload lecture UX (ledger produit fc27) — listes vides honnêtes, jamais un mix fc26. */
+export interface ProductClubHistoryPayload {
+  eaTitle: string;
+  club: EaImportedClubRow | null;
+  members: EaImportedMemberRow[];
+  matches: EaImportedMatchRow[];
+}
+
+export function emptyProductClubHistory(): ProductClubHistoryPayload {
+  return { eaTitle: PRODUCT_EA_TITLE, club: null, members: [], matches: [] };
 }
 
 function careerByName(career: EAPlayerCareerStats[] | null): Map<string, EAPlayerCareerStats> {
@@ -75,6 +92,7 @@ function careerByName(career: EAPlayerCareerStats[] | null): Map<string, EAPlaye
 export function buildIngestPlan(input: {
   clubId: string;
   platform: string;
+  eaTitle: string;
   nowIso?: string;
   club: EAClub | null;
   clubStats: EAClubStats | null;
@@ -85,10 +103,12 @@ export function buildIngestPlan(input: {
 }): IngestPlan {
   const nowIso = input.nowIso ?? new Date().toISOString();
   const known = new Set(input.existingMatchIds);
+  const eaTitle = input.eaTitle;
 
   let clubRow: EaImportedClubRow | null = null;
   if (input.club || input.clubStats) {
     clubRow = {
+      ea_title: eaTitle,
       ea_club_id: input.clubId,
       platform: input.platform,
       name: input.club?.name ?? null,
@@ -115,6 +135,7 @@ export function buildIngestPlan(input: {
     seenMembers.add(key);
     const c = careers.get(key);
     memberRows.push({
+      ea_title: eaTitle,
       ea_club_id: input.clubId,
       platform: input.platform,
       playername: member.name,
@@ -141,6 +162,7 @@ export function buildIngestPlan(input: {
     if (!key || seenMembers.has(key)) continue;
     seenMembers.add(key);
     memberRows.push({
+      ea_title: eaTitle,
       ea_club_id: input.clubId,
       platform: input.platform,
       playername: c.externalId,
@@ -172,6 +194,7 @@ export function buildIngestPlan(input: {
     }
     known.add(match.matchId);
     newMatches.push({
+      ea_title: eaTitle,
       ea_club_id: input.clubId,
       ea_match_id: match.matchId,
       platform: input.platform,
@@ -184,7 +207,7 @@ export function buildIngestPlan(input: {
     });
   }
 
-  return { clubRow, memberRows, newMatches, skippedMatchCount };
+  return { eaTitle, clubRow, memberRows, newMatches, skippedMatchCount };
 }
 
 type AdminLike = {
@@ -196,26 +219,75 @@ type AdminLike = {
   };
 };
 
-export async function loadImportedMatchIds(admin: AdminLike, eaClubId: string): Promise<string[]> {
-  const { data } = await admin.from("ea_imported_matches").select("ea_match_id").eq("ea_club_id", eaClubId);
+export async function loadImportedMatchIds(
+  admin: AdminLike,
+  eaClubId: string,
+  eaTitle: string
+): Promise<string[]> {
+  const { data } = await admin.from("ea_imported_matches").select("ea_match_id,ea_title").eq("ea_club_id", eaClubId);
   const out: string[] = [];
   for (const row of data ?? []) {
     if (!row || typeof row !== "object") continue;
-    const id = (row as { ea_match_id?: unknown }).ea_match_id;
+    const r = row as { ea_match_id?: unknown; ea_title?: unknown };
+    if (typeof r.ea_title === "string" && r.ea_title !== eaTitle) continue;
+    const id = r.ea_match_id;
     if (typeof id === "string" && id.trim()) out.push(id.trim());
   }
   return out;
 }
 
+function asRowList(data: unknown[] | null): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const row of data ?? []) {
+    if (row && typeof row === "object" && !Array.isArray(row)) out.push(row as Record<string, unknown>);
+  }
+  return out;
+}
+
+export async function loadClubHistoryForTitle(
+  admin: AdminLike,
+  eaClubId: string,
+  platform: string,
+  eaTitle: string
+): Promise<ProductClubHistoryPayload> {
+  const empty: ProductClubHistoryPayload = { eaTitle, club: null, members: [], matches: [] };
+  const [clubsRes, membersRes, matchesRes] = await Promise.all([
+    admin.from("ea_imported_clubs").select("*").eq("ea_club_id", eaClubId),
+    admin.from("ea_imported_members").select("*").eq("ea_club_id", eaClubId),
+    admin.from("ea_imported_matches").select("*").eq("ea_club_id", eaClubId),
+  ]);
+  const club = asRowList(clubsRes.data).find(
+    (r) => r.ea_title === eaTitle && r.platform === platform
+  ) as unknown as EaImportedClubRow | undefined;
+  const members = asRowList(membersRes.data).filter(
+    (r) => r.ea_title === eaTitle && r.platform === platform
+  ) as unknown as EaImportedMemberRow[];
+  const matches = asRowList(matchesRes.data).filter(
+    (r) => r.ea_title === eaTitle && r.platform === platform
+  ) as unknown as EaImportedMatchRow[];
+  if (!club && members.length === 0 && matches.length === 0) return empty;
+  return { eaTitle, club: club ?? null, members, matches };
+}
+
+export function loadProductClubHistory(
+  admin: AdminLike,
+  eaClubId: string,
+  platform: string = "common-gen5"
+): Promise<ProductClubHistoryPayload> {
+  return loadClubHistoryForTitle(admin, eaClubId, platform, PRODUCT_EA_TITLE);
+}
+
 export async function persistIngestPlan(admin: AdminLike, plan: IngestPlan): Promise<void> {
   if (plan.clubRow) {
-    await admin.from("ea_imported_clubs").upsert(plan.clubRow, { onConflict: "ea_club_id,platform" });
+    await admin.from("ea_imported_clubs").upsert(plan.clubRow, { onConflict: "ea_title,ea_club_id,platform" });
   }
   for (const member of plan.memberRows) {
-    await admin.from("ea_imported_members").upsert(member, { onConflict: "ea_club_id,platform,playername" });
+    await admin.from("ea_imported_members").upsert(member, { onConflict: "ea_title,ea_club_id,platform,playername" });
   }
   if (plan.newMatches.length > 0) {
-    await admin.from("ea_imported_matches").upsert(plan.newMatches, { onConflict: "ea_club_id,platform,ea_match_id" });
+    await admin.from("ea_imported_matches").upsert(plan.newMatches, {
+      onConflict: "ea_title,ea_club_id,platform,ea_match_id",
+    });
   }
 }
 
@@ -235,13 +307,15 @@ export async function ingestEaClubFromProvider(
   admin: AdminLike,
   provider: EAProvider,
   eaClubId: string,
-  platform: string = "common-gen5"
+  platform: string = "common-gen5",
+  eaTitle: string = getLiveEaTitle()
 ): Promise<{ plan: IngestPlan; matches: EAMatch[] | null }> {
   const payload = await fetchClubImportPayload(provider, eaClubId, platform);
-  const existingMatchIds = await loadImportedMatchIds(admin, eaClubId);
+  const existingMatchIds = await loadImportedMatchIds(admin, eaClubId, eaTitle);
   const plan = buildIngestPlan({
     clubId: eaClubId,
     platform,
+    eaTitle,
     club: payload.club,
     clubStats: payload.clubStats,
     members: payload.members,

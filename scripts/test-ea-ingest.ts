@@ -2,7 +2,14 @@
  * Ingest unofficial /api/fc → tables CPC. Aucun réseau live.
  * Lancer : npx tsx scripts/test-ea-ingest.ts
  */
-import { buildIngestPlan, persistIngestPlan, type IngestPlan } from "../supabase/functions/_shared/ea/ingest";
+import {
+  buildIngestPlan,
+  emptyProductClubHistory,
+  loadProductClubHistory,
+  persistIngestPlan,
+  type IngestPlan,
+} from "../supabase/functions/_shared/ea/ingest";
+import { PRODUCT_EA_TITLE } from "../supabase/functions/_shared/ea/title";
 import { normalizeMatch } from "../supabase/functions/_shared/ea/normalize";
 import type { EAClub, EAClubStats, EAMatch, EAPlayer, EAPlayerCareerStats } from "../supabase/functions/_shared/ea/types";
 
@@ -130,6 +137,7 @@ async function run() {
     const plan = buildIngestPlan({
       clubId: "c1",
       platform: "common-gen5",
+      eaTitle: "fc26",
       nowIso: provenance.syncedAt,
       club: null,
       clubStats: null,
@@ -147,6 +155,7 @@ async function run() {
     const plan = buildIngestPlan({
       clubId: "c1",
       platform: "common-gen5",
+      eaTitle: "fc26",
       club: null,
       clubStats: null,
       members: null,
@@ -162,6 +171,7 @@ async function run() {
     const plan = buildIngestPlan({
       clubId: "c1",
       platform: "common-gen5",
+      eaTitle: "fc26",
       nowIso: provenance.syncedAt,
       club: club("United", "c1"),
       clubStats: stats("c1"),
@@ -175,6 +185,8 @@ async function run() {
     assert.deepEqual(plan.clubRow?.wins, 10, "wins");
     assert.deepEqual(plan.clubRow?.unverified, true, "unverified");
     assert.deepEqual(plan.clubRow?.source, "unofficial_api_fc", "source");
+    assert.deepEqual(plan.clubRow?.ea_title, "fc26", "live title");
+    assert.deepEqual(plan.eaTitle, "fc26", "plan title");
     assert.deepEqual(
       plan.memberRows.map((m) => m.playername),
       ["Selim", "Alex"],
@@ -195,6 +207,7 @@ async function run() {
     const plan = buildIngestPlan({
       clubId: "c1",
       platform: "common-gen5",
+      eaTitle: "fc26",
       club: club("United", "c1"),
       clubStats: null,
       members: null,
@@ -210,6 +223,7 @@ async function run() {
     const plan: IngestPlan = buildIngestPlan({
       clubId: "c1",
       platform: "common-gen5",
+      eaTitle: "fc26",
       nowIso: provenance.syncedAt,
       club: club("United", "c1"),
       clubStats: stats("c1"),
@@ -228,6 +242,63 @@ async function run() {
     );
     const storedNew = admin.matches.filter((m) => (m as { ea_match_id?: string }).ea_match_id === "m3");
     assert.deepEqual(storedNew.length, 1, "insert m3");
+  });
+
+  await test("fc26 ingest n'écrit pas le ledger fc27", () => {
+    const plan = buildIngestPlan({
+      clubId: "c1",
+      platform: "common-gen5",
+      eaTitle: "fc26",
+      nowIso: provenance.syncedAt,
+      club: club("United", "c1"),
+      clubStats: stats("c1"),
+      members: [member("Selim")],
+      career: null,
+      matches: [match("m1", "Selim")],
+      existingMatchIds: [],
+    });
+    assert.deepEqual(plan.clubRow?.ea_title, "fc26", "club fc26");
+    assert.deepEqual(plan.memberRows.every((m) => m.ea_title === "fc26"), true, "membres fc26");
+    assert.deepEqual(plan.newMatches.every((m) => m.ea_title === "fc26"), true, "matchs fc26");
+    assert.deepEqual(plan.clubRow?.ea_title === PRODUCT_EA_TITLE, false, "pas fc27");
+  });
+
+  await test("ledger produit fc27 vide tant qu'il n'y a que du fc26", async () => {
+    const admin = memoryAdmin();
+    const plan = buildIngestPlan({
+      clubId: "c1",
+      platform: "common-gen5",
+      eaTitle: "fc26",
+      nowIso: provenance.syncedAt,
+      club: club("United", "c1"),
+      clubStats: stats("c1"),
+      members: [member("Selim")],
+      career: null,
+      matches: [match("m1", "Selim")],
+      existingMatchIds: [],
+    });
+    await persistIngestPlan(admin, plan);
+    const product = await loadProductClubHistory(admin, "c1", "common-gen5");
+    assert.deepEqual(product, emptyProductClubHistory(), "fc27 vide");
+    assert.deepEqual(product.members, [], "pas de membres fc27");
+    assert.deepEqual(product.matches, [], "pas de matchs fc27");
+  });
+
+  await test("ids fc26 ne skip pas l'ingest fc27 (ledgers séparés)", () => {
+    const plan = buildIngestPlan({
+      clubId: "c1",
+      platform: "common-gen5",
+      eaTitle: "fc27",
+      nowIso: provenance.syncedAt,
+      club: club("United", "c1"),
+      clubStats: null,
+      members: [],
+      career: [],
+      matches: [match("m1", "Selim")],
+      existingMatchIds: [],
+    });
+    assert.deepEqual(plan.newMatches.map((m) => m.ea_match_id), ["m1"], "m1 nouveau pour fc27");
+    assert.deepEqual(plan.clubRow?.ea_title, "fc27", "club fc27");
   });
 
   console.log(`\n${passed} test(s) passés.`);

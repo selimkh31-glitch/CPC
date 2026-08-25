@@ -2,9 +2,15 @@
  * Client HTTP Node-class /api/fc — fetch mocké, jamais un appel live EA.
  * Lancer : npx tsx scripts/test-ea-http.ts
  */
-import { fetchEaJson, isAllowedEaPath, isEaJsonBody } from "../supabase/functions/_shared/ea/http";
+import { fetchEaJson, isAllowedEaPath, isEaJsonBody, resolveEaFcBaseUrl } from "../supabase/functions/_shared/ea/http";
 import { eaGet } from "../supabase/functions/_shared/ea";
 import { handleEaHopRequest } from "../supabase/functions/_shared/ea/hop";
+import {
+  DEFAULT_EA_FC_BASE_URL,
+  DEFAULT_LIVE_EA_TITLE,
+  PRODUCT_EA_TITLE,
+  parseEaFcTitle,
+} from "../supabase/functions/_shared/ea/title";
 
 const assert = {
   deepEqual(actual: unknown, expected: unknown, label: string) {
@@ -56,6 +62,30 @@ async function run() {
     assert.deepEqual(isAllowedEaPath("//proclubs.ea.com"), false, "protocol-relative");
   });
 
+  await test("titre — défaut live fc26, produit fc27, parse fcNN", () => {
+    assert.deepEqual(PRODUCT_EA_TITLE, "fc27", "produit");
+    assert.deepEqual(DEFAULT_LIVE_EA_TITLE, "fc26", "live défaut");
+    assert.deepEqual(parseEaFcTitle(undefined), "fc26", "undef");
+    assert.deepEqual(parseEaFcTitle("FC27"), "fc27", "cutover");
+    assert.deepEqual(parseEaFcTitle("fifa"), "fc26", "refus fifa-like");
+  });
+
+  await test("BASE_URL — défaut /api/fc, refuse /api/fifa, accepte override /api/fc27", () => {
+    assert.deepEqual(resolveEaFcBaseUrl(null), DEFAULT_EA_FC_BASE_URL, "défaut");
+    let fifa = false;
+    try {
+      resolveEaFcBaseUrl("https://proclubs.ea.com/api/fifa");
+    } catch {
+      fifa = true;
+    }
+    assert.ok(fifa, "fifa rejeté");
+    assert.deepEqual(
+      resolveEaFcBaseUrl("https://proclubs.ea.com/api/fc27/"),
+      "https://proclubs.ea.com/api/fc27",
+      "swappable fc27"
+    );
+  });
+
   await test("isEaJsonBody — refuse HTML Akamai", () => {
     assert.deepEqual(isEaJsonBody("text/html", "<HTML><TITLE>Access Denied</TITLE>"), false, "html");
     assert.ok(isEaJsonBody("application/json", '{"clubId":"1"}'), "json ct");
@@ -69,6 +99,22 @@ async function run() {
     });
     const raw = await fetchEaJson<unknown[]>("/allTimeLeaderboard/search?platform=common-gen5&clubName=United");
     assert.deepEqual(raw[0], { clubId: "2582784", name: "United" }, "json");
+  });
+
+  await test("fetchEaJson — BASE_URL env swappable (pas de live EA)", async () => {
+    const g = globalThis as { process: { env: Record<string, string | undefined> } };
+    const prev = g.process.env.EA_FC_BASE_URL;
+    g.process.env.EA_FC_BASE_URL = "https://proclubs.ea.com/api/fc27";
+    mockFetch((url) => {
+      assert.ok(url.startsWith("https://proclubs.ea.com/api/fc27/allTimeLeaderboard/search"), "override");
+      return jsonResponse([]);
+    });
+    try {
+      await fetchEaJson("/allTimeLeaderboard/search?platform=common-gen5&clubName=United");
+    } finally {
+      if (prev === undefined) delete g.process.env.EA_FC_BASE_URL;
+      else g.process.env.EA_FC_BASE_URL = prev;
+    }
   });
 
   await test("fetchEaJson — HTML 403 n'est pas du JSON", async () => {

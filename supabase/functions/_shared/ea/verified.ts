@@ -17,6 +17,8 @@ export interface VerifiedPlayerStats {
   noShowsDetected: number;
   lastSyncedAt: string;
   importedMatchIds: string[];
+  /** Titre Pro Clubs du cache (fc26/fc27). Absent = ancien blob, à ne pas fusionner dans fc27. */
+  eaTitle?: string;
 }
 
 export function readImportedMatchIds(stats: unknown): string[] {
@@ -76,14 +78,27 @@ function asPreviousStats(stats: unknown): VerifiedPlayerStats | null {
     noShowsDetected: 0,
     lastSyncedAt: typeof r.lastSyncedAt === "string" ? r.lastSyncedAt : "",
     importedMatchIds: readImportedMatchIds(stats),
+    eaTitle: typeof r.eaTitle === "string" && r.eaTitle.trim() ? r.eaTitle.trim() : undefined,
   };
+}
+
+export function previousStatsForTitle(stats: unknown, eaTitle: string): unknown {
+  const prev = asPreviousStats(stats);
+  if (!prev) return null;
+  if (prev.eaTitle && prev.eaTitle !== eaTitle) return null;
+  if (!prev.eaTitle && eaTitle) {
+    // Blob sans titre = titre précédent non versionné — ne pas accumuler dans fc27.
+    return null;
+  }
+  return stats;
 }
 
 export function mergeVerifiedStats(
   previous: VerifiedPlayerStats | null,
   incoming: Pick<EAPlayerStats, "goals" | "assists" | "cleanSheets" | "matchesPlayed" | "avgRating">,
   newMatchIds: string[],
-  nowIso: string
+  nowIso: string,
+  eaTitle?: string
 ): VerifiedPlayerStats {
   const prevPlayed = previous?.matchesPlayed ?? 0;
   const newPlayed = incoming.matchesPlayed;
@@ -119,6 +134,7 @@ export function mergeVerifiedStats(
     noShowsDetected: 0,
     lastSyncedAt: nowIso,
     importedMatchIds: imported,
+    ...(eaTitle ? { eaTitle } : {}),
   };
 }
 
@@ -134,9 +150,11 @@ export function buildVerifiedStatsForPlayer(
   provider: EAProviderName,
   clubId: string,
   platform: string | null,
-  nowIso: string = new Date().toISOString()
+  nowIso: string = new Date().toISOString(),
+  eaTitle?: string
 ): VerifiedPlayerStats | null {
-  const imported = readImportedMatchIds(previousStats);
+  const scoped = eaTitle ? previousStatsForTitle(previousStats, eaTitle) : previousStats;
+  const imported = readImportedMatchIds(scoped);
   const fresh = filterNewMatches(matches, imported);
   const incoming = aggregatePlayerStats(fresh, playerName, provider, clubId, platform);
   if (!incoming) return null;
@@ -144,5 +162,5 @@ export function buildVerifiedStatsForPlayer(
   const playerKey = playerName.trim().toLowerCase();
   const counted = fresh.filter((m) => playerAppearsInMatch(m, playerKey));
   const newIds = collectMatchIds(counted);
-  return mergeVerifiedStats(asPreviousStats(previousStats), incoming, newIds, nowIso);
+  return mergeVerifiedStats(asPreviousStats(scoped), incoming, newIds, nowIso, eaTitle);
 }

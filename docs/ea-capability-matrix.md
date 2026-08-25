@@ -43,11 +43,14 @@ Aucun identifiant joueur EA n'est un login CPC. Clé d'objet `players[clubId][pl
 
 - Tables (migration `0030_ea_proclubs_import.sql`, ne pas appliquer depuis l'agent) :
   `ea_imported_clubs`, `ea_imported_members`, `ea_imported_matches`.
+- Colonne `ea_title` (`fcNN`). Ledger produit = **fc27**, vide tant que `EA_FC_TITLE` n'est pas `fc27`.
+- Live `/api/fc` (pré-Grounds) → `EA_FC_TITLE=fc26` par défaut. Pas de copie vers fc27.
+- Cutover 25 Sep 2026 : secrets `EA_FC_TITLE=fc27` + `EA_FC_BASE_URL` si besoin. Pas de `/api/fifa`.
 - `source = unofficial_api_fc`, `unverified = true`.
-- Dedup matchs : unique `(ea_club_id, platform, ea_match_id)`.
-- `users.verified_stats.importedMatchIds` reste le skip du cache joueur caller.
-- Liste EA vide → aucune ligne inventée.
-- `link-ea-club` met à jour la ligne caller seulement.
+- Dedup matchs : unique `(ea_title, ea_club_id, platform, ea_match_id)`.
+- `users.verified_stats` seulement si live === fc27 (`eaTitle` sur le blob).
+- Liste EA vide → aucune ligne inventée. `link-ea-club` action `history` = payload fc27 (éventuellement vide).
+- `link-ea-club` met à jour la ligne caller seulement. Pas de redesign d'écrans ici.
 
 ## Résilience
 

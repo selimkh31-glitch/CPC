@@ -11,13 +11,17 @@
 -- Stocké comme import non vérifié. Identité joueur = playername
 -- (users.ea_identity_kind USERNAME_EQUALITY), jamais une clé persona comme login.
 -- Historique club = accumulation des matchs (EA ne renvoie que les N derniers).
--- Dedup matchs : unique (ea_club_id, platform, ea_match_id).
+-- Versionné par titre (`ea_title` = fc26 | fc27 | fcNN). Ledger produit CPC =
+-- fc27, vide au jour 1 ; le live /api/fc actuel s'écrit sous EA_FC_TITLE
+-- (défaut fc26) et n'est PAS copié dans fc27. Dedup matchs :
+-- unique (ea_title, ea_club_id, platform, ea_match_id).
 --
 -- Miroir Prisma dans schema.prisma uniquement — NE PAS double-appliquer
 -- via `prisma migrate deploy`.
 -- ==============================================================================
 
 create table if not exists public.ea_imported_clubs (
+  ea_title text not null,
   ea_club_id text not null,
   platform text not null default 'common-gen5',
   name text,
@@ -31,11 +35,13 @@ create table if not exists public.ea_imported_clubs (
   unverified boolean not null default true,
   imported_at timestamp(3) not null default current_timestamp,
   updated_at timestamp(3) not null default current_timestamp,
-  constraint ea_imported_clubs_pkey primary key (ea_club_id, platform)
+  constraint ea_imported_clubs_pkey primary key (ea_title, ea_club_id, platform),
+  constraint ea_imported_clubs_title_check check (ea_title ~ '^fc[0-9]{2}$')
 );
 
 create table if not exists public.ea_imported_members (
   id uuid not null default gen_random_uuid(),
+  ea_title text not null,
   ea_club_id text not null,
   platform text not null default 'common-gen5',
   playername text not null,
@@ -55,14 +61,16 @@ create table if not exists public.ea_imported_members (
   imported_at timestamp(3) not null default current_timestamp,
   updated_at timestamp(3) not null default current_timestamp,
   constraint ea_imported_members_pkey primary key (id),
-  constraint ea_imported_members_identity unique (ea_club_id, platform, playername)
+  constraint ea_imported_members_identity unique (ea_title, ea_club_id, platform, playername),
+  constraint ea_imported_members_title_check check (ea_title ~ '^fc[0-9]{2}$')
 );
 
 create index if not exists ea_imported_members_club_idx
-  on public.ea_imported_members (ea_club_id, platform);
+  on public.ea_imported_members (ea_title, ea_club_id, platform);
 
 create table if not exists public.ea_imported_matches (
   id uuid not null default gen_random_uuid(),
+  ea_title text not null,
   ea_club_id text not null,
   ea_match_id text not null,
   platform text not null default 'common-gen5',
@@ -73,11 +81,12 @@ create table if not exists public.ea_imported_matches (
   unverified boolean not null default true,
   imported_at timestamp(3) not null default current_timestamp,
   constraint ea_imported_matches_pkey primary key (id),
-  constraint ea_imported_matches_identity unique (ea_club_id, platform, ea_match_id)
+  constraint ea_imported_matches_identity unique (ea_title, ea_club_id, platform, ea_match_id),
+  constraint ea_imported_matches_title_check check (ea_title ~ '^fc[0-9]{2}$')
 );
 
 create index if not exists ea_imported_matches_club_idx
-  on public.ea_imported_matches (ea_club_id, platform, imported_at desc);
+  on public.ea_imported_matches (ea_title, ea_club_id, platform, imported_at desc);
 
 alter table public.ea_imported_clubs enable row level security;
 alter table public.ea_imported_members enable row level security;

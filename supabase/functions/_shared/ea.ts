@@ -13,8 +13,9 @@
 import { fetchEaJson } from "./ea/http.ts";
 import { isDenoRuntime, readEnv } from "./ea/env.ts";
 
-export { EA_FC_BASE_URL as BASE_URL, EA_BROWSER_HEADERS as REALISTIC_HEADERS } from "./ea/http.ts";
+export { EA_FC_BASE_URL as BASE_URL, EA_BROWSER_HEADERS as REALISTIC_HEADERS, getEaFcBaseUrl } from "./ea/http.ts";
 export { fetchEaJson } from "./ea/http.ts";
+export { getLiveEaTitle, PRODUCT_EA_TITLE } from "./ea/title.ts";
 
 export const FEATURE_EA_STATS = readEnv("FEATURE_EA_STATS") !== "false";
 

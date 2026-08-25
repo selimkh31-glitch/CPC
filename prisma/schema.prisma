@@ -894,10 +894,12 @@ model CompetitionClub {
 // ------------------------------------------------------------------
 // Import unofficial proclubs.ea.com/api/fc (0030_ea_proclubs_import.sql).
 // Miroir Prisma — NE PAS prisma migrate deploy (Option B). Import non
-// vérifié ; identité joueur = playername, jamais une clé persona login.
+// vérifié, versionné par ea_title (fc26/fc27). Ledger produit = fc27,
+// vide tant que le live n'est pas fc27. Identité joueur = playername.
 // ------------------------------------------------------------------
 
 model EaImportedClub {
+  eaTitle     String   @map("ea_title")
   eaClubId    String   @map("ea_club_id")
   platform    String   @default("common-gen5")
   name        String?
@@ -912,12 +914,13 @@ model EaImportedClub {
   importedAt  DateTime @default(now()) @map("imported_at")
   updatedAt   DateTime @default(now()) @map("updated_at")
 
-  @@id([eaClubId, platform])
+  @@id([eaTitle, eaClubId, platform])
   @@map("ea_imported_clubs")
 }
 
 model EaImportedMember {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eaTitle            String   @map("ea_title")
   eaClubId           String   @map("ea_club_id")
   platform           String   @default("common-gen5")
   playername         String
@@ -937,13 +940,14 @@ model EaImportedMember {
   importedAt         DateTime @default(now()) @map("imported_at")
   updatedAt          DateTime @default(now()) @map("updated_at")
 
-  @@unique([eaClubId, platform, playername])
-  @@index([eaClubId, platform])
+  @@unique([eaTitle, eaClubId, platform, playername])
+  @@index([eaTitle, eaClubId, platform])
   @@map("ea_imported_members")
 }
 
 model EaImportedMatch {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eaTitle    String   @map("ea_title")
   eaClubId   String   @map("ea_club_id")
   eaMatchId  String   @map("ea_match_id")
   platform   String   @default("common-gen5")
@@ -954,7 +958,7 @@ model EaImportedMatch {
   unverified Boolean  @default(true)
   importedAt DateTime @default(now()) @map("imported_at")
 
-  @@unique([eaClubId, platform, eaMatchId])
-  @@index([eaClubId, platform, importedAt])
+  @@unique([eaTitle, eaClubId, platform, eaMatchId])
+  @@index([eaTitle, eaClubId, platform, importedAt])
   @@map("ea_imported_matches")
 }

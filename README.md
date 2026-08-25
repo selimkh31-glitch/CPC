@@ -127,7 +127,7 @@ Déploiement :
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook create-competition register-competition-club create-tournament schedule-tournament-round
-npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=... EA_HTTP_HOP_URL=... EA_HTTP_HOP_SECRET=...
+npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=... EA_HTTP_HOP_URL=... EA_HTTP_HOP_SECRET=... EA_FC_TITLE=fc26 EA_FC_BASE_URL=https://proclubs.ea.com/api/fc
 ```
 
 `lib/reliability.ts` et `lib/ovr.ts` (calcul de fiabilité et d'OVR) sont **partagés** entre l'app mobile et les Edge Functions via import relatif direct (`../../../lib/reliability.ts`) — une seule source de vérité, aucune duplication de logique.
@@ -238,13 +238,15 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR_PROJECT.supabase.co/fu
 
 ## Import EA FC Pro Clubs (`/api/fc`, unofficial)
 
-L'app mobile n'appelle jamais `proclubs.ea.com`. RN → Edge (`link-ea-club` / `ea-sync`) → hop Node 20 CPC (`EA_HTTP_HOP_URL`) → `https://proclubs.ea.com/api/fc`. Deno/Edge ne fetch pas EA (403 Akamai HTML). Le hop n'est pas un site produit ; secret `EA_HTTP_HOP_SECRET`. Pas de proxy ClubsZone.
+L'app mobile n'appelle jamais `proclubs.ea.com`. RN → Edge (`link-ea-club` / `ea-sync`) → hop Node 20 CPC (`EA_HTTP_HOP_URL`) → `EA_FC_BASE_URL` (défaut `https://proclubs.ea.com/api/fc`). Deno/Edge ne fetch pas EA (403 Akamai HTML). Le hop n'est pas un site produit ; secret `EA_HTTP_HOP_SECRET`. Pas de proxy ClubsZone. Pas de `/api/fifa`.
+
+Titres : chaque ligne d'import a `ea_title` (`fc26`, `fc27`, …). Ledger **produit CPC = `fc27`**, vide au jour 1. Le JSON live `/api/fc` (août 2026) est l'ancien titre : `EA_FC_TITLE=fc26` par défaut — **jamais copié dans fc27**. The Grounds 25 Sep 2026 : poser `EA_FC_TITLE=fc27` (et `EA_FC_BASE_URL` si l'origine change). Pas de bascule auto à la date. Ensuite 14 jours de collecte silencieuse ; lecture UX via `link-ea-club` action `history` (payload fc27 honnête, listes vides OK).
 
 ```bash
 EA_HTTP_HOP_SECRET=... npx tsx scripts/ea-http-hop.ts
 ```
 
-Migration `0030_ea_proclubs_import.sql` : tables `ea_imported_clubs` / `ea_imported_members` / `ea_imported_matches` (import non vérifié, historique club = matchs accumulés, identité joueur = playername). Ne pas appliquer en prod depuis l'agent.
+Migration `0030_ea_proclubs_import.sql` : tables `ea_imported_clubs` / `ea_imported_members` / `ea_imported_matches` (import non vérifié, unique par titre + club + plateforme). Ne pas appliquer en prod depuis l'agent.
 
 ## Brancher RevenueCat
 

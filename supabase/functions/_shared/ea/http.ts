@@ -2,9 +2,12 @@
  * Client HTTP Node-class vers proclubs.ea.com/api/fc (unofficiel, non garanti).
  * Chrome UA + Referer ea.com. Timeout + retries. Refuse le HTML Akamai (403).
  * Toujours un fetch direct — jamais un second hop ici (évite une boucle Deno).
+ * BASE_URL swappable via EA_FC_BASE_URL (The Grounds) — jamais /api/fifa.
  */
 
-export const EA_FC_BASE_URL = "https://proclubs.ea.com/api/fc";
+import { getEaFcBaseUrl } from "./title.ts";
+
+export { DEFAULT_EA_FC_BASE_URL as EA_FC_BASE_URL, getEaFcBaseUrl, resolveEaFcBaseUrl } from "./title.ts";
 export const DEFAULT_EA_TIMEOUT_MS = 8000;
 export const EA_MAX_RETRIES = 2;
 
@@ -59,7 +62,7 @@ export async function fetchEaJson<T>(
   let lastError: unknown;
   for (let attempt = 0; attempt <= EA_MAX_RETRIES; attempt++) {
     try {
-      const res = await fetchImpl(`${EA_FC_BASE_URL}${path}`, {
+      const res = await fetchImpl(`${getEaFcBaseUrl()}${path}`, {
         headers: EA_BROWSER_HEADERS,
         signal: AbortSignal.timeout(timeoutMs),
       });

@@ -26,6 +26,7 @@ import {
   collectMatchIds,
   filterNewMatches,
   mergeVerifiedStats,
+  previousStatsForTitle,
   readImportedMatchIds,
 } from "../supabase/functions/_shared/ea/verified";
 
@@ -430,6 +431,25 @@ test("buildVerifiedStatsForPlayer — tout déjà importé -> null (garde le cac
     "common-gen5"
   );
   assert.deepEqual(stats, null, "rien de nouveau");
+});
+
+test("verified_stats — blob fc26 / sans titre non fusionné dans fc27", () => {
+  const m1 = matchWithId("m1", { p1: { name: "Selim", goals: 2 } });
+  const fromOld = buildVerifiedStatsForPlayer(
+    [m1],
+    "Selim",
+    { importedMatchIds: ["m1"], goals: 99, matchesPlayed: 10, eaTitle: "fc26" },
+    "proclubs-community",
+    "clubA",
+    "common-gen5",
+    "2026-09-25T00:00:00.000Z",
+    "fc27"
+  );
+  assert.ok(fromOld, "nouvelle fenêtre fc27");
+  assert.deepEqual(fromOld?.goals, 2, "pas les 99 de fc26");
+  assert.deepEqual(fromOld?.eaTitle, "fc27", "titre produit");
+  assert.deepEqual(previousStatsForTitle({ eaTitle: "fc26", goals: 1 }, "fc27"), null, "mix rejeté");
+  assert.deepEqual(previousStatsForTitle({ goals: 1, importedMatchIds: ["m1"] }, "fc27"), null, "sans titre rejeté");
 });
 
 test("mergeVerifiedStats / collectMatchIds — ids nouveaux uniquement", () => {
