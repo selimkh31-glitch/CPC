@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { Radio } from "lucide-react-native";
 import { LivePlayerCard } from "@/components/live/LivePlayerCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
@@ -72,7 +71,7 @@ export function LivePlayersRecruitPanel({
     invite.mutate(
       { clubId, userId },
       {
-        onSuccess: () => toast.success("Invitation envoyée."),
+        onSuccess: () => toast.success("C'est envoyé."),
         onError: (err: any) => toast.error(err.message ?? "Impossible d'inviter."),
         onSettled: () => setPendingUserId(null),
       }
@@ -81,11 +80,10 @@ export function LivePlayersRecruitPanel({
 
   return (
     <View>
-      <View className="mb-2 flex-row items-center gap-2">
-        <Radio size={16} color="#39ff8a" />
-        <Text className="font-display text-lg text-fg">Joueurs LIVE</Text>
-        <Text className="ml-auto text-xs text-fg-muted">{candidates.length}</Text>
-      </View>
+      <Text className="mb-3 text-sm text-fg-subtle">
+        {LIVE_UX_COPY.otherPlayers}
+        {candidates.length > 0 ? ` · ${candidates.length}` : ""}
+      </Text>
       {isLoading ? (
         <Skeleton className="h-24" />
       ) : isError ? (

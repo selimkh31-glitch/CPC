@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Radio } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Sheet } from "@/components/ui/Sheet";
 import { LiveCountdown } from "@/components/live/LiveCountdown";
-import { DEFAULT_LIVE_DURATION_MS, LIVE_DURATION_OPTIONS, isLiveActive, parseLiveDurationMs } from "@/lib/live";
+import {
+  DEFAULT_LIVE_DURATION_MS,
+  LIVE_DURATION_OPTIONS,
+  LIVE_UX_COPY,
+  isLiveActive,
+  parseLiveDurationMs,
+} from "@/lib/live";
 import { PLATFORM_LABELS, POSITION_LABELS } from "@/lib/constants";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useGoPlayerLive, useGoPlayerOffline, useMyPlayerSession } from "@/lib/hooks/usePlayerLive";
@@ -18,9 +23,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 /**
- * P0 — le joueur se déclare dispo maintenant pour un roster FC 27 Pro Clubs.
- * Distinct de la présence in-app. TTL obligatoire.
- * OFF : carte compacte. ON : statut compact (le formulaire n'est plus ouvert).
+ * LIVE joueur — un état (off / open). Matching / TTL inchangés.
  */
 export function PlayerLivePanel() {
   const { session, profile } = useAuth();
@@ -31,7 +34,6 @@ export function PlayerLivePanel() {
   const [note, setNote] = useState("");
   const [duration, setDuration] = useState(String(DEFAULT_LIVE_DURATION_MS));
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const now = useLiveClock();
   const live = isLiveActive(mySession, now);
@@ -45,7 +47,7 @@ export function PlayerLivePanel() {
       { note: note.trim() || undefined, durationMs: parseLiveDurationMs(duration) },
       {
         onSuccess: () => {
-          toast.success("Tu es LIVE — visible pour les clubs qui recrutent.");
+          toast.success("C'est parti. Les clubs te voient.");
           setSheetOpen(false);
           setShowMore(false);
         },
@@ -56,7 +58,7 @@ export function PlayerLivePanel() {
 
   const stop = () => {
     if (!mySession) return;
-    goOffline.mutate(mySession.id, { onSuccess: () => toast.info("LIVE joueur terminé.") });
+    goOffline.mutate(mySession.id, { onSuccess: () => toast.info("C'est coupé.") });
   };
 
   const openSheet = () => {
@@ -65,76 +67,54 @@ export function PlayerLivePanel() {
   };
 
   return (
-    <Card className={cn("mb-3 p-5", live && "border-accent/40 bg-accent/10")}>
+    <Card className={cn("mb-5 rounded-[28px] p-6", live && "border-accent/35 bg-accent/8")}>
       {isLoading ? (
         <Skeleton className="h-16" />
       ) : isError ? (
         <ErrorState message="Impossible de charger ton LIVE." onRetry={refetch} />
       ) : live ? (
         <>
-          <View className="mb-1 flex-row items-start gap-2">
+          <View className="mb-2 flex-row items-start gap-2">
             <PulseDot />
-            <Text className="flex-1 font-display text-xl text-fg">Tu es LIVE</Text>
-            <LiveCountdown expiresAt={mySession?.expires_at ?? null} />
+            <Text className="flex-1 font-display text-2xl text-fg">{LIVE_UX_COPY.openTitle}</Text>
           </View>
-          <Text className="text-sm text-fg-muted">Les clubs peuvent te trouver.</Text>
-          <Text className="mt-2 text-xs font-semibold text-fg">
+          <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.stillLooking}</Text>
+          <Text className="mt-3 text-base font-semibold text-fg">
             {positionLabel} · {platformLabel}
           </Text>
-          <View className="mt-3 flex-row gap-2">
-            <Button size="sm" variant="ghost" onPress={openSheet} className="flex-1">
-              Modifier
-            </Button>
-            <Button size="sm" variant="danger" loading={goOffline.isPending} onPress={stop} className="flex-1">
-              Quitter le LIVE
-            </Button>
-          </View>
+          <LiveCountdown expiresAt={mySession?.expires_at ?? null} className="mt-2 text-sm" />
+          {mySession?.note ? <Text className="mt-2 text-sm text-fg-muted">{mySession.note}</Text> : null}
+          <Pressable onPress={openSheet} className="mt-4 min-h-[44px] justify-center" accessibilityRole="button">
+            <Text className="text-sm text-fg-subtle">{LIVE_UX_COPY.edit}</Text>
+          </Pressable>
+          <Button variant="ghost" className="mt-1 min-h-[44px]" loading={goOffline.isPending} onPress={stop}>
+            {LIVE_UX_COPY.stop}
+          </Button>
         </>
       ) : (
         <>
-          <View className="mb-1 flex-row items-start gap-2">
-            <Radio size={16} color="#9aa0a8" />
-            <Text className="flex-1 font-display text-xl text-fg">Tu cherches un match ?</Text>
-          </View>
-          <Text className="mb-4 text-sm text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
+          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.offTitle}</Text>
+          <Text className="mb-5 mt-2 text-sm text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
           <Button size="lg" loading={goLive.isPending} onPress={openSheet}>
-            Passer LIVE
+            {LIVE_UX_COPY.goLive}
           </Button>
-          <Pressable
-            onPress={() => setShowDetails((v) => !v)}
-            className="mt-2 min-h-[44px] items-center justify-center py-1"
-            accessibilityRole="button"
-          >
-            <Text className="text-xs font-semibold text-fg-subtle">Détails</Text>
-          </Pressable>
-          {showDetails ? (
-            <Text className="text-[11px] leading-4 text-fg-subtle">
-              Les clubs te voient avec ton poste et ta plateforme (profil). Tu choisis seulement la
-              durée — le LIVE expire tout seul.
-            </Text>
-          ) : null}
         </>
       )}
 
       <Sheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title={live ? "Modifier le LIVE" : "Passer LIVE"}
+        title={live ? LIVE_UX_COPY.edit : LIVE_UX_COPY.goLive}
       >
-        <Text className="mb-3 text-sm text-fg-muted">
-          Visible tout de suite pour les clubs qui recrutent. Expire tout seul.
-        </Text>
-
-        <View className="mb-3 gap-2">
+        <View className="mb-4 gap-2">
           <InfoRow label="Poste" value={positionLabel} />
           <InfoRow label="Plateforme" value={platformLabel} />
         </View>
-        <Text className="mb-3 text-[11px] text-fg-subtle">
-          Poste et plateforme viennent de ton profil — le matching LIVE s&apos;appuie dessus.
-        </Text>
 
-        <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Durée</Text>
-        <View className="mb-3 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+        <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
+          {LIVE_UX_COPY.howLong}
+        </Text>
+        <View className="mb-4 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
           {LIVE_DURATION_OPTIONS.map((opt) => {
             const active = duration === opt.value;
             return (
@@ -156,23 +136,16 @@ export function PlayerLivePanel() {
           className="mb-2 min-h-[44px] justify-center py-1"
           accessibilityRole="button"
         >
-          <Text className="text-xs font-semibold text-fg-subtle">
-            {showMore ? "Masquer la note" : "Note (optionnel)"}
-          </Text>
+          <Text className="text-sm text-fg-subtle">{showMore ? LIVE_UX_COPY.hideNote : LIVE_UX_COPY.noteOptional}</Text>
         </Pressable>
         {showMore ? (
-          <View className="mb-3">
-            <Input
-              value={note}
-              onChangeText={setNote}
-              placeholder="Ex : ST dispo ce soir"
-              maxLength={200}
-            />
+          <View className="mb-4">
+            <Input value={note} onChangeText={setNote} placeholder="Ex : ST dispo ce soir" maxLength={200} />
           </View>
         ) : null}
 
         <Button loading={goLive.isPending} onPress={start}>
-          {live ? "Mettre à jour" : "Passer LIVE"}
+          {live ? "C'est bon" : LIVE_UX_COPY.goLive}
         </Button>
       </Sheet>
     </Card>
@@ -181,7 +154,7 @@ export function PlayerLivePanel() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5">
+    <View className="min-h-[44px] flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5">
       <Text className="text-xs text-fg-subtle">{label}</Text>
       <Text className="text-sm font-bold text-fg">{value}</Text>
     </View>

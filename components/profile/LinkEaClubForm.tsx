@@ -10,7 +10,7 @@ import { toast } from "@/lib/toast";
 
 export const LINK_EA_CLUB_COPY = {
   title: PLAYER_CARD_COPY.linkClub,
-  intro: "Cherche le nom exact de ton club EA. Tu peux jouer sans — lier accélère la collecte FC 27.",
+  intro: "Cherche le nom exact. Tu peux jouer sans.",
   placeholder: "Nom exact de ton club EA",
   search: "Chercher",
   empty: "Aucun club trouvé pour ce nom.",

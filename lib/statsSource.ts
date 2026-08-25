@@ -28,14 +28,14 @@ export function eaIdentityBadge(kind: EaIdentityKind | null | undefined): {
   if (kind === "USERNAME_EQUALITY") {
     return {
       show: true,
-      label: "Stats club EA liées",
+      label: "Club lié",
       hint: "Rapprochement par pseudo — pas un id joueur EA vérifié.",
     };
   }
   return {
     show: false,
     label: "",
-    hint: "Pas de stats EA liées — aucun chiffre inventé.",
+    hint: "Pas de club lié — aucun chiffre inventé.",
   };
 }
 

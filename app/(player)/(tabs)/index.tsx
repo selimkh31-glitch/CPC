@@ -17,9 +17,8 @@ import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 type LivePane = "feed" | "find";
 
 /**
- * LIVE Mode Joueur — surface de jeu.
- * Un CTA primaire : Passer LIVE. Chercher un club = secondaire.
- * Matching / TTL / candidatures inchangés.
+ * LIVE Mode Joueur — un état, un CTA : Passer LIVE.
+ * Clubs en LIVE = secondaire. Matching / TTL inchangés.
  */
 export default function LiveScreen() {
   const { session } = useAuth();
@@ -79,27 +78,23 @@ export default function LiveScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#39ff8a" />}
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="mb-1 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
-          <Text className="mb-4 text-sm text-fg-muted">{LIVE_UX_COPY.playerHeadline}</Text>
+          <Text className="mb-5 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
           <PlayerLivePanel />
 
           <Pressable
             onPress={() => switchPane("find")}
-            className="mb-4 min-h-[44px] flex-row items-center justify-between rounded-xl px-1 py-2.5 active:opacity-80"
+            className="mb-6 min-h-[44px] justify-center py-1 active:opacity-80"
             accessibilityRole="button"
             accessibilityLabel={LIVE_UX_COPY.findClub}
           >
-            <View className="min-w-0 flex-1 pr-3">
-              <Text className="text-sm font-semibold text-fg">{LIVE_UX_COPY.findClub}</Text>
-              <Text className="text-xs text-fg-muted">
-                {liveClubCount > 0 ? LIVE_UX_COPY.liveClubsNow(liveClubCount) : LIVE_UX_COPY.noLiveClubs}
-              </Text>
-            </View>
-            <Text className="text-xs font-bold text-fg-subtle">→</Text>
+            <Text className="text-sm text-fg-subtle">
+              {LIVE_UX_COPY.findClub}
+              {liveClubCount > 0 ? ` · ${LIVE_UX_COPY.liveClubsNow(liveClubCount)}` : ""}
+            </Text>
           </Pressable>
 
           {playersError ? (
@@ -108,10 +103,8 @@ export default function LiveScreen() {
             </View>
           ) : otherLivePlayers.length > 0 ? (
             <View>
-              <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-subtle">
-                {LIVE_UX_COPY.otherPlayers}
-              </Text>
-              <View className="gap-2.5">
+              <Text className="mb-3 text-sm text-fg-subtle">{LIVE_UX_COPY.otherPlayers}</Text>
+              <View className="gap-3">
                 {otherLivePlayers.map((item) => (
                   <LivePlayerCard
                     key={item.id}
@@ -122,12 +115,8 @@ export default function LiveScreen() {
                 ))}
               </View>
             </View>
-          ) : showFeedEmpty ? (
-            <View className="rounded-2xl border border-dashed border-border px-4 py-6">
-              <Text className="text-center text-sm text-fg-muted">
-                {liveFeedEmptyCopy({ selfLive, liveClubCount })}
-              </Text>
-            </View>
+          ) : showFeedEmpty && (selfLive || liveClubCount > 0) ? (
+            <Text className="text-sm text-fg-subtle">{liveFeedEmptyCopy({ selfLive, liveClubCount })}</Text>
           ) : null}
         </ScrollView>
       )}

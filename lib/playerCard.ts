@@ -83,13 +83,13 @@ export const PLAYER_CARD_COPY = {
   viewProfile: "Voir le profil",
   invite: "Inviter",
   live: "LIVE",
-  matchesOne: "1 match CPC",
-  matchesMany: (n: number) => `${n} matchs CPC`,
+  matchesOne: "1 match",
+  matchesMany: (n: number) => `${n} matchs`,
   eaUsernameHint: "Pseudo EA (rapprochement par nom — pas un id joueur)",
   fc27: "EA SPORTS FC 27 Pro Clubs",
-  linkClub: "Lier mon club",
-  eaUnlinked: "Club EA pas lié. Tes chiffres CPC restent là — lier accélère la collecte FC 27.",
-  eaLinkedPending: "Club EA lié — stats pas encore arrivées.",
+  linkClub: "C'est mon club",
+  eaUnlinked: "Pas encore lié — tu peux jouer sans.",
+  eaLinkedPending: "Club lié — chiffres pas encore là.",
   eaGoals: "Buts EA",
   eaAssists: "Passes EA",
   eaMatches: "Matchs EA",
@@ -262,4 +262,21 @@ export function visibleEaStatBlocks(
     out.push({ label: PLAYER_CARD_COPY.eaRating, value: stats.avgRating.toFixed(1) });
   }
   return out;
+}
+
+/** Un seul chiffre héros, CPC réel. Jamais un 0 décoratif ni un % inventé. */
+export function playerCardHeroNumber(data: {
+  ovr: number | null;
+  cpcMatchesPlayed: number | null;
+}): { value: number; label: string } | null {
+  if (typeof data.ovr === "number" && Number.isFinite(data.ovr)) {
+    return { value: data.ovr, label: PLAYER_CARD_COPY.ovrLabel };
+  }
+  if (typeof data.cpcMatchesPlayed === "number" && Number.isFinite(data.cpcMatchesPlayed) && data.cpcMatchesPlayed > 0) {
+    return {
+      value: data.cpcMatchesPlayed,
+      label: data.cpcMatchesPlayed === 1 ? "match" : "matchs",
+    };
+  }
+  return null;
 }

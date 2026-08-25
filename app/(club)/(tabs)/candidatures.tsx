@@ -25,7 +25,7 @@ export default function RecrutementTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }}>
         <ModeSwitch managedClubs={managedClubs} />
         {body}
       </ScrollView>
@@ -58,7 +58,7 @@ export default function RecrutementTab() {
     <>
       <View>
         <Text className="font-display text-2xl text-fg">Recrutement</Text>
-        <Text className="mt-0.5 text-sm text-fg-muted">Accepte, refuse, invite.</Text>
+        <Text className="mt-0.5 text-sm text-fg-muted">Accepte, refuse ou invite.</Text>
       </View>
       <ApplicationsPanel clubId={club.id} />
       <InviteToClubPanel clubId={club.id} members={club.members ?? []} />

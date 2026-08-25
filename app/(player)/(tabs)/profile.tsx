@@ -38,7 +38,7 @@ export default function ProfileTabScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="font-display text-3xl text-fg">Profil</Text>
           <Pressable
@@ -60,7 +60,7 @@ export default function ProfileTabScreen() {
           </View>
         )}
 
-        <View className="mb-6 items-center">
+        <View className="mb-8 items-center">
           <ProfileContent userId={session.user.id} isOwn />
         </View>
 
@@ -70,17 +70,17 @@ export default function ProfileTabScreen() {
             onPress={() => router.push("/pricing")}
             className={
               proEntry.looksLikeStore
-                ? "mb-6 min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-xl border border-pro/40 bg-pro/10 px-4 active:opacity-80"
-                : "mb-6 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl border border-border bg-bg-elevated px-4 active:opacity-80"
+                ? "mb-8 min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-xl border border-pro/40 bg-pro/10 px-4 active:opacity-80"
+                : "mb-8 min-h-[44px] flex-row items-center self-start gap-2 py-1 active:opacity-80"
             }
           >
             <Crown size={16} color={proEntry.looksLikeStore ? "#ae8bff" : "#9aa0a8"} />
             <View className="items-start">
-              <Text className={proEntry.looksLikeStore ? "font-bold text-pro-200" : "font-bold text-fg-muted"}>
+              <Text className={proEntry.looksLikeStore ? "font-bold text-pro-200" : "text-sm text-fg-subtle"}>
                 {proEntry.title}
               </Text>
               {proEntry.subtitle ? (
-                <Text className="text-xs text-fg-muted">{proEntry.subtitle}</Text>
+                <Text className="text-xs text-fg-subtle">{proEntry.subtitle}</Text>
               ) : null}
             </View>
           </Pressable>

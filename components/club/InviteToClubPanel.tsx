@@ -80,7 +80,7 @@ export function InviteToClubPanel({ clubId, members }: { clubId: string; members
       {
         onSuccess: () => {
           markLocalStatus(userId, "PENDING");
-          toast.success("Invitation envoyée !");
+          toast.success("C'est envoyé.");
         },
         onError: (err: any) => {
           const message = typeof err?.message === "string" ? err.message : "Erreur";

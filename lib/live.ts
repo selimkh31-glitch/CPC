@@ -57,34 +57,55 @@ export function findActiveLiveSession<T extends LiveSessionLike>(
 
 export function formatLiveRemaining(expiresAt: string | null, nowMs: number): string {
   const ms = remainingLiveMs(expiresAt, nowMs);
-  if (ms <= 0) return "Expiré";
+  if (ms <= 0) return "C'est fini";
   const totalMinutes = Math.ceil(ms / 60000);
-  if (totalMinutes < 60) return `${totalMinutes} min`;
+  if (totalMinutes < 60) return `encore ${totalMinutes} min`;
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (minutes === 0) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
+  if (minutes === 0) return `encore ${hours} h`;
+  return `encore ${hours} h ${minutes} min`;
+}
+
+export type LiveUiState = "off" | "open" | "ready";
+
+/** LIVE = un état, pas un feed. ready > open > off. */
+export function liveUiState(input: { liveActive: boolean; matchActive?: boolean }): LiveUiState {
+  if (input.matchActive) return "ready";
+  if (input.liveActive) return "open";
+  return "off";
 }
 
 /**
- * Copy LIVE (tu, courte). Pas de sessions inventées, pas de matching changé.
- * Empty LIVE = chercher un match / créer une session, jamais un vide muet.
+ * Copy LIVE (tu, football, courte). Pas de TTL / session / matching à l'écran.
+ * Empty = on cherche un match, jamais un vide muet ni une session fake.
  */
 export const LIVE_UX_COPY = {
   title: "LIVE",
-  playerHeadline: "Tu veux jouer maintenant ?",
-  clubHeadline: "Tu recrutes maintenant ?",
+  playerHeadline: "On cherche un match",
+  clubHeadline: "On cherche un match",
   goLive: "Passer LIVE",
-  findClub: "Chercher un club",
+  findClub: "Clubs en LIVE",
   backToLive: "LIVE",
-  emptyNoClubs: "Aucun club LIVE. Passe LIVE pour qu'on te trouve, ou cherche un club.",
-  emptySelfLive: "Tu es LIVE. Aucun club ne recrute pour l'instant.",
-  emptyNoPlayers: "Aucun autre joueur LIVE pour l'instant.",
-  liveClubsNow: (n: number) => `${n} club${n > 1 ? "s" : ""} LIVE maintenant`,
-  noLiveClubs: "Aucun club LIVE pour l'instant",
-  otherPlayers: "Autres joueurs LIVE",
-  clubEmptyPlayersLive: "Aucun joueur LIVE compatible (poste + plateforme).",
-  clubEmptyPlayersOffline: "Passe LIVE pour voir les joueurs dispo.",
+  emptyNoClubs: "Personne ne cherche un match. Passe LIVE, ou vois les clubs.",
+  emptySelfLive: "On cherche. Personne d'autre pour l'instant.",
+  emptyNoPlayers: "Personne d'autre ne cherche pour l'instant.",
+  liveClubsNow: (n: number) => (n === 1 ? "1 club en LIVE" : `${n} clubs en LIVE`),
+  noLiveClubs: "Aucun club en LIVE",
+  otherPlayers: "Ils veulent jouer",
+  clubEmptyPlayersLive: "Personne de dispo sur tes postes.",
+  clubEmptyPlayersOffline: "Passe LIVE pour voir qui veut jouer.",
+  offTitle: "On cherche un match",
+  openTitle: "On cherche un match",
+  clubOpenTitle: "Club en LIVE",
+  readyTitle: "Le match est lancé",
+  stop: "Arrêter",
+  edit: "Modifier",
+  matchSheet: "Feuille de match",
+  stillLooking: "Les clubs te voient.",
+  clubStillLooking: "Les joueurs te voient.",
+  howLong: "Combien de temps ?",
+  noteOptional: "Une note (optionnel)",
+  hideNote: "Masquer la note",
 } as const;
 
 export function liveFeedEmptyCopy(input: { selfLive: boolean; liveClubCount: number }): string {

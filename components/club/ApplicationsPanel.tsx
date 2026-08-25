@@ -32,7 +32,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
     respond.mutate(
       { applicationId, status },
       {
-        onSuccess: () => toast.success(status === "ACCEPTED" ? "Candidat accepté." : "Candidature refusée."),
+        onSuccess: () => toast.success(status === "ACCEPTED" ? "C'est bon." : "Pas retenu."),
         onError: (err: any) => toast.error(err.message ?? "Erreur"),
         onSettled: () => {
           setActingId(null);
@@ -45,14 +45,14 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle icon={<Inbox size={18} color="#f4f5f7" />}>Candidatures</CardTitle>
+        <CardTitle icon={<Inbox size={18} color="#f4f5f7" />}>Ils veulent rentrer</CardTitle>
         <Text className="text-sm text-fg-muted">{pending.length} en attente</Text>
       </CardHeader>
 
       {isLoading ? (
         <Skeleton className="h-24" />
       ) : isError ? (
-        <ErrorState message="Impossible de charger les candidatures." onRetry={refetch} />
+        <ErrorState message="Impossible de charger les demandes." onRetry={refetch} />
       ) : pending.length === 0 ? (
         <Text className="text-sm text-fg-muted">Personne n&apos;a postulé pour l&apos;instant.</Text>
       ) : (

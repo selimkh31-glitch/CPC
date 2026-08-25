@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { isLiveActive } from "@/lib/live";
+import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { rankLiveClubsForPlayer } from "@/lib/liveMatch";
 import {
   EMPTY_LIVE_FILTERS,
@@ -109,9 +109,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
   };
 
   const liquidityLabel =
-    activeLive.length > 0
-      ? `${activeLive.length} club${activeLive.length > 1 ? "s" : ""} LIVE maintenant`
-      : "Aucun club LIVE pour l'instant";
+    activeLive.length > 0 ? LIVE_UX_COPY.liveClubsNow(activeLive.length) : LIVE_UX_COPY.noLiveClubs;
 
   const onRefresh = () => {
     refetch();
@@ -122,8 +120,8 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
       <View className="px-4 pt-1">
         <View className="mb-3 flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-display text-xl text-fg">Trouver un club</Text>
-            <Text className="mt-0.5 text-sm text-fg-muted">On cherche les clubs qui correspondent à ton profil.</Text>
+            <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.findClub}</Text>
+            <Text className="mt-0.5 text-sm text-fg-muted">Ceux qui cherchent un match.</Text>
           </View>
           {mode === "directory" ? (
             <Button
@@ -254,13 +252,13 @@ function LiveEmptyState({
   if (activeCount === 0) {
     return (
       <View className="items-center rounded-2xl bg-bg-elevated px-5 py-10">
-        <Text className="text-center text-base font-semibold text-fg">Aucun club LIVE pour l&apos;instant</Text>
+        <Text className="text-center text-base font-semibold text-fg">{LIVE_UX_COPY.noLiveClubs}</Text>
         <Text className="mt-2 text-center text-sm text-fg-muted">
-          Passe LIVE pour que les clubs te trouvent dès qu&apos;ils recrutent.
+          Passe LIVE. Les clubs te voient dès qu&apos;ils cherchent.
         </Text>
         {onCreateSession ? (
           <View className="mt-4 w-full">
-            <Button onPress={onCreateSession}>Passer LIVE</Button>
+            <Button onPress={onCreateSession}>{LIVE_UX_COPY.goLive}</Button>
           </View>
         ) : null}
       </View>
@@ -269,18 +267,18 @@ function LiveEmptyState({
 
   const profileHint =
     profilePosition && profilePlatform
-      ? `Aucun club LIVE ne recherche ${profilePosition} sur ${profilePlatform} pour l'instant.`
-      : "Aucun club LIVE ne correspond exactement à ton profil pour l'instant.";
+      ? `Personne ne cherche ${profilePosition} sur ${profilePlatform} pour l'instant.`
+      : "Personne ne cherche exactement ton profil pour l'instant.";
 
   const title = !filtersEmpty
-    ? "Pas de club LIVE pour ces critères."
+    ? "Personne pour ces critères."
     : !relaxed
       ? profileHint
-      : "Aucun club LIVE pour l'instant";
+      : LIVE_UX_COPY.noLiveClubs;
 
   const subtitle = !filtersEmpty
-    ? "On peut élargir : autre poste, plateforme ou niveau — toujours de vrais clubs LIVE, rien d'inventé."
-    : "D'autres clubs LIVE recrutent peut-être sur un autre poste ou une autre plateforme.";
+    ? "On peut élargir : autre poste, plateforme ou niveau — toujours de vrais clubs, rien d'inventé."
+    : "D'autres clubs cherchent peut-être un autre poste ou une autre plateforme.";
 
   return (
     <View className="items-center rounded-2xl bg-bg-elevated px-5 py-8">

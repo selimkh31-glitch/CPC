@@ -15,11 +15,11 @@ import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
-import { LIVE_UX_COPY } from "@/lib/live";
+import { formatLiveRemaining, liveUiState, LIVE_UX_COPY } from "@/lib/live";
 
 /**
- * LIVE Mode Club — un CTA primaire : Passer LIVE.
- * Feuille de match = secondaire. Matching / TTL inchangés.
+ * LIVE Mode Club — un état (off / open / ready), un CTA primaire.
+ * Feuille de match = secondaire (ghost). Matching / TTL inchangés.
  */
 export default function ClubLiveTab() {
   const { session } = useAuth();
@@ -38,7 +38,7 @@ export default function ClubLiveTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
         <ModeSwitch managedClubs={managedClubs} />
         {body}
       </ScrollView>
@@ -80,27 +80,39 @@ export default function ClubLiveTab() {
       }
     : null;
   const owner = club.members?.find((m) => m.user_id === club.owner_id);
+  const uiState = liveUiState({
+    liveActive: Boolean(snapshot.live.active),
+    matchActive: Boolean(snapshot.match.active),
+  });
 
   return shell(
     <>
-      <View>
-        <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
-        <Text className="mt-0.5 text-sm text-fg-muted">
-          {club.name} — {LIVE_UX_COPY.clubHeadline}
-        </Text>
-      </View>
+      <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
 
-      <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
+      {uiState === "ready" ? (
+        <View className="rounded-[28px] border border-white/10 bg-bg-card px-6 py-6">
+          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.readyTitle}</Text>
+          <Text className="mb-5 mt-2 text-sm text-fg-muted">Tout le monde est là.</Text>
+          <Button variant="ghost" className="min-h-[44px]" onPress={() => router.push("/match")}>
+            {LIVE_UX_COPY.matchSheet}
+          </Button>
+          {liveSession ? (
+            <Text className="mt-3 text-sm text-fg-subtle">
+              {LIVE_UX_COPY.clubStillLooking}
+              {liveSession.expires_at ? ` · ${formatLiveRemaining(liveSession.expires_at, now)}` : ""}
+            </Text>
+          ) : null}
+        </View>
+      ) : (
+        <>
+          <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
+          <Button variant="ghost" className="min-h-[44px]" onPress={() => router.push("/match")}>
+            {LIVE_UX_COPY.matchSheet}
+          </Button>
+        </>
+      )}
 
-      <Button
-        variant={snapshot.match.active ? "secondary" : "ghost"}
-        onPress={() => router.push("/match")}
-        className="min-h-[44px]"
-      >
-        {snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match"}
-      </Button>
-
-      {canManage && (
+      {canManage && uiState === "open" ? (
         <LivePlayersRecruitPanel
           clubId={club.id}
           members={club.members ?? []}
@@ -108,7 +120,7 @@ export default function ClubLiveTab() {
           platform={owner?.user?.platform ?? null}
           clubLive={liveSession}
         />
-      )}
+      ) : null}
     </>
   );
 }

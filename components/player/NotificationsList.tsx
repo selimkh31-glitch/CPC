@@ -87,7 +87,7 @@ export function NotificationsList() {
     return (
       <EmptyState
         title="Rien pour l'instant."
-        subtitle="Candidatures, invitations, messages et résultats arriveront ici."
+        subtitle="Tes invitations, tes matchs et tes retours arriveront ici."
       />
     );
   }
@@ -96,7 +96,7 @@ export function NotificationsList() {
     <View className="gap-2">
       {unread > 0 && (
         <Button
-          variant="secondary"
+          variant="ghost"
           className="mb-1 min-h-[44px]"
           loading={markAll.isPending}
           accessibilityLabel="Tout marquer lu"

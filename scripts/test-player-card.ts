@@ -10,6 +10,7 @@ import {
   formatPositionsLine,
   isPlayerCardTemplateSelectable,
   playerNeedFitLabel,
+  playerCardHeroNumber,
   resolvePlayerCardDensity,
   resolvePlayerCardTemplate,
   visibleEaStatBlocks,
@@ -112,7 +113,7 @@ test("joueur sans match CPC -> cpcMatchesPlayed 0, pas de fake stats, copy vide"
 test("joueur avec participations réelles -> match count reflété, toujours pas de buts/passes joueur", () => {
   const data = buildPlayerCardData(baseUser({ reliability_score: 62 }), { cpcMatchesPlayed: 3 });
   assert.equal(data.cpcMatchesPlayed, 3, "played");
-  assert.equal(formatCpcMatchCount(3), "3 matchs CPC", "label");
+  assert.equal(formatCpcMatchCount(3), "3 matchs", "label");
   assert.equal(data.showEaStats, false, "pas de stats joueur inventées");
 });
 
@@ -219,13 +220,25 @@ test("LIVE context flag + note, sans inventer un statut", () => {
   assert.equal(on.liveNote, "Dispo 21h", "note");
 });
 
-test("copy EA vide : Lier mon club, pas de chiffres inventés", () => {
-  assert.equal(PLAYER_CARD_COPY.linkClub, "Lier mon club", "cta");
+test("copy EA vide : C'est mon club, pas de chiffres inventés", () => {
+  assert.equal(PLAYER_CARD_COPY.linkClub, "C'est mon club", "cta");
   assert.equal(PLAYER_CARD_COPY.eaUnlinked.includes("invent"), false, "unlinked no inventer");
   assert.equal(PLAYER_CARD_COPY.eaLinkedPending.includes("pas encore"), true, "pending");
   const unlinked = buildPlayerCardData(baseUser({ ea_club_linked: null }));
   assert.equal(unlinked.eaClubLinked, false, "unlinked");
   assert.deepEqual(visibleEaStatBlocks(unlinked.eaStats), [], "no blocks");
+});
+
+test("playerCardHeroNumber — OVR gagne, sinon matchs, jamais un 0", () => {
+  assert.deepEqual(
+    playerCardHeroNumber({ ovr: 72, cpcMatchesPlayed: 3 }),
+    { value: 72, label: PLAYER_CARD_COPY.ovrLabel },
+    "ovr"
+  );
+  assert.deepEqual(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 3 }), { value: 3, label: "matchs" }, "matches");
+  assert.deepEqual(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 1 }), { value: 1, label: "match" }, "one");
+  assert.equal(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 0 }), null, "zero");
+  assert.equal(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: null }), null, "none");
 });
 
 test("visibleEaStatBlocks — seulement chiffres stockés, jamais SHO/PAS/TAC vides", () => {

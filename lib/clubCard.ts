@@ -46,8 +46,8 @@ export const CLUB_CARD_COPY = {
   eaUnlinked: "Club EA pas lié — pas de stats EA inventées.",
   membersOne: "1 membre",
   membersMany: (n: number) => `${n} membres`,
-  recordLabel: "Bilan CPC",
-  pointsLabel: "Pts CPC",
+  recordLabel: "Bilan",
+  pointsLabel: "Pts",
 } as const;
 
 export function resolveClubCardDensity(variant: ClubCardVariant = "compact"): ClubCardDensity {
@@ -231,6 +231,15 @@ export function buildClubCardDataFromLiveSession(
 export function clubLevelLabel(level: ClubLevel | null | undefined): string | null {
   if (!level) return null;
   return CLUB_LEVEL_LABELS[level] ?? level;
+}
+
+/** Un chiffre héros CPC — points si un vrai bilan, sinon rien. */
+export function clubCardHeroNumber(data: {
+  matchRecord: ClubCardMatchRecord | null;
+}): { value: number; label: string } | null {
+  const record = normalizeClubMatchRecord(data.matchRecord);
+  if (!record) return null;
+  return { value: record.points, label: CLUB_CARD_COPY.pointsLabel };
 }
 
 /** Profil / effectif / feuille : membres + sessions déjà hydratés, pas de requête extra. */

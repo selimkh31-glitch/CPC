@@ -8,6 +8,7 @@ import {
   buildClubCardDataFromHydratedClub,
   buildClubCardDataFromLiveSession,
   clubMatchRecordFromLinkedResults,
+  clubCardHeroNumber,
   formatClubMatchRecord,
   formatClubMemberCount,
   honestClubReason,
@@ -146,6 +147,8 @@ test("W-D-L réel seulement avec opponent_club_id — même scorer CPC", () => {
 
   const data = buildClubCardData(baseClub({ id: clubId }), { matchRecord: record });
   assert.deepEqual(data.matchRecord, record, "passed through");
+  assert.deepEqual(clubCardHeroNumber(data), { value: 4, label: CLUB_CARD_COPY.pointsLabel }, "hero points");
+  assert.equal(clubCardHeroNumber({ matchRecord: null }), null, "no fake hero");
 });
 
 test("LIVE / needed / note viennent de la session, pas de la ligne Club", () => {
@@ -346,6 +349,7 @@ test("spine UX — Recrutement invite ; Club pas un 2e LIVE ; Card a Lier mon cl
   assert.false(club.includes("ClubSessionStatus"), "club not 2nd LIVE");
   assert.true(club.includes("MatchHistoryList"), "club stats");
   assert.true(liveClub.includes("LiveSessionPanel"), "club live panel");
+  assert.true(liveClub.includes("liveUiState"), "club live states");
   assert.false(liveClub.includes("ClubSessionStatus"), "no duplicate status");
   assert.true(livePlayer.includes("liveFeedEmptyCopy"), "empty live");
   assert.true(profile.includes("onLinkEaClub"), "EA CTA wired");

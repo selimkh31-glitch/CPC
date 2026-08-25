@@ -23,16 +23,16 @@ export default function ActivityTab() {
   const pendingInvitations = invitations?.filter((i) => i.status === "PENDING").length ?? 0;
 
   const segments: { key: ActivitySegment; label: string }[] = [
-    { key: "applications", label: "Candidatures" },
+    { key: "applications", label: "Postulé" },
     { key: "invitations", label: pendingInvitations > 0 ? `Invitations (${pendingInvitations})` : "Invitations" },
     { key: "notifications", label: unread > 0 ? `Notifs (${unread})` : "Notifications" },
   ];
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <View className="px-4 pt-2 pb-3">
+      <View className="px-5 pt-2 pb-3">
         <Text className="mb-1 font-display text-3xl text-fg">Activité</Text>
-        <Text className="mb-3 text-sm text-fg-muted">Tes retours. Touche une ligne pour ouvrir.</Text>
+        <Text className="mb-4 text-sm text-fg-muted">Tes retours. Touche une ligne pour ouvrir.</Text>
         <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">
           {segments.map((s) => (
             <Pressable
@@ -52,7 +52,7 @@ export default function ActivityTab() {
           ))}
         </View>
       </View>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
         {segment === "applications" && <MyApplicationsList />}
         {segment === "invitations" && <MyInvitationsList />}
         {segment === "notifications" && <NotificationsList />}

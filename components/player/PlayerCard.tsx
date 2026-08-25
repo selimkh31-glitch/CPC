@@ -8,13 +8,14 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { PulseDot } from "@/components/ui/PulseDot";
-import { RARITY_BORDER, RARITY_GRADIENT, RARITY_TEXT } from "@/lib/theme";
-import { OVR_CPC_LABEL, RARITY_LABEL } from "@/lib/ovr";
+import { RARITY_BORDER, RARITY_TEXT } from "@/lib/theme";
+import { OVR_CPC_LABEL } from "@/lib/ovr";
 import { Button } from "@/components/ui/Button";
 import {
   PLAYER_CARD_COPY,
   formatCpcMatchCount,
   formatPositionsLine,
+  playerCardHeroNumber,
   resolvePlayerCardDensity,
   visibleEaStatBlocks,
   type PlayerCardData,
@@ -240,9 +241,9 @@ function FullBody({
   className?: string;
 }) {
   const identity = eaIdentityBadge(data.eaIdentityKind);
-  const matchLine = formatCpcMatchCount(data.cpcMatchesPlayed);
   const positionLine = formatPositionsLine(data.mainPosition, data.secondaryPositions);
-  const gradient = data.rarity ? RARITY_GRADIENT[data.rarity] : (["#39ff8a26", "#131519"] as [string, string]);
+  const hero = playerCardHeroNumber(data);
+  const surface = ["#1a1e24", "#0c0d10"] as [string, string];
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -253,68 +254,54 @@ function FullBody({
   };
 
   const inner = (
-    <LinearGradient colors={gradient} className="p-5">
-      <Text className="text-[11px] font-extrabold uppercase tracking-widest text-accent">{PLAYER_CARD_COPY.fc27}</Text>
-
-      <View className="mt-3 flex-row items-start justify-between">
-        <View className="min-w-0 flex-1 pr-3">
-          <Text className="font-display text-7xl leading-[72px] text-accent">{data.mainPosition}</Text>
-          <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-            {POSITION_LABELS[data.mainPosition]}
-          </Text>
-        </View>
-        <View className="items-end gap-2">
-          <Avatar username={data.username} size="xl" tone={data.live ? "accent" : "neutral"} />
-          {data.rarity ? <Badge tone={data.rarity}>{RARITY_LABEL[data.rarity]}</Badge> : null}
-        </View>
-      </View>
-
-      <View className="mt-4 flex-row items-center justify-between border-t border-white/10 pt-4">
+    <LinearGradient colors={surface} className="px-6 pb-6 pt-6">
+      <View className="flex-row items-start justify-between">
         <View className="min-w-0 flex-1 pr-3">
           <View className="flex-row items-center gap-1.5">
             {data.live ? <PulseDot /> : null}
-            <Text numberOfLines={1} className="font-display text-2xl text-fg">
+            <Text numberOfLines={1} className="font-display text-3xl leading-9 text-fg">
               {data.username}
             </Text>
           </View>
-          <Text className="mt-0.5 text-xs text-fg-muted">
-            {PLATFORM_LABELS[data.platform]}
-            {data.playStyle ? ` · ${PLAY_STYLE_LABELS[data.playStyle]}` : ""}
-            {data.clubName ? ` · ${data.clubName}` : ""}
-          </Text>
-          {data.eaUsername ? (
-            <Text className="mt-1 text-[11px] text-fg-subtle">
-              EA · {data.eaUsername}
+          {data.clubName ? (
+            <Text numberOfLines={1} className="mt-1 text-base text-fg-muted">
+              {data.clubName}
             </Text>
           ) : null}
+          <Text className="mt-2 text-sm text-fg-subtle">
+            {data.mainPosition} · {POSITION_LABELS[data.mainPosition]}
+            {` · ${PLATFORM_LABELS[data.platform]}`}
+          </Text>
+          {data.playStyle ? (
+            <Text className="mt-0.5 text-xs text-fg-subtle">{PLAY_STYLE_LABELS[data.playStyle]}</Text>
+          ) : null}
         </View>
-        {shareEnabled ? (
-          <Pressable
-            onPress={handleShare}
-            accessibilityLabel="Partager la carte"
-            hitSlop={8}
-            className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border bg-bg-elevated/70 active:scale-90"
-          >
-            <Share2 size={16} color="#9aa0a8" />
-          </Pressable>
-        ) : null}
+        <View className="items-end gap-2">
+          <Avatar username={data.username} size="xl" tone={data.live ? "accent" : "neutral"} />
+          {shareEnabled ? (
+            <Pressable
+              onPress={handleShare}
+              accessibilityLabel="Partager la carte"
+              hitSlop={8}
+              className="min-h-[44px] min-w-[44px] items-center justify-center active:opacity-70"
+            >
+              <Share2 size={16} color="#666c74" />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
-      {data.secondaryPositions.length > 0 ? (
-        <View className="mt-3">
-          <Text className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Postes</Text>
-          <Text className="mt-1 text-sm font-semibold text-fg">{positionLine}</Text>
+      {hero ? (
+        <View className="mt-6">
+          <Text className="font-display text-6xl leading-[60px] text-accent">{hero.value}</Text>
+          <Text className="text-xs uppercase tracking-wide text-fg-subtle">{hero.label}</Text>
         </View>
+      ) : data.cpcMatchesPlayed === 0 && !footer ? (
+        <Text className="mt-6 text-sm text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
       ) : null}
 
-      <View className="mt-4 flex-row gap-2">
-        {data.ovr !== null ? (
-          <StatBlock label={OVR_CPC_LABEL} value={data.ovr} />
-        ) : null}
-        {matchLine ? <StatBlock label="Matchs CPC" value={data.cpcMatchesPlayed ?? 0} /> : null}
-      </View>
-      {data.cpcMatchesPlayed === 0 && !footer ? (
-        <Text className="mt-3 text-sm text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
+      {data.secondaryPositions.length > 0 ? (
+        <Text className="mt-4 text-sm text-fg-subtle">{positionLine}</Text>
       ) : null}
 
       <EaSlot data={data} identity={identity} onLinkEaClub={onLinkEaClub} />
@@ -344,7 +331,7 @@ function FullBody({
       animate={{ opacity: 1, translateY: 0, scale: 1 }}
       transition={{ type: "timing", duration: 500 }}
       className={cn(
-        "w-full max-w-sm overflow-hidden rounded-3xl border-2",
+        "w-full max-w-sm overflow-hidden rounded-[32px] border border-white/10",
         stateBorderClass(state, data),
         className
       )}
@@ -372,12 +359,12 @@ function EaSlot({
 }) {
   if (onLinkEaClub && !data.eaClubLinked) {
     return (
-      <View className="mt-4 rounded-xl border border-dashed border-border bg-black/20 px-3 py-3">
-        <Text className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Club EA</Text>
-        <Text className="mt-1 text-sm text-fg-muted">{PLAYER_CARD_COPY.eaUnlinked}</Text>
+      <View className="mt-6">
+        <Text className="text-sm text-fg-muted">{PLAYER_CARD_COPY.eaUnlinked}</Text>
         <Button
+          variant="ghost"
           size="sm"
-          className="mt-3 min-h-[44px]"
+          className="mt-2 min-h-[44px] self-start px-0"
           onPress={onLinkEaClub}
           accessibilityLabel={PLAYER_CARD_COPY.linkClub}
         >
@@ -391,14 +378,12 @@ function EaSlot({
 
   if (identity.show) {
     return (
-      <View className="mt-4">
-        <View className="self-start rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1.5">
-          <View className="flex-row items-center gap-1.5">
-            <BadgeCheck size={14} color="#39ff8a" />
-            <Text className="text-xs font-bold text-accent">{identity.label}</Text>
-          </View>
-          <Text className="mt-0.5 text-[10px] text-fg-muted">{identity.hint}</Text>
+      <View className="mt-5">
+        <View className="flex-row items-center gap-1.5">
+          <BadgeCheck size={14} color="#666c74" />
+          <Text className="text-xs text-fg-subtle">{identity.label}</Text>
         </View>
+        <Text className="mt-0.5 text-[10px] text-fg-subtle">{identity.hint}</Text>
         {eaBlocks.length > 0 ? (
           <View className="mt-3 flex-row flex-wrap gap-2">
             {eaBlocks.map((block) => (

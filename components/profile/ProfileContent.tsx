@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Ban, Flag, Pencil, Star } from "lucide-react-native";
+import { Ban, Flag, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
@@ -60,7 +60,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const avgBehavior = reviews?.length ? reviews.reduce((s, r) => s + r.rating_behavior, 0) / reviews.length : null;
 
   return (
-    <View className="items-center gap-4">
+    <View className="items-center gap-6">
       <ClubProCard
         user={user}
         clubName={currentClub.data?.name ?? null}
@@ -80,16 +80,14 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
       )}
 
       {isOwn && user && (
-        <View className="w-full">
-          <Button
-            variant="ghost"
-            className="min-h-[44px] w-full"
-            icon={<Pencil size={15} color="#9aa0a8" />}
-            onPress={() => router.push("/edit-profile")}
-          >
-            Modifier mon identité Pro Clubs
-          </Button>
-        </View>
+        <Pressable
+          onPress={() => router.push("/edit-profile")}
+          className="min-h-[44px] self-start justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Modifier le profil"
+        >
+          <Text className="text-sm text-fg-subtle">Modifier le profil</Text>
+        </Pressable>
       )}
 
       {!isOwn && user && (

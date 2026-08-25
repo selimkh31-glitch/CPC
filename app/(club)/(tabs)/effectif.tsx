@@ -1,8 +1,7 @@
 import { useCallback, type ReactNode } from "react";
-import { ScrollView, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { Pencil } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
@@ -52,7 +51,7 @@ export default function ClubTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
         <ModeSwitch managedClubs={managedClubs} />
         {body}
       </ScrollView>
@@ -107,15 +106,14 @@ export default function ClubTab() {
         footer={
           <View className="gap-3">
             {isOwner ? (
-              <Button
-                variant="ghost"
-                className="min-h-[44px] w-full"
-                icon={<Pencil size={15} color="#9aa0a8" />}
-                accessibilityLabel="Modifier l'identité du club"
+              <Pressable
                 onPress={() => router.push("/edit-club")}
+                className="min-h-[44px] self-start justify-center"
+                accessibilityRole="button"
+                accessibilityLabel="Modifier le club"
               >
-                Modifier l'identité du club
-              </Button>
+                <Text className="text-sm text-fg-subtle">Modifier le club</Text>
+              </Pressable>
             ) : null}
             <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
           </View>

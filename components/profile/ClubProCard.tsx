@@ -47,7 +47,7 @@ export function ClubProCard({
   }
 
   if (loading) {
-    return <Skeleton className="h-72 w-full max-w-sm rounded-3xl" />;
+    return <Skeleton className="h-72 w-full max-w-sm rounded-[32px]" />;
   }
 
   if (!user?.username) {
@@ -77,7 +77,7 @@ export function ClubProCard({
       shareEnabled
       onLinkEaClub={onLinkEaClub}
       footer={
-        <View className="px-5 pb-5">
+        <View className="px-6 pb-6">
           <MatchHistoryList
             variant="embedded"
             items={matchHistory}

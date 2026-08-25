@@ -27,9 +27,9 @@ export function StartClubConversationButton({
 
   return (
     <Button
-      variant="secondary"
+      variant="ghost"
       className={cn("min-h-[44px] w-full", className)}
-      icon={<MessageCircle size={16} color="#f4f5f7" />}
+      icon={<MessageCircle size={16} color="#9aa0a8" />}
       loading={start.isPending}
       accessibilityLabel={CLUB_CONVERSATION_COPY}
       onPress={() =>

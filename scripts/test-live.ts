@@ -11,6 +11,7 @@ import {
   formatLiveRemaining,
   isLiveActive,
   liveFeedEmptyCopy,
+  liveUiState,
   LIVE_UX_COPY,
   parseLiveDurationMs,
   remainingLiveMs,
@@ -101,16 +102,16 @@ test("parseLiveDurationMs — valeur hors catalogue -> défaut 2 h", () => {
   assert.equal(parseLiveDurationMs("1800000"), 1_800_000, "30min allowed");
 });
 
-test("formatLiveRemaining — moins d'une heure -> minutes ceil", () => {
-  assert.equal(formatLiveRemaining("2026-08-24T12:10:00.000Z", NOW), "10 min", "10min");
+test("formatLiveRemaining — moins d'une heure -> minutes ceil, mots humains", () => {
+  assert.equal(formatLiveRemaining("2026-08-24T12:10:00.000Z", NOW), "encore 10 min", "10min");
 });
 
 test("formatLiveRemaining — exactement 2 h", () => {
-  assert.equal(formatLiveRemaining("2026-08-24T14:00:00.000Z", NOW), "2 h", "2h");
+  assert.equal(formatLiveRemaining("2026-08-24T14:00:00.000Z", NOW), "encore 2 h", "2h");
 });
 
 test("formatLiveRemaining — expiré", () => {
-  assert.equal(formatLiveRemaining("2026-08-24T11:00:00.000Z", NOW), "Expiré", "expired label");
+  assert.equal(formatLiveRemaining("2026-08-24T11:00:00.000Z", NOW), "C'est fini", "expired label");
 });
 
 test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
@@ -118,8 +119,16 @@ test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
   assert.equal(liveFeedEmptyCopy({ selfLive: true, liveClubCount: 0 }), LIVE_UX_COPY.emptySelfLive, "self live");
   assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 2 }), LIVE_UX_COPY.emptyNoPlayers, "players");
   assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "cta");
-  assert.equal(LIVE_UX_COPY.findClub, "Chercher un club", "find");
+  assert.equal(LIVE_UX_COPY.findClub, "Clubs en LIVE", "find");
+  assert.equal(LIVE_UX_COPY.otherPlayers, "Ils veulent jouer", "others");
   assert.equal(LIVE_UX_COPY.emptyNoClubs.includes("invent"), false, "no fake");
+});
+
+test("liveUiState — ready > open > off", () => {
+  assert.equal(liveUiState({ liveActive: false }), "off", "off");
+  assert.equal(liveUiState({ liveActive: true }), "open", "open");
+  assert.equal(liveUiState({ liveActive: true, matchActive: true }), "ready", "ready wins");
+  assert.equal(liveUiState({ liveActive: false, matchActive: true }), "ready", "ready without live");
 });
 
 console.log(`\n${passed} tests live OK`);
