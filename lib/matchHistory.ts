@@ -163,6 +163,22 @@ export function buildPlayerMatchHistory(input: {
 }
 
 /**
+ * Nombre de matchs CPC du joueur (même join que l'historique).
+ * Pas de W-D-L ici : `match_results` est le club enregistreur seulement —
+ * afficher V-N-D serait une attribution trop mince. Compter, c'est honnête.
+ */
+export function countPlayerCpcMatches(input: {
+  participations: readonly MatchHistoryParticipationInput[];
+  results: readonly MatchHistoryResultInput[];
+}): number {
+  return buildPlayerMatchHistory({
+    participations: input.participations,
+    results: input.results,
+    limit: Number.MAX_SAFE_INTEGER,
+  }).length;
+}
+
+/**
  * Join club : `match_results.club_id` — résultats persistés uniquement.
  */
 export function buildClubMatchHistory(input: {

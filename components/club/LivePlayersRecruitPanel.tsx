@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
+import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 import { toast } from "@/lib/toast";
 import { isLiveActive } from "@/lib/live";
 import { isPlayerCompatibleWithClubNeed } from "@/lib/liveMatch";
@@ -63,6 +64,7 @@ export function LivePlayersRecruitPanel({
       now
     );
   });
+  const { data: clubsByUser } = useCurrentClubsByUserIds(candidates.map((row) => row.user_id));
 
   const act = (userId: string) => {
     if (pendingUserId || invite.isPending) return;
@@ -100,6 +102,9 @@ export function LivePlayersRecruitPanel({
               <LivePlayerCard
                 key={item.id}
                 item={item}
+                clubName={clubsByUser?.get(item.user_id)?.name ?? null}
+                clubId={clubsByUser?.get(item.user_id)?.id ?? null}
+                needPositions={neededPositions}
                 inviting={pendingUserId === item.user_id}
                 inviteLabel={already ? "Déjà invité" : "Inviter au club"}
                 onInvite={already ? undefined : () => act(item.user_id)}

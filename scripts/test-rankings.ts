@@ -10,6 +10,7 @@ import {
   canFilterCpcRankingBySeason,
   canShowCpcClubRanking,
   canShowCpcPlayerRanking,
+  clubRankingRowHref,
   computeCpcClubStandings,
   cpcClubRankingUsesSeasonStats,
   hasCpcClubRankingResults,
@@ -217,6 +218,17 @@ test("classement joueur skip : join PRESENT existe mais trop mince", () => {
   assert.true(PLAYER_MATCH_HISTORY_JOIN.includes("match_results"), "results");
   assert.false(CPC_PLAYER_RANKING_AVAILABLE, "flag off");
   assert.false(canShowCpcPlayerRanking(), "no player table");
+});
+
+test("ligne classement : tap club seulement si UUID réel + nom chargé — jamais /profile", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  assert.equal(clubRankingRowHref(id, "Invincibles"), `/club/${id}`, "ok");
+  assert.equal(clubRankingRowHref("not-a-uuid", "Invincibles"), null, "bad id");
+  assert.equal(clubRankingRowHref(id, ""), null, "empty name");
+  assert.equal(clubRankingRowHref(id, "Club Pro Clubs"), null, "fallback name");
+  assert.equal(clubRankingRowHref(id, null), null, "no name");
+  const href = clubRankingRowHref(id, "Invincibles");
+  assert.false(Boolean(href && href.includes("/profile/")), "not player profile");
 });
 
 console.log(`\n${passed} tests OK`);

@@ -5,9 +5,15 @@ import {
   PLAYER_MATCH_HISTORY_LOOKBACK,
   buildClubMatchHistory,
   buildPlayerMatchHistory,
+  countPlayerCpcMatches,
   type MatchHistoryItem,
   type MatchHistoryResultInput,
 } from "@/lib/matchHistory";
+
+export interface PlayerMatchHistoryQuery {
+  items: MatchHistoryItem[];
+  played: number;
+}
 
 const RESULT_COLUMNS =
   "id, match_checkin_id, club_id, our_score, opponent_score, outcome, created_at";
@@ -28,7 +34,7 @@ async function fetchResultsByCheckinIds(checkinIds: string[]): Promise<MatchHist
     .select(RESULT_COLUMNS)
     .in("match_checkin_id", unique)
     .order("created_at", { ascending: false })
-    .limit(MATCH_HISTORY_LIMIT);
+    .limit(PLAYER_MATCH_HISTORY_LOOKBACK);
   if (error) throw error;
   return (data ?? []) as MatchHistoryResultInput[];
 }
@@ -41,7 +47,7 @@ export function usePlayerMatchHistory(userId: string | null) {
   return useQuery({
     queryKey: ["player-match-history", userId],
     enabled: Boolean(userId),
-    queryFn: async (): Promise<MatchHistoryItem[]> => {
+    queryFn: async (): Promise<PlayerMatchHistoryQuery> => {
       const { data: parts, error: partsError } = await supabase
         .from("match_participations")
         .select("match_checkin_id, club_id, status")
@@ -55,11 +61,15 @@ export function usePlayerMatchHistory(userId: string | null) {
       const checkinIds = rows.map((row: { match_checkin_id: string }) => row.match_checkin_id);
       const results = await fetchResultsByCheckinIds(checkinIds);
       const clubNames = await fetchClubNames(results.map((row) => row.club_id));
-      return buildPlayerMatchHistory({
+      const items = buildPlayerMatchHistory({
         participations: rows,
         results,
         clubNames,
       });
+      return {
+        items,
+        played: countPlayerCpcMatches({ participations: rows, results }),
+      };
     },
   });
 }

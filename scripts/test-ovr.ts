@@ -1,13 +1,8 @@
 /**
- * Tests de lib/ovr.ts (computeOvr / rarityForOvr) — logique pure, aucune
- * dépendance réseau/Supabase. Jamais testé jusqu'ici malgré son rôle central
- * (ClubPro Card, et depuis cette session PlayerCard/buildPlayerCardData) —
- * identifié comme un des tests à plus forte valeur lors de l'audit
- * post-session (mission "PHASE 9 — TESTS MANQUANTS").
- *
+ * Tests de lib/ovr.ts — OVR CPC honnête (fiabilité CPC seulement).
  * Lancer : npx tsx scripts/test-ovr.ts
  */
-import { computeOvr, rarityForOvr } from "../lib/ovr";
+import { canShowOvrCpc, computeOvr, rarityForOvr, OVR_CPC_LABEL } from "../lib/ovr";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -27,63 +22,67 @@ function test(name: string, fn: () => void) {
 
 console.log("lib/ovr.ts — computeOvr / rarityForOvr");
 
-test("computeOvr — sans stats vérifiées, reste dans le plancher/plafond produit [40, 99]", () => {
-  assert.inRange(computeOvr({ reliabilityScore: 0 }), 40, 99, "reliabilityScore=0");
-  assert.inRange(computeOvr({ reliabilityScore: 100 }), 40, 99, "reliabilityScore=100");
+test("libellé unique OVR CPC — jamais un bare OVR", () => {
+  assert.equal(OVR_CPC_LABEL, "OVR CPC", "label");
 });
 
-test("computeOvr — reliabilityScore=0 sans stats -> plancher exact 40", () => {
-  // reliabilityComponent = 45 (45 + 0*0.4) ; ovr = 45*0.7 + 45*0.3 = 45,
-  // avant clamp -- mais le plancher produit est 40 < 45, donc pas atteint
-  // ici : ce test documente que 0 de fiabilité ne fait PAS tomber au
-  // plancher absolu (45 reste "jouable"), contrairement à une lecture
-  // naïve du nom "plancher à 45 pour rester jouable" dans le commentaire.
-  assert.equal(computeOvr({ reliabilityScore: 0 }), 45, "reliabilityScore=0 => 45");
+test("canShowOvrCpc — score 0 / absent / NaN = pas assez de signal CPC", () => {
+  assert.equal(canShowOvrCpc(0), false, "0");
+  assert.equal(canShowOvrCpc(null), false, "null");
+  assert.equal(canShowOvrCpc(undefined), false, "undefined");
+  assert.equal(canShowOvrCpc(Number.NaN), false, "NaN");
+  assert.equal(canShowOvrCpc(1), true, "1");
+  assert.equal(canShowOvrCpc(50), true, "50");
 });
 
-test("computeOvr — reliabilityScore=100 sans stats -> plafonné à 85 (composante fiabilité seule, jamais 99)", () => {
-  // reliabilityComponent = 45 + 100*0.4 = 85 ; ovr = 85*0.7 + 45*0.3 = 73
-  assert.equal(computeOvr({ reliabilityScore: 100 }), 73, "reliabilityScore=100 sans stats => 73");
+test("computeOvr — reliabilityScore=0 -> null (pas de 45 décoratif)", () => {
+  assert.equal(computeOvr({ reliabilityScore: 0 }), null, "0 => null");
 });
 
-test("computeOvr — monotone croissant en reliabilityScore, à stats égales", () => {
+test("computeOvr — reliabilityScore stocké > 0 = arrondi transparent, borné 1-99", () => {
+  assert.equal(computeOvr({ reliabilityScore: 50 }), 50, "50");
+  assert.equal(computeOvr({ reliabilityScore: 100 }), 99, "100 clamp 99");
+  assert.equal(computeOvr({ reliabilityScore: 20.4 }), 20, "arrondi");
+  assert.equal(computeOvr({ reliabilityScore: 72.6 }), 73, "arrondi up");
+});
+
+test("computeOvr — monotone croissant en reliabilityScore (quand affiché)", () => {
   const low = computeOvr({ reliabilityScore: 20 });
   const mid = computeOvr({ reliabilityScore: 50 });
   const high = computeOvr({ reliabilityScore: 80 });
+  if (low === null || mid === null || high === null) throw new Error("attendu des nombres");
   if (!(low <= mid && mid <= high)) throw new Error(`Non-monotone : ${low}, ${mid}, ${high}`);
 });
 
-test("computeOvr — bonnes stats vérifiées (buts/passes/note élevée) augmentent l'OVR", () => {
+test("computeOvr — stats EA (buts/passes/note) N'augmentent PAS l'OVR CPC", () => {
   const base = computeOvr({ reliabilityScore: 50 });
   const withStats = computeOvr({
     reliabilityScore: 50,
-    verifiedStats: { goals: 2, assists: 1, matchesPlayed: 1, avgRating: 8 },
+    verifiedStats: { goals: 99, assists: 99, matchesPlayed: 1, avgRating: 10 },
   });
-  if (!(withStats > base)) throw new Error(`Attendu withStats(${withStats}) > base(${base})`);
+  assert.equal(withStats, base, "EA ignoré");
+  assert.equal(withStats, 50, "reste 50");
 });
 
-test("computeOvr — très mauvaise note vérifiée (avgRating bas, 0 but/passe) réduit l'OVR sous la fiabilité seule", () => {
-  // Comportement actuel documenté (pas de plancher sur performanceComponent,
-  // voir lib/ovr.ts) : une mauvaise note EA peut activement tirer l'OVR vers
-  // le bas, pas juste "ne rien ajouter". Ce test verrouille ce comportement
-  // pour qu'un futur changement de formule soit délibéré, pas accidentel.
+test("computeOvr — mauvaise note EA ne réduit pas non plus l'OVR CPC", () => {
   const base = computeOvr({ reliabilityScore: 50 });
   const withBadStats = computeOvr({
     reliabilityScore: 50,
     verifiedStats: { goals: 0, assists: 0, matchesPlayed: 5, avgRating: 1 },
   });
-  if (!(withBadStats < base)) throw new Error(`Attendu withBadStats(${withBadStats}) < base(${base})`);
+  assert.equal(withBadStats, base, "EA ignoré même mauvais");
 });
 
-test("computeOvr — matchesPlayed=0 est traité comme 'pas de stats' (évite une division par zéro)", () => {
+test("computeOvr — matchesPlayed EA=0 n'invente rien et n'égale pas un plancher 45", () => {
   const withZeroMatches = computeOvr({ reliabilityScore: 50, verifiedStats: { goals: 5, matchesPlayed: 0 } });
   const withoutStats = computeOvr({ reliabilityScore: 50 });
-  assert.equal(withZeroMatches, withoutStats, "matchesPlayed=0 == verifiedStats absent");
+  assert.equal(withZeroMatches, withoutStats, "identique");
 });
 
-test("computeOvr — résultat toujours un entier (arrondi), jamais de décimales affichées", () => {
+test("computeOvr — résultat affiché toujours un entier", () => {
   const ovr = computeOvr({ reliabilityScore: 63.7, verifiedStats: { goals: 1, matchesPlayed: 3, avgRating: 7.2 } });
-  assert.equal(Number.isInteger(ovr), true, "OVR entier");
+  assert.equal(ovr, 64, "arrondi");
+  assert.equal(Number.isInteger(ovr), true, "entier");
 });
 
 test("rarityForOvr — bronze/argent/or/icon aux bornes exactes (64/65, 79/80, 89/90)", () => {

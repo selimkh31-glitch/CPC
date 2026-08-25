@@ -93,14 +93,14 @@ test("stack /leagues via LeaguesLink (pas un onglet)", () => {
   assert.equal(LEAGUES_STACK_HREF, "/leagues", "stack href");
 });
 
-test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet joueur", () => {
+test("stack /leagues enregistré dans l'arbre partagé — plus de collision avec un tab Redirect", () => {
   const stackFile = `${root}/app/leagues.tsx`;
   const layoutFile = `${root}/app/_layout.tsx`;
   const tabFile = `${root}/app/(player)/(tabs)/leagues.tsx`;
   const tabsLayoutFile = `${root}/app/(player)/(tabs)/_layout.tsx`;
   assert.true(existsSync(stackFile), "app/leagues.tsx");
   assert.true(existsSync(layoutFile), "app/_layout.tsx");
-  assert.true(existsSync(tabFile), "player tab alias");
+  assert.false(existsSync(tabFile), "no colliding player tab /leagues");
 
   const stack = readFileSync(stackFile, "utf8");
   const rankingPos = stack.indexOf("CpcClubRanking");
@@ -110,6 +110,7 @@ test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet j
   assert.true(rankingPos < emptyPos, "ranking leads, season empty secondary");
   assert.true(!stack.includes("<EmptyState"), "no full-screen EmptyState");
   assert.true(stack.includes("canShowLiveLeagueRanking"), "honest season gate");
+  assert.true(stack.includes("clubRankingRowHref") || readFileSync(`${root}/components/rankings/CpcClubRanking.tsx`, "utf8").includes("clubRankingRowHref"), "row href helper");
 
   const layout = readFileSync(layoutFile, "utf8");
   const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
@@ -125,12 +126,11 @@ test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet j
     "header title"
   );
 
-  const tab = readFileSync(tabFile, "utf8");
-  assert.true(tab.includes("Redirect"), "tab is Redirect alias");
-  assert.true(tab.includes("LEAGUES_STACK_HREF"), "tab redirects to /leagues");
-
   const tabsLayout = readFileSync(tabsLayoutFile, "utf8");
-  assert.true(tabsLayout.includes("href: LEAGUES_TAB_HREF"), "tab href null");
+  assert.false(tabsLayout.includes('name="leagues"'), "no leagues tab screen");
+  assert.true(tabsLayout.includes('name="index"'), "LIVE tab");
+  assert.true(tabsLayout.includes('name="activity"'), "Activité tab");
+  assert.true(tabsLayout.includes('name="profile"'), "Profil tab");
 });
 
 console.log(`\n${passed} tests OK`);

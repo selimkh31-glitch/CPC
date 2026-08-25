@@ -120,7 +120,7 @@ export function MembersPanel({
               <PlayerCard
                 key={m.user_id}
                 data={buildPlayerCardData(m.user, { clubName: clubName ?? null })}
-                variant="compact"
+                variant="mini"
                 footer={
                   <View className="mt-2 gap-2">
                     <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>

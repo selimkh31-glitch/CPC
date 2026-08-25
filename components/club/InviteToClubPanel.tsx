@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
+import { PlayerCard } from "@/components/player/PlayerCard";
+import { buildPlayerCardData, PLAYER_CARD_COPY } from "@/lib/playerCard";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
 import { useInvitableClubPlayers } from "@/lib/hooks/usePlayerSearch";
 import { toast } from "@/lib/toast";
@@ -134,30 +136,28 @@ export function InviteToClubPanel({ clubId, members }: { clubId: string; members
             const isPending = status === "PENDING";
             const isAccepted = status === "ACCEPTED";
             const inviting = invite.isPending && pendingUserId === player.id;
-            const label = isPending ? "Invité" : status === "DECLINED" || status === "CANCELLED" ? "Inviter à nouveau" : "Inviter";
 
             return (
-              <View
+              <PlayerCard
                 key={player.id}
-                className="flex-row items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated p-3"
-              >
-                <Text numberOfLines={1} className="shrink flex-1 font-bold text-fg">
-                  {player.username}
-                </Text>
-                {isAccepted ? (
-                  <Badge tone="accent">Membre</Badge>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={isPending ? "secondary" : "primary"}
-                    disabled={isPending}
-                    loading={inviting}
-                    onPress={() => act(player.id)}
-                  >
-                    {label}
-                  </Button>
-                )}
-              </View>
+                data={buildPlayerCardData(player)}
+                variant="mini"
+                rightSlot={
+                  isAccepted ? (
+                    <Badge tone="accent">Membre</Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant={isPending ? "secondary" : "primary"}
+                      disabled={isPending}
+                      loading={inviting}
+                      onPress={() => act(player.id)}
+                    >
+                      {isPending ? "Invité" : status === "DECLINED" || status === "CANCELLED" ? "Inviter à nouveau" : PLAYER_CARD_COPY.invite}
+                    </Button>
+                  )
+                }
+              />
             );
           })}
         </View>

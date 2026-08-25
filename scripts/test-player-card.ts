@@ -1,14 +1,20 @@
 /**
- * Tests de lib/playerCard.ts (buildPlayerCardData) — normalizer central de
- * la PlayerCard (mission "PLAYER CARDS FAÇON FUT", section 8 : "Ajouter des
- * tests pour les cas limites : données null, données absentes, joueur sans
- * match, stats partielles, rating absent"). Logique pure, aucune dépendance
- * réseau/Supabase.
- *
+ * Tests de lib/playerCard.ts — builder unique, données honnêtes.
  * Lancer : npx tsx scripts/test-player-card.ts
  */
-import { buildPlayerCardData, formatPositionsLine } from "../lib/playerCard";
-import { computeOvr, rarityForOvr } from "../lib/ovr";
+import {
+  PLAYER_CARD_COPY,
+  PLAYER_CARD_TEMPLATES,
+  buildPlayerCardData,
+  formatCpcMatchCount,
+  formatPositionsLine,
+  isPlayerCardTemplateSelectable,
+  playerNeedFitLabel,
+  resolvePlayerCardDensity,
+  resolvePlayerCardTemplate,
+  visibleCpcBadges,
+} from "../lib/playerCard";
+import { computeOvr, rarityForOvr, OVR_CPC_LABEL } from "../lib/ovr";
 import type { UserRow } from "../lib/types";
 
 const assert = {
@@ -29,7 +35,6 @@ function test(name: string, fn: () => void) {
   console.log(`  ok — ${name}`);
 }
 
-/** UserRow minimal exploitable — chaque test override seulement les champs pertinents. */
 function baseUser(overrides: Partial<UserRow> = {}): UserRow {
   return {
     id: "u1",
@@ -58,32 +63,84 @@ function baseUser(overrides: Partial<UserRow> = {}): UserRow {
 
 console.log("lib/playerCard.ts — buildPlayerCardData");
 
-test("joueur sans club EA lié -> verified=false, eaStats=null (jamais affiché comme vérifié)", () => {
+test("joueur sans club EA lié -> eaClubLinked=false, pas de stats EA affichées", () => {
   const data = buildPlayerCardData(baseUser({ ea_club_linked: null, verified_stats: null }));
-  assert.equal(data.verified, false, "verified");
+  assert.equal(data.eaClubLinked, false, "eaClubLinked");
+  assert.equal(data.showEaStats, false, "showEaStats");
   assert.equal(data.eaStats, null, "eaStats");
+  assert.equal(data.eaUsername, null, "eaUsername");
 });
 
-test("joueur avec club EA lié -> verified=true, eaStats reflète verified_stats tel quel", () => {
+test("club EA lié SANS USERNAME_EQUALITY -> pas de stats EA (club lié ≠ id joueur)", () => {
   const stats = { goals: 3, assists: 1, matchesPlayed: 5 };
-  const data = buildPlayerCardData(baseUser({ ea_club_linked: "12345", verified_stats: stats }));
-  assert.equal(data.verified, true, "verified");
-  assert.deepEqual(data.eaStats, stats, "eaStats");
+  const data = buildPlayerCardData(
+    baseUser({ ea_club_linked: "12345", verified_stats: stats, ea_identity_kind: "NONE" })
+  );
+  assert.equal(data.eaClubLinked, true, "club lié");
+  assert.equal(data.showEaStats, false, "stats gated");
+  assert.equal(data.eaStats, null, "eaStats hidden");
 });
 
-test("ovr/rarity dérivés exactement de computeOvr/rarityForOvr (aucun recalcul divergent)", () => {
+test("EA stats seulement si USERNAME_EQUALITY ET chiffre stocké", () => {
+  const stats = { goals: 3, assists: 1, matchesPlayed: 5 };
+  const data = buildPlayerCardData(
+    baseUser({ ea_club_linked: "12345", verified_stats: stats, ea_identity_kind: "USERNAME_EQUALITY" })
+  );
+  assert.equal(data.showEaStats, true, "show");
+  assert.deepEqual(data.eaStats, stats, "eaStats");
+  assert.equal(data.eaUsername, "Selim", "pseudo rapprochement");
+});
+
+test("USERNAME_EQUALITY sans chiffre stocké -> pas de layout EA vide", () => {
+  const data = buildPlayerCardData(
+    baseUser({ ea_club_linked: "123", ea_identity_kind: "USERNAME_EQUALITY", verified_stats: {} })
+  );
+  assert.equal(data.showEaStats, false, "no numbers");
+  assert.equal(data.eaStats, null, "null");
+});
+
+test("joueur sans match CPC -> cpcMatchesPlayed 0, pas de fake stats, copy vide", () => {
+  const data = buildPlayerCardData(baseUser({ reliability_score: 0 }), { cpcMatchesPlayed: 0 });
+  assert.equal(data.cpcMatchesPlayed, 0, "played");
+  assert.equal(data.ovr, null, "pas d'OVR décoratif");
+  assert.equal(formatCpcMatchCount(data.cpcMatchesPlayed), null, "pas de ligne matchs");
+  assert.equal(PLAYER_CARD_COPY.noMatch, "Pas encore de match enregistré", "copy");
+  assert.equal(data.eaStats, null, "pas de buts inventés");
+});
+
+test("joueur avec participations réelles -> match count reflété, toujours pas de buts/passes joueur", () => {
+  const data = buildPlayerCardData(baseUser({ reliability_score: 62 }), { cpcMatchesPlayed: 3 });
+  assert.equal(data.cpcMatchesPlayed, 3, "played");
+  assert.equal(formatCpcMatchCount(3), "3 matchs CPC", "label");
+  assert.equal(data.showEaStats, false, "pas de stats joueur inventées");
+});
+
+test("OVR CPC dérivé de computeOvr (fiabilité), label OVR CPC, EA n'influe pas", () => {
   const user = baseUser({ reliability_score: 72, verified_stats: { goals: 2, matchesPlayed: 4, avgRating: 7.5 } });
   const data = buildPlayerCardData(user);
   const expectedOvr = computeOvr({ reliabilityScore: 72, verifiedStats: { goals: 2, matchesPlayed: 4, avgRating: 7.5 } });
   assert.equal(data.ovr, expectedOvr, "ovr");
-  assert.equal(data.rarity, rarityForOvr(expectedOvr), "rarity");
+  assert.equal(data.ovr, 72, "72 pas gonflé par EA");
+  assert.equal(data.rarity, rarityForOvr(72), "rarity");
+  assert.equal(PLAYER_CARD_COPY.ovrLabel, OVR_CPC_LABEL, "label");
 });
 
-test("currentStreak/badges/secondaryPositions absents (undefined via cast) -> tableaux/0 vides, jamais undefined/crash", () => {
-  // Simule une ligne partiellement hydratée (ex. select() ciblé côté appelant) —
-  // buildPlayerCardData ne doit jamais planter ni propager `undefined`.
+test("reliability_score=0 -> ovr null même si verified_stats EA énormes", () => {
+  const data = buildPlayerCardData(
+    baseUser({
+      reliability_score: 0,
+      verified_stats: { goals: 90, assists: 90, matchesPlayed: 10, avgRating: 10 },
+      ea_identity_kind: "USERNAME_EQUALITY",
+      ea_club_linked: "ea",
+    })
+  );
+  assert.equal(data.ovr, null, "hidden");
+  assert.equal(data.showEaStats, true, "EA stats gated correctly, séparées de l'OVR");
+});
+
+test("currentStreak/badges/secondaryPositions absents -> tableaux/0 vides", () => {
   const partial = baseUser();
-  // @ts-expect-error — on force volontairement des champs absents pour tester la défense.
+  // @ts-expect-error — champs absents
   delete partial.current_streak;
   // @ts-expect-error
   delete partial.badges;
@@ -96,26 +153,45 @@ test("currentStreak/badges/secondaryPositions absents (undefined via cast) -> ta
   assert.deepEqual(data.secondaryPositions, [], "secondaryPositions");
 });
 
-test("clubName absent par défaut -> null (jamais une chaîne vide silencieuse)", () => {
-  const data = buildPlayerCardData(baseUser());
-  assert.equal(data.clubName, null, "clubName");
+test("clubName absent par défaut -> null ; fourni -> tel quel", () => {
+  assert.equal(buildPlayerCardData(baseUser()).clubName, null, "default");
+  assert.equal(buildPlayerCardData(baseUser(), { clubName: "Les Invincibles" }).clubName, "Les Invincibles", "set");
 });
 
-test("clubName fourni explicitement -> reflété tel quel", () => {
-  const data = buildPlayerCardData(baseUser(), { clubName: "Les Invincibles" });
-  assert.equal(data.clubName, "Les Invincibles", "clubName");
+test("badges : seulement ids CPC connus persistés — pas de Premier match inventé", () => {
+  assert.deepEqual(visibleCpcBadges(["streak_5", "premier_match", "season_gold"]), [{ id: "streak_5", label: "Fiable x5" }], "filter");
+  assert.deepEqual(visibleCpcBadges([]), [], "empty");
+  const data = buildPlayerCardData(baseUser({ badges: ["streak_10"] }));
+  assert.equal(data.badges[0]?.label, "Pilier x10", "stored");
 });
 
-test("verified_stats avec champs partiels (rating/matchesPlayed absents) -> ne casse pas l'OVR (reste dans [40,99])", () => {
-  const data = buildPlayerCardData(baseUser({ reliability_score: 50, verified_stats: { goals: 1 } }));
-  if (data.ovr < 40 || data.ovr > 99) throw new Error(`OVR hors bornes : ${data.ovr}`);
+test("need-fit honnête : poste correspondant, jamais un %", () => {
+  assert.equal(playerNeedFitLabel("ST", ["CAM"], "ST"), PLAYER_CARD_COPY.needFitPrimary, "main");
+  assert.equal(playerNeedFitLabel("ST", ["CAM"], ["CAM"]), PLAYER_CARD_COPY.needFitSecondary, "secondary");
+  assert.equal(playerNeedFitLabel("ST", ["CAM"], "GK"), null, "no fit");
+  assert.equal(PLAYER_CARD_COPY.needFitPrimary.includes("%"), false, "no percent");
+  const data = buildPlayerCardData(baseUser(), { needPositions: ["ST", "CAM"] });
+  assert.equal(data.needFitLabel, "Poste correspondant", "builder");
 });
 
-test("eaIdentityKind NONE par défaut ; USERNAME_EQUALITY si club lié avec kind posé", () => {
-  assert.equal(buildPlayerCardData(baseUser()).eaIdentityKind, "NONE", "default");
-  const data = buildPlayerCardData(baseUser({ ea_club_linked: "123", ea_identity_kind: "USERNAME_EQUALITY" }));
-  assert.equal(data.eaIdentityKind, "USERNAME_EQUALITY", "kind");
-  assert.equal(data.verified, true, "verified = club lié, pas id joueur EA");
+test("templates : STANDARD live ; LOCKED non sélectionnables ; client ne peut pas spoof ELITE", () => {
+  assert.equal(isPlayerCardTemplateSelectable("STANDARD"), true, "standard");
+  assert.equal(isPlayerCardTemplateSelectable("ELITE"), false, "elite");
+  assert.equal(isPlayerCardTemplateSelectable("LEGEND"), false, "legend");
+  assert.equal(PLAYER_CARD_TEMPLATES.COMPETITIVE.status, "LOCKED", "competitive");
+  assert.equal(resolvePlayerCardTemplate("ELITE").id, "STANDARD", "spoof ignored");
+  assert.equal(resolvePlayerCardTemplate("STANDARD").id, "STANDARD", "ok");
+  const data = buildPlayerCardData(baseUser(), { templateId: "CHAMPION" });
+  assert.equal(data.templateId, "STANDARD", "forced standard");
+  assert.equal(data.templateStatus, "FREE", "free");
+});
+
+test("densités : hero/standard aliases -> full/compact ; mini reste mini", () => {
+  assert.equal(resolvePlayerCardDensity("hero"), "full", "hero");
+  assert.equal(resolvePlayerCardDensity("full"), "full", "full");
+  assert.equal(resolvePlayerCardDensity("standard"), "compact", "standard");
+  assert.equal(resolvePlayerCardDensity("compact"), "compact", "compact");
+  assert.equal(resolvePlayerCardDensity("mini"), "mini", "mini");
 });
 
 test("formatPositionsLine — principal seul, puis secondaires uniques sans mur de chips", () => {
@@ -127,5 +203,12 @@ test("formatPositionsLine — principal seul, puis secondaires uniques sans mur 
   );
 });
 
-console.log(`\n${passed} test(s) passés.`);
+test("LIVE context flag + note, sans inventer un statut", () => {
+  const off = buildPlayerCardData(baseUser());
+  assert.equal(off.live, false, "default");
+  const on = buildPlayerCardData(baseUser(), { live: true, liveNote: "Dispo 21h" });
+  assert.equal(on.live, true, "live");
+  assert.equal(on.liveNote, "Dispo 21h", "note");
+});
 
+console.log(`\n${passed} test(s) passés.`);

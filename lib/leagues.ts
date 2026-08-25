@@ -12,6 +12,10 @@
  *
  * Le classement compétition vit sur `/competitions`, uniquement depuis des
  * résultats liés.
+ *
+ * Navigation : `LeaguesLink` pousse `/leagues` (cet écran). Ne pas recréer
+ * un fichier tab `app/(player)/(tabs)/leagues.tsx` — deux fichiers pour le
+ * même path cassent Club → Classement / le bouton retour.
  */
 import { canFillStandingsFromMatchResults } from "./competitions";
 

@@ -10,6 +10,7 @@ import {
   PLAYER_MATCH_HISTORY_LOOKBACK,
   buildClubMatchHistory,
   buildPlayerMatchHistory,
+  countPlayerCpcMatches,
   formatMatchHistoryDate,
   formatMatchScore,
   isPersistedMatchOutcome,
@@ -215,6 +216,30 @@ test("isPersistedMatchOutcome : WIN/DRAW/LOSS seulement", () => {
   assert.true(isPersistedMatchOutcome("LOSS"), "loss");
   assert.false(isPersistedMatchOutcome("WINNER"), "winner");
   assert.false(isPersistedMatchOutcome(null), "null");
+});
+
+test("countPlayerCpcMatches : vide = 0 ; PRESENT + résultat = compte, pas de buts inventés", () => {
+  assert.equal(
+    countPlayerCpcMatches({ participations: [], results: [] }),
+    0,
+    "empty"
+  );
+  assert.equal(
+    countPlayerCpcMatches({
+      participations: [{ match_checkin_id: "c1", status: "ABSENT" }],
+      results: [result({ id: "r1", match_checkin_id: "c1" })],
+    }),
+    0,
+    "absent doesn't count"
+  );
+  assert.equal(
+    countPlayerCpcMatches({
+      participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+      results: [result({ id: "r1", match_checkin_id: "c1" })],
+    }),
+    1,
+    "one"
+  );
 });
 
 console.log(`\n${passed} test(s) passés.`);

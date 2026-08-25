@@ -100,3 +100,26 @@ export function computeCpcClubStandings(
 export function cpcClubRankingUsesSeasonStats(): boolean {
   return false;
 }
+
+/** UUID v1–v8 classique — un id club réel, pas un libellé. */
+const CLUB_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isRealClubId(value: unknown): value is string {
+  return typeof value === "string" && CLUB_ID_RE.test(value.trim());
+}
+
+/**
+ * Ligne classement → profil club seulement si l'id est un UUID réel ET que
+ * le club a un nom chargé (ligne encore présente). Jamais `/profile/[id]`.
+ * Sans ça : pas de tap (évite un tap mort vers un club disparu).
+ */
+export function clubRankingRowHref(
+  clubId: unknown,
+  clubName?: string | null
+): `/club/${string}` | null {
+  if (!isRealClubId(clubId)) return null;
+  if (typeof clubName !== "string" || !clubName.trim() || clubName.trim() === "Club Pro Clubs") {
+    return null;
+  }
+  return `/club/${clubId.trim()}`;
+}

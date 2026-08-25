@@ -9,10 +9,12 @@ import { useCpcClubRankingResults } from "@/lib/hooks/useRankings";
 /**
  * Ligues — stack partagé (`app/_layout.tsx`), pas un onglet.
  * Mode Club n'a pas `(player)` : Effectif → `/leagues` passe par cet écran.
+ * Profil joueur aussi : plus de Redirect tab qui volait `/leagues`.
  *
  * Surface principale : classement clubs CPC (`match_results` + `opponent_club_id`).
  * Classement saison (`season_stats`) : vide honnête, secondaire — pas un EmptyState
  * plein écran qui masque le tableau.
+ * Lignes : tap → `/club/[id]` seulement si UUID club réel + nom chargé.
  */
 export default function LeaguesScreen() {
   const ranking = useCpcClubRankingResults();

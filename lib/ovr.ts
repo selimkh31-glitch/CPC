@@ -1,39 +1,47 @@
 /**
- * Calcul de l'OVR (note globale) affichée sur la ClubPro Card, et de la
- * rareté visuelle qui en découle (bronze / argent / or / icon).
+ * OVR CPC — note produit affichée sur la carte joueur.
  *
- * OVR = mix reliability_score (comportement + skill perçu) et, si dispo,
- * performance vérifiée EA (buts+passes/match, note moyenne implicite).
- * Volontairement simple et transparent (pas de boîte noire) : c'est un score
- * produit, pas une vérité absolue.
+ * Source unique : `reliability_score` stocké (Trust Engine : reviews + streak).
+ * Jamais de mix avec `verified_stats` EA (buts/passes/note). Un club EA lié
+ * n'est pas une identité joueur EA, et ces chiffres ne doivent pas gonfler
+ * une note CPC.
+ *
+ * Pas de plancher décoratif 45 : un joueur sans signal CPC (score 0 / absent)
+ * n'a pas d'OVR à afficher. `computeOvr` renvoie `null` dans ce cas — cacher
+ * le chiffre plutôt que d'inventer du 45–70.
+ *
+ * Labelliser uniquement « OVR CPC », jamais un bare « OVR ».
  */
 
 export type Rarity = "bronze" | "silver" | "gold" | "icon";
 
 export interface OvrInputs {
-  reliabilityScore: number; // 0-100
+  reliabilityScore: number;
+  /**
+   * Ignoré volontairement. Conservé dans la signature pour que les anciens
+   * appels compilent, et pour que les tests verrouillent : les stats EA
+   * ne doivent JAMAIS changer l'OVR CPC.
+   */
   verifiedStats?: {
     goals?: number;
     assists?: number;
     matchesPlayed?: number;
-    avgRating?: number; // 0-10 si dispo côté EA
+    avgRating?: number;
   } | null;
 }
 
-export function computeOvr({ reliabilityScore, verifiedStats }: OvrInputs): number {
-  // Base : 40% du score de fiabilité ramené sur 100, plancher à 45 pour rester "jouable" visuellement.
-  const reliabilityComponent = 45 + reliabilityScore * 0.4; // 45-85
+/** Signal CPC réel : fiabilité stockée, finie, strictement positive. */
+export function canShowOvrCpc(reliabilityScore: unknown): boolean {
+  return typeof reliabilityScore === "number" && Number.isFinite(reliabilityScore) && reliabilityScore > 0;
+}
 
-  let performanceComponent = 0;
-  if (verifiedStats?.matchesPlayed && verifiedStats.matchesPlayed > 0) {
-    const goalsPerMatch = (verifiedStats.goals ?? 0) / verifiedStats.matchesPlayed;
-    const assistsPerMatch = (verifiedStats.assists ?? 0) / verifiedStats.matchesPlayed;
-    const ratingComponent = verifiedStats.avgRating ? (verifiedStats.avgRating - 6) * 3 : 0;
-    performanceComponent = Math.min(15, goalsPerMatch * 8 + assistsPerMatch * 6 + ratingComponent);
-  }
-
-  const ovr = reliabilityComponent * 0.7 + (45 + performanceComponent * 2) * 0.3;
-  return Math.max(40, Math.min(99, Math.round(ovr)));
+/**
+ * OVR CPC = arrondi de la fiabilité CPC (1–99), ou `null` si pas de signal.
+ * Transparent : pas de boîte noire, pas de mix EA, pas de plancher 45.
+ */
+export function computeOvr({ reliabilityScore }: OvrInputs): number | null {
+  if (!canShowOvrCpc(reliabilityScore)) return null;
+  return Math.max(1, Math.min(99, Math.round(reliabilityScore)));
 }
 
 export function rarityForOvr(ovr: number): Rarity {
@@ -49,3 +57,6 @@ export const RARITY_LABEL: Record<Rarity, string> = {
   gold: "Or",
   icon: "Icon",
 };
+
+/** Libellé unique — jamais « OVR » seul. */
+export const OVR_CPC_LABEL = "OVR CPC";
