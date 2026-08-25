@@ -335,21 +335,46 @@ test("8. Scores invalides (négatif, non-int) → validation serveur", () => {
   assert.equal(parseUiMatchScore("-1"), null, "ui neg");
 });
 
-test("9. Notify href : competitionId → /competitions/[id] sinon /match ; Club mode ; recorder exclu", () => {
-  assert.equal(matchFinalizedHref({ clubId: CLUB_A }, "PLAYER"), "/match", "sans compétition");
+test("9. Notify href : competitionId → stack compétition, sinon /club/[id] ; pas de Mode Club ; recorder exclu", () => {
+  assert.equal(matchFinalizedHref({ clubId: CLUB_A }, "PLAYER"), `/club/${CLUB_A}`, "PLAYER casual");
+  assert.equal(matchFinalizedHref({ clubId: CLUB_A }, "CLUB"), `/club/${CLUB_A}`, "CLUB casual");
   assert.equal(matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP }, "PLAYER"), `/competitions/${COMP}`, "avec compétition");
   assert.equal(
     matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP, kind: "TOURNAMENT" }, "PLAYER"),
     `/tournaments/${COMP}`,
     "tournoi"
   );
-  const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "PLAYER");
-  assert.equal(navMatch?.href, "/match", "nav match");
-  assert.equal(navMatch?.requireClubMode, true, "switch Club");
-  assert.equal(navMatch?.selectClubId, CLUB_A, "select club");
+  assert.equal(matchFinalizedHref({}, "PLAYER"), "/notifications", "sans clubId ni competitionId");
+  if (matchFinalizedHref({}, "CLUB") === "/match" || matchFinalizedHref({ clubId: CLUB_A }, "PLAYER") === "/match") {
+    throw new Error("MATCH_FINALIZED ne doit pas envoyer vers /match");
+  }
+  const navPlayer = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "PLAYER");
+  assert.equal(navPlayer?.href, `/club/${CLUB_A}`, "nav PLAYER casual");
+  assert.equal(navPlayer?.requireClubMode, false, "PLAYER no club mode");
+  assert.equal(navPlayer?.selectClubId, null, "PLAYER no select");
+  const navClub = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "CLUB");
+  assert.equal(navClub?.href, `/club/${CLUB_A}`, "nav CLUB casual");
+  assert.equal(navClub?.requireClubMode, false, "CLUB no club mode");
+  assert.equal(navClub?.selectClubId, null, "CLUB no select");
+  const navOpponent = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "PLAYER");
+  assert.equal(navOpponent?.href, `/club/${CLUB_A}`, "opponent member same dest");
+  assert.equal(navOpponent?.requireClubMode, false, "opponent no club mode");
+  const navMissing = matchFinalizedNotificationNav("MATCH_FINALIZED", {}, "PLAYER");
+  assert.equal(navMissing?.href, "/notifications", "missing clubId");
+  if (navMissing?.href === "/match" || navMissing?.href === "/match-sheet") {
+    throw new Error("missing clubId ne doit pas aller sur /match");
+  }
   const navComp = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: COMP }, "PLAYER");
   assert.equal(navComp?.href, `/competitions/${COMP}`, "nav competitions");
   assert.equal(navComp?.requireClubMode, false, "competitions sans forcer Club");
+  const navTourney = matchFinalizedNotificationNav(
+    "MATCH_FINALIZED",
+    { clubId: CLUB_A, competitionId: COMP, kind: "TOURNAMENT" },
+    "CLUB"
+  );
+  assert.equal(navTourney?.href, `/tournaments/${COMP}`, "nav tournaments inchangé");
+  assert.equal(navTourney?.requireClubMode, false, "tournoi sans forcer Club");
+  assert.equal(navTourney?.selectClubId, null, "tournoi no select");
   const ids = matchFinalizedRecipientIds({
     recordingClubMemberIds: [OWNER_A, "member-a"],
     opponentClubMemberIds: [OWNER_B, "member-b"],
