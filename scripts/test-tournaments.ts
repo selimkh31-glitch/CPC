@@ -482,6 +482,8 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide",
   assert.false(TOURNAMENT_COPY.championEmpty.includes("0-0"), "no fake champion score");
   assert.equal(TOURNAMENT_STATUS_LABELS.OPEN, "Ouvert", "open label");
   assert.false(TOURNAMENT_COPY.subtitle.includes("%"), "no percent");
+  assert.equal(TOURNAMENT_COPY.linkedResultCta, "Voir le tournoi", "cta after result");
+  assert.equal(TOURNAMENT_COPY.kindLabel, "Tournoi", "picker kind");
 });
 
 test("SQL 0029 : kind + tournament_matches ; refuse table tournaments dupliquée / scores / season_stats", () => {

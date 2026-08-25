@@ -172,12 +172,24 @@ async function notifyMatchFinalized(
     ourScore,
     opponentScore,
   });
+  let kind: string | null = null;
+  if (competitionId) {
+    const { data: competition, error: kindError } = await admin
+      .from("competitions")
+      .select("kind")
+      .eq("id", competitionId)
+      .maybeSingle();
+    if (kindError) console.warn("[finalize-match] notify kind:", kindError.message);
+    kind = typeof competition?.kind === "string" ? competition.kind : null;
+  }
+
   const data = matchFinalizedNotificationData({
     clubId,
     matchResultId,
     matchCheckinId,
     opponentClubId,
     competitionId,
+    kind,
   });
 
   const { data: members, error: membersError } = await admin

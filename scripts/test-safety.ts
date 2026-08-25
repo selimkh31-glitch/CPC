@@ -134,6 +134,16 @@ test("MATCH_FINALIZED — type, label FR, href /match ou /competitions/[id]", ()
   );
   assert.equal(matchFinalizedHref({ clubId: "c1" }, "CLUB"), "/match", "helper club");
   assert.equal(matchFinalizedHref({ competitionId: "comp-1" }, "PLAYER"), "/competitions/comp-1", "helper competition");
+  assert.equal(
+    matchFinalizedHref({ competitionId: "t-1", kind: "TOURNAMENT" }, "PLAYER"),
+    "/tournaments/t-1",
+    "helper tournament"
+  );
+  assert.equal(
+    notificationHref("MATCH_FINALIZED", { competitionId: "t-1", kind: "TOURNAMENT" }),
+    "/tournaments/t-1",
+    "href tournament"
+  );
   const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: "c1" }, "CLUB");
   assert.equal(navMatch?.href, "/match", "nav href");
   assert.equal(navMatch?.requireClubMode, true, "nav club mode");
@@ -141,6 +151,13 @@ test("MATCH_FINALIZED — type, label FR, href /match ou /competitions/[id]", ()
   const navComp = matchFinalizedNotificationNav("MATCH_FINALIZED", { competitionId: "comp-1" }, "PLAYER");
   assert.equal(navComp?.href, "/competitions/comp-1", "nav competitions");
   assert.equal(navComp?.requireClubMode, false, "nav competitions no club mode");
+  const navTourney = matchFinalizedNotificationNav(
+    "MATCH_FINALIZED",
+    { competitionId: "t-1", kind: "TOURNAMENT" },
+    "PLAYER"
+  );
+  assert.equal(navTourney?.href, "/tournaments/t-1", "nav tournaments");
+  assert.equal(navTourney?.requireClubMode, false, "nav tournaments no club mode");
   assert.equal(matchFinalizedNotificationNav("MESSAGE_RECEIVED", { clubId: "c1" }, "CLUB"), null, "not match");
   const copy = matchFinalizedCopy({ clubName: "  CPC United  ", opponentClubName: " Rival FC ", ourScore: 3, opponentScore: 1 });
   assert.equal(copy.type, "MATCH_FINALIZED", "copy type");
@@ -193,6 +210,16 @@ test("COMPETITION_CLUB_REGISTERED — type, label FR, href /competitions/[id]", 
     "helper"
   );
   assert.equal(
+    competitionClubRegisteredHref({ clubId: "c1", competitionId: "t-1", kind: "TOURNAMENT" }),
+    "/tournaments/t-1",
+    "helper tournament"
+  );
+  assert.equal(
+    notificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "t-1", kind: "TOURNAMENT" }),
+    "/tournaments/t-1",
+    "href tournament"
+  );
+  assert.equal(
     inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "comp-1" }, "CLUB"),
     "/competitions/comp-1",
     "in-app club"
@@ -201,6 +228,11 @@ test("COMPETITION_CLUB_REGISTERED — type, label FR, href /competitions/[id]", 
     inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1" }, "PLAYER"),
     "/competitions",
     "in-app player sans id"
+  );
+  assert.equal(
+    inAppNotificationHref("COMPETITION_CLUB_REGISTERED", { clubId: "c1", competitionId: "t-1", kind: "TOURNAMENT" }, "PLAYER"),
+    "/tournaments/t-1",
+    "in-app tournament"
   );
   const copy = competitionClubRegisteredCopy({
     clubName: "  CPC United  ",

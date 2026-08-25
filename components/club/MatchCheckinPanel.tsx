@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { router } from "expo-router";
 import { Check, PlayCircle, UserX, Users, Flag, Trophy } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -19,8 +20,10 @@ import {
   type MatchCheckinResult,
 } from "@/lib/hooks/useMatchCheckin";
 import { toast } from "@/lib/toast";
-import { COMPETITION_COPY } from "@/lib/competitions";
+import { COMPETITION_COPY, competitionOrTournamentHref } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY, parseUiMatchScore } from "@/lib/finalizeMatch";
+import { TOURNAMENT_COPY } from "@/lib/tournaments";
+import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import type { ClubMemberRow, MatchOutcome, MatchResultRow, SlotAssignmentRow } from "@/lib/types";
 
 type Step = "idle" | "confirm" | "absences" | "ready" | "live" | "finalize" | "finalized";
@@ -112,6 +115,20 @@ export function MatchCheckinPanel({
   const [finalizedResult, setFinalizedResult] = useState<MatchResultRow | null>(null);
   const [opponentClub, setOpponentClub] = useState<{ id: string; name: string } | null>(null);
   const [competitionId, setCompetitionId] = useState<string | null>(null);
+  const [competitionKind, setCompetitionKind] = useState<string | null>(null);
+  const { data: openCompetitions } = useClubOpenCompetitions(
+    opponentClub ? clubId : null,
+    opponentClub?.id ?? null
+  );
+
+  useEffect(() => {
+    if (!competitionId) {
+      setCompetitionKind(null);
+      return;
+    }
+    const kind = (openCompetitions ?? []).find((c) => c.id === competitionId)?.kind ?? null;
+    if (kind) setCompetitionKind(kind);
+  }, [competitionId, openCompetitions]);
 
   // Phase G.3.2 — "Match Day" au sens du parent = tout step qui n'est plus
   // la préparation (ready/live/finalize/finalized). idle/confirm/absences
@@ -139,6 +156,7 @@ export function MatchCheckinPanel({
     setFinalizedResult(null);
     setOpponentClub(null);
     setCompetitionId(null);
+    setCompetitionKind(null);
   };
 
   const doLaunch = (absentUserIds: string[]) => {
@@ -198,6 +216,10 @@ export function MatchCheckinPanel({
     const mvp = finalizedResult.mvp_user_id
       ? (participants ?? []).find((p) => p.user_id === finalizedResult.mvp_user_id)
       : null;
+    const linkedKind =
+      competitionKind ?? (openCompetitions ?? []).find((c) => c.id === finalizedResult.competition_id)?.kind;
+    const linkedCta =
+      linkedKind === "TOURNAMENT" ? TOURNAMENT_COPY.linkedResultCta : COMPETITION_COPY.linkedResultCta;
 
     // Phase G.3.2 — retour à une carte embarquée normale (le takeover
     // plein-écran de G.3 est abandonné, voir audit G.3.1 : "CINEMATIC ne
@@ -219,6 +241,18 @@ export function MatchCheckinPanel({
             <Text className="text-sm text-fg-muted">Adversaire : {opponentClub.name}</Text>
           )}
         </View>
+        {finalizedResult.competition_id ? (
+          <Button
+            variant="secondary"
+            className="mt-2 min-h-[44px]"
+            accessibilityLabel={linkedCta}
+            onPress={() => {
+              router.push(competitionOrTournamentHref(finalizedResult.competition_id, linkedKind) as any);
+            }}
+          >
+            {linkedCta}
+          </Button>
+        ) : null}
         <Button variant="secondary" className="mt-2" onPress={reset}>
           Nouveau check-in
         </Button>

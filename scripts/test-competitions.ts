@@ -9,6 +9,7 @@ import {
   canShowCompetitionStandings,
   competitionCreatorLabel,
   competitionDetailHref,
+  competitionOrTournamentHref,
   competitionIsReadable,
   competitionRegisterCtaKind,
   competitionsFoundationSqlIssues,
@@ -317,6 +318,7 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de % inventé", () => {
   assert.true(COMPETITION_COPY.draftCannotRegister.includes("brouillon"), "draft copy");
   assert.true(COMPETITION_COPY.draftCreateHint.includes("ne peuvent pas s'inscrire"), "draft create hint");
   assert.false(COMPETITION_COPY.draftCannotRegister.includes("%"), "no percent draft");
+  assert.equal(COMPETITION_COPY.linkedResultCta, "Voir la compétition", "cta after result");
 });
 
 test("liste/inscription : clubs inscrits = noms, pas de CTA contact à inventer", () => {
@@ -331,6 +333,11 @@ test("détail /competitions/[id] ; liste si id absent", () => {
   assert.equal(competitionDetailHref(""), "/competitions", "empty");
   assert.equal(competitionDetailHref(null), "/competitions", "null");
   assert.equal(competitionDetailHref(undefined), "/competitions", "undef");
+  assert.equal(competitionOrTournamentHref("comp-1"), "/competitions/comp-1", "default competition");
+  assert.equal(competitionOrTournamentHref("t-1", "TOURNAMENT"), "/tournaments/t-1", "tournament");
+  assert.equal(competitionOrTournamentHref("comp-1", "COMPETITION"), "/competitions/comp-1", "kind competition");
+  assert.equal(competitionOrTournamentHref(null, "TOURNAMENT"), "/tournaments", "tournament list");
+  assert.equal(competitionOrTournamentHref(""), "/competitions", "empty id");
 });
 
 test("liste matchs liés : même rows que le classement ; scores manquants ≠ 0-0", () => {

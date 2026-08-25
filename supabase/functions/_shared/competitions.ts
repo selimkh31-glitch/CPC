@@ -76,6 +76,7 @@ export const COMPETITION_COPY = {
   competitionEmptyShared:
     "Les deux clubs ne sont inscrits ensemble à aucune compétition ouverte. Le résultat sera enregistré sans compétition.",
   competitionLoadError: "Impossible de charger les compétitions du club.",
+  linkedResultCta: "Voir la compétition",
 } as const;
 
 export const COMPETITION_STATUS_LABELS: Record<CompetitionStatus, string> = {
@@ -90,6 +91,20 @@ export function competitionDetailHref(competitionId: string | null | undefined):
     return `/competitions/${competitionId}`;
   }
   return "/competitions";
+}
+
+/**
+ * Deep link après un résultat / une notif liés : tournoi → `/tournaments/[id]`,
+ * sinon `/competitions/[id]`. Sans kind (notif ancienne) → compétition ;
+ * le détail compétition redirige encore un kind TOURNAMENT.
+ */
+export function competitionOrTournamentHref(
+  competitionId: string | null | undefined,
+  kind?: string | null
+): string {
+  const id = typeof competitionId === "string" && competitionId.length > 0 ? competitionId : null;
+  if (kind === "TOURNAMENT") return id ? `/tournaments/${id}` : "/tournaments";
+  return id ? `/competitions/${id}` : "/competitions";
 }
 
 export type CompetitionRegisterCtaKind =

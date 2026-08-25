@@ -91,6 +91,8 @@ export const TOURNAMENT_COPY = {
   unpairedHint: "Ce club est dans ce tour mais n'a pas de match — pas d'adversaire inventé.",
   registeredAfterSchedule: "Inscrit, hors tableau du premier tour.",
   matchesLoadError: "Impossible de charger les matchs du tournoi.",
+  linkedResultCta: "Voir le tournoi",
+  kindLabel: "Tournoi",
 } as const;
 
 export const TOURNAMENT_STATUS_LABELS: Record<"DRAFT" | "OPEN" | "CLOSED", string> = {
