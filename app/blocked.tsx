@@ -1,12 +1,13 @@
-import { Pressable, Text, View } from "react-native";
-import { router } from "expo-router";
+import { Text, View } from "react-native";
 import { Screen, EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyBlocks, useMyReports, useUnblockUser } from "@/lib/hooks/useSafety";
 import { REPORT_REASON_LABELS, type ReportReason } from "@/lib/safety";
+import { buildPlayerCardData } from "@/lib/playerCard";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
 
@@ -37,12 +38,8 @@ export default function BlockedScreen() {
         </View>
       ) : (
         <View className="mb-6 gap-2">
-          {blocks.map((row) => (
-            <View key={row.id} className="flex-row items-center justify-between rounded-2xl border border-border bg-bg-card p-3">
-              <Pressable onPress={() => router.push(`/profile/${row.blocked_id}`)} className="flex-1 pr-2">
-                <Text className="font-bold text-fg">{row.blocked?.username ?? "Joueur"}</Text>
-                <Text className="text-xs text-fg-subtle">Bloqué {timeAgo(row.created_at)}</Text>
-              </Pressable>
+          {blocks.map((row) => {
+            const unblockButton = (
               <Button
                 variant="secondary"
                 size="sm"
@@ -56,8 +53,29 @@ export default function BlockedScreen() {
               >
                 Débloquer
               </Button>
-            </View>
-          ))}
+            );
+            const footer = <Text className="mt-1 text-xs text-fg-subtle">Bloqué {timeAgo(row.created_at)}</Text>;
+            if (!row.blocked) {
+              return (
+                <View key={row.id} className="flex-row items-center justify-between rounded-2xl border border-border bg-bg-card p-3">
+                  <View className="flex-1 pr-2">
+                    <Text className="font-bold text-fg-muted">Joueur</Text>
+                    {footer}
+                  </View>
+                  {unblockButton}
+                </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={row.id}
+                data={buildPlayerCardData(row.blocked)}
+                variant="mini"
+                rightSlot={unblockButton}
+                footer={footer}
+              />
+            );
+          })}
         </View>
       )}
 
@@ -70,19 +88,42 @@ export default function BlockedScreen() {
         <EmptyState title="Aucun signalement envoyé." subtitle="Un signalement reste ouvert pour la modération jusqu'à revue." />
       ) : (
         <View className="gap-2">
-          {reports.map((row) => (
-            <View key={row.id} className="rounded-2xl border border-border bg-bg-card p-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="font-bold text-fg">{row.reported?.username ?? "Joueur"}</Text>
-                <Badge tone={row.status === "OPEN" ? "warn" : "neutral"}>{row.status === "OPEN" ? "Ouvert" : row.status === "REVIEWED" ? "Revu" : "Classé"}</Badge>
+          {reports.map((row) => {
+            const statusBadge = (
+              <Badge tone={row.status === "OPEN" ? "warn" : "neutral"}>
+                {row.status === "OPEN" ? "Ouvert" : row.status === "REVIEWED" ? "Revu" : "Classé"}
+              </Badge>
+            );
+            const footer = (
+              <View className="mt-1 gap-1">
+                <Text className="text-sm text-fg-muted">
+                  {REPORT_REASON_LABELS[row.reason as ReportReason] ?? row.reason}
+                </Text>
+                {row.details ? <Text className="text-xs text-fg-subtle">{row.details}</Text> : null}
+                <Text className="text-xs text-fg-subtle">{timeAgo(row.created_at)}</Text>
               </View>
-              <Text className="mt-1 text-sm text-fg-muted">
-                {REPORT_REASON_LABELS[row.reason as ReportReason] ?? row.reason}
-              </Text>
-              {row.details ? <Text className="mt-1 text-xs text-fg-subtle">{row.details}</Text> : null}
-              <Text className="mt-1 text-xs text-fg-subtle">{timeAgo(row.created_at)}</Text>
-            </View>
-          ))}
+            );
+            if (!row.reported) {
+              return (
+                <View key={row.id} className="rounded-2xl border border-border bg-bg-card p-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-bold text-fg-muted">Joueur</Text>
+                    {statusBadge}
+                  </View>
+                  {footer}
+                </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={row.id}
+                data={buildPlayerCardData(row.reported)}
+                variant="mini"
+                rightSlot={statusBadge}
+                footer={footer}
+              />
+            );
+          })}
         </View>
       )}
     </Screen>

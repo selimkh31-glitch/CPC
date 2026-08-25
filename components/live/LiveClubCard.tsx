@@ -12,6 +12,7 @@ import type { ClubSessionRow } from "@/lib/types";
 /**
  * Carte opportunité LIVE — données réelles uniquement.
  * `reason` vient du moteur déterministe (poste recherché · même plateforme), jamais un %.
+ * Un seul CTA : « Voir le club » → `/club/[id]` (ApplyForm y reste). Pas de postuler fictif ici.
  */
 export function LiveClubCard({ item, reason }: { item: ClubSessionRow; reason?: string }) {
   if (!item.club) return null;
@@ -61,12 +62,9 @@ export function LiveClubCard({ item, reason }: { item: ClubSessionRow; reason?: 
           </Text>
         ) : null}
 
-        <View className="mt-3 flex-row gap-2">
-          <Button size="sm" variant="secondary" onPress={openClub} className="flex-1">
+        <View className="mt-3">
+          <Button size="sm" onPress={openClub}>
             Voir le club
-          </Button>
-          <Button size="sm" onPress={openClub} className="flex-1">
-            Postuler
           </Button>
         </View>
       </Card>

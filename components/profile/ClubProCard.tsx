@@ -59,11 +59,12 @@ export function ClubProCard({
     );
   }
 
-  const played = typeof cpcMatchesPlayed === "number" ? cpcMatchesPlayed : matchHistory?.length ?? null;
   const data = buildPlayerCardData(user, {
     clubName: clubName ?? null,
     clubId: clubId ?? null,
-    cpcMatchesPlayed: played,
+    // Comptage PRESENT → match_results seulement. Jamais `matchHistory.length`
+    // (une liste tronquée n'est pas « matchs CPC »).
+    cpcMatchesPlayed,
   });
 
   return (

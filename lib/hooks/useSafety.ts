@@ -110,7 +110,7 @@ export function useMyReports(userId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_reports")
-        .select(`*, reported:users!user_reports_reported_id_fkey(id,username)`)
+        .select(`*, reported:users!user_reports_reported_id_fkey(${USER_PUBLIC_COLUMNS})`)
         .eq("reporter_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;

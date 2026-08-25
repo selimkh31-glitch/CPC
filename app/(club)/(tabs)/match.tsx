@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
@@ -32,6 +33,7 @@ import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
+import { buildPlayerCardData } from "@/lib/playerCard";
 
 /**
  * Feuille de match — organisation (hors tab bar, `href: null`).
@@ -199,18 +201,22 @@ export default function MatchTab() {
                 <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
                 <Text className="text-sm text-fg-muted">{bench.length}</Text>
               </CardHeader>
-              <View className="gap-1">
-                {bench.map((m) => (
-                  <Pressable
-                    key={m.user_id}
-                    onPress={() => router.push(`/profile/${m.user_id}`)}
-                    className="min-h-[44px] justify-center active:opacity-70"
-                  >
-                    <Text numberOfLines={1} className="text-sm text-fg">
-                      {m.user?.username ?? "Joueur"}
-                    </Text>
-                  </Pressable>
-                ))}
+              <View className="gap-2">
+                {bench.map((m) =>
+                  m.user ? (
+                    <PlayerCard
+                      key={m.user_id}
+                      data={buildPlayerCardData(m.user, { clubName: club.name })}
+                      variant="mini"
+                    />
+                  ) : (
+                    <View key={m.user_id} className="min-h-[44px] justify-center rounded-2xl border border-border bg-bg-elevated px-3 py-2">
+                      <Text numberOfLines={1} className="text-sm text-fg-muted">
+                        Joueur
+                      </Text>
+                    </View>
+                  )
+                )}
               </View>
             </Card>
           )}
@@ -274,14 +280,31 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
           <Text className="text-xs text-fg-subtle">{FINALIZE_MATCH_COPY.invitationsHint}</Text>
           {invitations.map((inv) => {
             const position = inv.slot_id ? positionBySlotId.get(inv.slot_id) : null;
-            return (
-              <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated p-2.5">
-                <View>
-                  <Text className="font-semibold text-fg">{inv.user?.username ?? "Joueur"}</Text>
-                  <Text className="text-xs text-fg-subtle">{position ? POSITION_LABELS[position] : "Poste à définir"}</Text>
+            const statusBadge = <Badge tone="warn">En attente</Badge>;
+            const footer = (
+              <Text className="mt-1 text-xs text-fg-subtle">
+                {position ? POSITION_LABELS[position] : "Poste à définir"}
+              </Text>
+            );
+            if (!inv.user) {
+              return (
+                <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated p-2.5">
+                  <View className="min-w-0 flex-1">
+                    <Text className="font-semibold text-fg-muted">Joueur</Text>
+                    {footer}
+                  </View>
+                  {statusBadge}
                 </View>
-                <Badge tone="warn">En attente</Badge>
-              </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={inv.id}
+                data={buildPlayerCardData(inv.user, { needPositions: position })}
+                variant="mini"
+                rightSlot={statusBadge}
+                footer={footer}
+              />
             );
           })}
         </View>

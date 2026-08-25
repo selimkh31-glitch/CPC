@@ -1,5 +1,5 @@
 import { ScrollView, Text, View } from "react-native";
-import { Link, router, useLocalSearchParams } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { Globe2, Users } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
+import { PlayerCard } from "@/components/player/PlayerCard";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
@@ -17,6 +18,15 @@ import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { sortClubRoster } from "@/lib/clubProfile";
+import { buildPlayerCardData } from "@/lib/playerCard";
+import type { ClubRole } from "@/lib/types";
+
+const ROLE_LABEL: Record<ClubRole, string> = {
+  OWNER: "Owner",
+  MANAGER: "Manager",
+  MEMBER: "Membre",
+};
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -115,24 +125,36 @@ export default function ClubDetailScreen() {
           <Users size={18} color="#f4f5f7" />
           <Text className="font-display text-lg text-fg">Membres ({club.members?.length ?? 0})</Text>
         </View>
-        <View className="gap-3">
-          {(club.members ?? []).map((m) => {
+        <View className="gap-2">
+          {sortClubRoster(club.members ?? []).map((m) => {
             const isSelf = session?.user.id === m.user_id;
             const blocked = shouldHideContactCta(m.user_id, blockedIds);
-            return (
-              <View key={m.id} className="gap-2 rounded-2xl border border-border bg-bg-elevated p-3">
-                <View className="min-h-[44px] flex-row items-center justify-between gap-2">
-                  <Text
-                    className="flex-1 text-sm text-fg"
-                    onPress={() => router.push(`/profile/${m.user_id}`)}
-                    suppressHighlighting
-                  >
-                    {m.user?.username ?? "Joueur Pro Clubs"}
-                  </Text>
-                  <Badge tone={m.role === "OWNER" ? "pro" : "neutral"}>{m.role}</Badge>
-                </View>
+            const roleBadge = (
+              <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
+                {ROLE_LABEL[m.role]}
+              </Badge>
+            );
+            const footer = (
+              <View className="mt-2 gap-2">
+                {roleBadge}
                 {!isSelf && session ? <StartDirectMessageButton otherUserId={m.user_id} blocked={blocked} /> : null}
               </View>
+            );
+            if (!m.user) {
+              return (
+                <View key={m.id} className="gap-2 rounded-2xl border border-border bg-bg-elevated p-3">
+                  <Text className="font-semibold text-fg-muted">Joueur</Text>
+                  {footer}
+                </View>
+              );
+            }
+            return (
+              <PlayerCard
+                key={m.id}
+                data={buildPlayerCardData(m.user, { clubName: club.name })}
+                variant="mini"
+                footer={footer}
+              />
             );
           })}
         </View>

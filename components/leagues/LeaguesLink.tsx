@@ -4,7 +4,7 @@ import { Trophy } from "lucide-react-native";
 import { pushLeaguesScreen } from "@/lib/leagues";
 import { RANKING_COPY } from "@/lib/rankings";
 
-/** Lien secondaire stack `/leagues` — pas un onglet (Ligues reste `href: null`). */
+/** Lien secondaire stack `/leagues` — pas un onglet joueur. */
 export function LeaguesLink() {
   return (
     <Pressable
