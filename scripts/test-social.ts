@@ -2,6 +2,8 @@
  * Tests de lib/social.ts — labels chat, filtre block DM / membres de groupe.
  * Sans réseau. Lancer : npx tsx scripts/test-social.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   BLOCKED_DM_COPY,
   CLUB_CONVERSATION_COPY,
@@ -9,6 +11,7 @@ import {
   canStartDirectMessage,
   clubConversationSqlIssues,
   clubRoleToConversationRole,
+  conversationDisplayName,
   conversationListLabel,
   filterVisibleConversations,
   filterVisibleGroupMembers,
@@ -78,6 +81,18 @@ function direct(id: string, selfId: string, peer: UserRow): ConversationRow {
   };
 }
 
+function clubConversation(club?: ConversationRow["club"]): ConversationRow {
+  return {
+    id: "cl",
+    type: "CLUB",
+    club_id: "club1",
+    group_id: null,
+    created_by: "a",
+    created_at: "",
+    club,
+  };
+}
+
 console.log("lib/social.ts");
 
 test("getDirectConversationPeer ignore self et les GROUP", () => {
@@ -87,11 +102,12 @@ test("getDirectConversationPeer ignore self et les GROUP", () => {
   assert.equal(getDirectConversationPeer({ ...dm, type: "GROUP" }, "a"), null, "group");
 });
 
-test("conversationListLabel — DIRECT / GROUP / CLUB, pas de présence inventée", () => {
+test("conversationDisplayName — DIRECT / GROUP / CLUB hydraté, jamais un nom inventé", () => {
   const peer = user("b", "Striker27");
-  assert.equal(conversationListLabel(direct("c1", "a", peer), "a"), "Striker27", "dm");
+  assert.equal(conversationDisplayName(direct("c1", "a", peer), "a"), "Striker27", "dm");
+  assert.equal(conversationListLabel(direct("c1", "a", peer), "a"), "Striker27", "alias");
   assert.equal(
-    conversationListLabel(
+    conversationDisplayName(
       { id: "g", type: "GROUP", club_id: null, group_id: "g1", created_by: "a", created_at: "" },
       "a"
     ),
@@ -99,13 +115,46 @@ test("conversationListLabel — DIRECT / GROUP / CLUB, pas de présence inventé
     "group"
   );
   assert.equal(
-    conversationListLabel(
-      { id: "cl", type: "CLUB", club_id: "club1", group_id: null, created_by: "a", created_at: "" },
-      "a"
-    ),
-    "Club Pro Clubs",
-    "club"
+    conversationDisplayName(clubConversation({ id: "club1", name: "Invincibles" }), "a"),
+    "Invincibles",
+    "real club"
   );
+  assert.equal(
+    conversationDisplayName(clubConversation({ id: "club1", name: "  Alpha FC  " }), "a"),
+    "Alpha FC",
+    "trimmed"
+  );
+  assert.equal(conversationDisplayName(clubConversation(), "a"), CLUB_CONVERSATION_COPY, "missing");
+  assert.equal(
+    conversationDisplayName(clubConversation({ id: "club1", name: "Club Pro Clubs" }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "placeholder"
+  );
+  assert.equal(
+    conversationDisplayName(clubConversation({ id: "club1", name: "Club" }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "generic Club"
+  );
+  assert.equal(
+    conversationDisplayName(clubConversation({ id: "club1", name: "   " }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "whitespace"
+  );
+});
+
+test("liste + fil hydratent clubs(id, name) et utilisent conversationDisplayName", () => {
+  const social = readFileSync(`${process.cwd()}/lib/social.ts`, "utf8");
+  const chat = readFileSync(`${process.cwd()}/lib/hooks/useChat.ts`, "utf8");
+  const list = readFileSync(`${process.cwd()}/app/conversations.tsx`, "utf8");
+  const thread = readFileSync(`${process.cwd()}/app/conversation/[id].tsx`, "utf8");
+  assert.true(social.includes("tournamentClubDisplayName"), "honest club name");
+  assert.true(social.includes("CLUB_CONVERSATION_COPY"), "fallback copy");
+  assert.false(social.includes('return "Club Pro Clubs"'), "no placeholder title");
+  assert.true(chat.includes("club:clubs(id, name)"), "hydrate join");
+  assert.true(chat.includes("useConversations"), "list hook");
+  assert.true(chat.includes("useConversation"), "thread hook");
+  assert.true(list.includes("conversationDisplayName"), "list helper");
+  assert.true(thread.includes("conversationDisplayName"), "header helper");
 });
 
 test("filtre DM bloqués ; GROUP et CLUB restent visibles", () => {

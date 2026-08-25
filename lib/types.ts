@@ -273,6 +273,9 @@ export interface ConversationRow {
   /** Embed optionnel — membres de la conversation, utilisé pour dériver
    *  "l'autre" utilisateur d'une conversation DIRECT côté client. */
   members?: ConversationMemberRow[];
+  /** Embed optionnel — `clubs(id, name)` pour le titre d'une conversation CLUB.
+   *  Jamais inventé côté client : absent / placeholder → copy générique. */
+  club?: { id: string; name: string } | null;
 }
 
 export interface ConversationMemberRow {

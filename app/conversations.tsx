@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useConversations } from "@/lib/hooks/useChat";
-import { conversationListLabel, getDirectConversationPeer } from "@/lib/social";
+import { conversationDisplayName, getDirectConversationPeer } from "@/lib/social";
 import { PlayerCard } from "@/components/player/PlayerCard";
 import { buildPlayerCardData } from "@/lib/playerCard";
 import { timeAgo } from "@/lib/utils";
@@ -48,7 +48,7 @@ export default function ConversationsScreen() {
 }
 
 function ConversationRowItem({ conversation, selfUserId }: { conversation: ConversationRow; selfUserId: string }) {
-  const label = conversationListLabel(conversation, selfUserId);
+  const label = conversationDisplayName(conversation, selfUserId);
   const peer = getDirectConversationPeer(conversation, selfUserId);
 
   if (peer) {

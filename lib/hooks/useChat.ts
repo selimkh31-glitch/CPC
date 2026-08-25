@@ -27,6 +27,15 @@ export { getDirectConversationPeer } from "@/lib/social";
  */
 const MESSAGES_PAGE_SIZE = 30;
 
+/** Membres (peer DIRECT) + club (titre CLUB). Pas de nouvelle table. */
+const CONVERSATION_SELECT = `*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS})), club:clubs(id, name)`;
+
+function hydrateConversationClub(row: ConversationRow): ConversationRow {
+  const raw = row.club as ConversationRow["club"] | NonNullable<ConversationRow["club"]>[] | null | undefined;
+  const club = Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null);
+  return { ...row, club };
+}
+
 /** Conversations dont l'utilisateur connecté est membre (les plus récentes en premier). */
 export function useConversations(userId: string | null) {
   return useQuery({
@@ -49,7 +58,7 @@ export function useConversations(userId: string | null) {
 
       const { data, error } = await supabase
         .from("conversations")
-        .select(`*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS}))`)
+        .select(CONVERSATION_SELECT)
         .in("id", conversationIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -59,7 +68,8 @@ export function useConversations(userId: string | null) {
       } catch {
         blocked = new Set();
       }
-      return filterVisibleConversations(data as ConversationRow[], userId!, blocked);
+      const rows = ((data ?? []) as ConversationRow[]).map(hydrateConversationClub);
+      return filterVisibleConversations(rows, userId!, blocked);
     },
   });
 }
@@ -72,11 +82,12 @@ export function useConversation(conversationId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
-        .select(`*, members:conversation_members(*, user:users(${USER_PUBLIC_COLUMNS}))`)
+        .select(CONVERSATION_SELECT)
         .eq("id", conversationId!)
         .maybeSingle();
       if (error) throw error;
-      return (data as ConversationRow | null) ?? null;
+      if (!data) return null;
+      return hydrateConversationClub(data as ConversationRow);
     },
   });
 }
