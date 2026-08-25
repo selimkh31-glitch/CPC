@@ -31,6 +31,7 @@ import {
   unpairedRegisteredClubIds,
   tournamentClubDisplayName,
   collectTournamentClubNames,
+  rememberClubDisplayName,
   tournamentBracketRecordingClubId,
 } from "../lib/tournaments";
 import { competitionLinkedMatchNav } from "../lib/competitions";
@@ -507,6 +508,12 @@ test("noms hydratés : refuse Club Pro Clubs / Club ; omet si vide", () => {
   assert.equal(names.has("ghost"), false, "no placeholder registered");
   assert.equal(names.has("generic"), false, "no Club");
   assert.equal(names.has("missing"), false, "no blank");
+  const remembered = new Map<string, string>();
+  rememberClubDisplayName(remembered, "ok", "  Rival FC  ");
+  rememberClubDisplayName(remembered, "ph", "Club Pro Clubs");
+  rememberClubDisplayName(remembered, "", "Alpha");
+  assert.equal(remembered.get("ok"), "Rival FC", "remember real");
+  assert.equal(remembered.has("ph"), false, "remember skips placeholder");
   assert.equal(names.has("delta"), false, "no placeholder match side");
 });
 
@@ -591,6 +598,12 @@ test("écran tournoi : matchs liés + ClubCard MINI, jamais fallback Club Pro Cl
   assert.true(mini.includes('variant="mini"'), "MINI density");
   assert.true(mini.includes("clubRankingRowHref"), "same href doctrine");
   assert.true(mini.includes("tournamentClubDisplayName"), "honest name");
+
+  const linkedUi = readFileSync(`${root}/components/competitions/CompetitionLinkedMatches.tsx`, "utf8");
+  const linkedLib = readFileSync(`${root}/supabase/functions/_shared/competitions.ts`, "utf8");
+  assert.true(linkedUi.includes("rememberClubDisplayName"), "linked matches honest names");
+  assert.false(linkedUi.includes('"Club Pro Clubs"'), "no placeholder in linked UI");
+  assert.false(linkedLib.includes('return "Club Pro Clubs"'), "nameFromLinkedMatch omits placeholder");
 });
 
 test("SQL 0029 : kind + tournament_matches ; refuse table tournaments dupliquée / scores / season_stats", () => {

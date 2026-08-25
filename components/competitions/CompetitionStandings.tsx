@@ -1,11 +1,16 @@
 import { Text, View } from "react-native";
+import { router } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
+import { ClubCard } from "@/components/club/ClubCard";
 import {
   COMPETITION_COPY,
   canShowCompetitionStandings,
   computeCompetitionStandings,
 } from "@/lib/competitions";
+import { buildClubCardData } from "@/lib/clubCard";
+import { clubRankingRowHref } from "@/lib/rankings";
+import { tournamentClubDisplayName, rememberClubDisplayName } from "@/lib/tournaments";
 import type { LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
 import type { CompetitionRow } from "@/lib/types";
 
@@ -52,11 +57,11 @@ export function CompetitionStandings({
 
   const names = new Map<string, string>();
   for (const row of competition.clubs ?? []) {
-    if (row.club?.name) names.set(row.club_id, row.club.name);
+    rememberClubDisplayName(names, row.club_id, row.club?.name);
   }
   for (const row of rows) {
-    if (row.club?.name) names.set(row.club_id, row.club.name);
-    if (row.opponent_club_id && row.opponent_club?.name) names.set(row.opponent_club_id, row.opponent_club.name);
+    rememberClubDisplayName(names, row.club_id, row.club?.name);
+    rememberClubDisplayName(names, row.opponent_club_id, row.opponent_club?.name);
   }
 
   const standings = computeCompetitionStandings(rows, competition.id);
@@ -66,28 +71,45 @@ export function CompetitionStandings({
       <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">
         {COMPETITION_COPY.standingsTitle}
       </Text>
-      <View className="mb-1 flex-row px-1">
-        <Text className="w-8 text-[10px] font-bold uppercase text-fg-subtle">#</Text>
-        <Text className="flex-1 text-[10px] font-bold uppercase text-fg-subtle">Club</Text>
-        <Text className="w-7 text-right text-[10px] font-bold uppercase text-fg-subtle">J</Text>
-        <Text className="w-7 text-right text-[10px] font-bold uppercase text-fg-subtle">V</Text>
-        <Text className="w-7 text-right text-[10px] font-bold uppercase text-fg-subtle">N</Text>
-        <Text className="w-7 text-right text-[10px] font-bold uppercase text-fg-subtle">D</Text>
-        <Text className="w-9 text-right text-[10px] font-bold uppercase text-fg-subtle">Pts</Text>
+      <Text className="mb-1 px-1 text-[10px] font-bold uppercase text-fg-subtle">
+        # · J · V · N · D · Pts
+      </Text>
+      <View className="gap-1.5">
+        {standings.map((row, index) => {
+          const display = tournamentClubDisplayName(names.get(row.clubId));
+          const href = clubRankingRowHref(row.clubId, display);
+          const stats = (
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[10px] font-bold text-fg-subtle">#{index + 1}</Text>
+              <Text className="text-xs text-fg">{row.played}J</Text>
+              <Text className="text-xs text-fg">{row.wins}V</Text>
+              <Text className="text-xs text-fg">{row.draws}N</Text>
+              <Text className="text-xs text-fg">{row.losses}D</Text>
+              <Text className="text-sm font-bold text-accent">{row.points}</Text>
+            </View>
+          );
+          if (!display) {
+            return (
+              <View
+                key={row.clubId}
+                className="min-h-[44px] flex-row items-center justify-end rounded-2xl border border-accent/30 bg-bg-card px-3 py-2"
+              >
+                {stats}
+              </View>
+            );
+          }
+          return (
+            <ClubCard
+              key={row.clubId}
+              data={buildClubCardData({ id: row.clubId, name: display })}
+              variant="mini"
+              interactive={Boolean(href)}
+              onPress={href ? () => router.push(href) : undefined}
+              rightSlot={stats}
+            />
+          );
+        })}
       </View>
-      {standings.map((row, index) => (
-        <View key={row.clubId} className="min-h-[36px] flex-row items-center px-1 py-1">
-          <Text className="w-8 text-xs text-fg-muted">{index + 1}</Text>
-          <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-fg">
-            {names.get(row.clubId) ?? "Club Pro Clubs"}
-          </Text>
-          <Text className="w-7 text-right text-xs text-fg">{row.played}</Text>
-          <Text className="w-7 text-right text-xs text-fg">{row.wins}</Text>
-          <Text className="w-7 text-right text-xs text-fg">{row.draws}</Text>
-          <Text className="w-7 text-right text-xs text-fg">{row.losses}</Text>
-          <Text className="w-9 text-right text-sm font-bold text-accent">{row.points}</Text>
-        </View>
-      ))}
     </View>
   );
 }

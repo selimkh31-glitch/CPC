@@ -117,11 +117,11 @@ function MatchHistoryRow({ item, embedded }: { item: MatchHistoryItem; embedded:
             onPress={opponentHref ? () => router.push(opponentHref) : undefined}
             className="border-0 bg-transparent px-0 py-0"
           />
-        ) : (
+        ) : item.clubName ? (
           <Text numberOfLines={1} className="text-sm font-semibold text-fg">
             {item.clubName}
           </Text>
-        )}
+        ) : null}
         {meta ? <Text className="text-[11px] text-fg-subtle">{meta}</Text> : null}
       </View>
       <OutcomeBadge outcome={item.outcome} />

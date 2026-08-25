@@ -20,6 +20,7 @@
  * Jamais `season_stats`. Jamais de classement inventé. OVR CPC = `computeOvr`.
  */
 import type { MatchOutcome } from "@/lib/types";
+import { tournamentClubDisplayName } from "@/lib/tournaments";
 
 export const MATCH_HISTORY_LIMIT = 5;
 
@@ -79,7 +80,8 @@ export interface MatchHistoryItem {
   id: string;
   createdAt: string;
   dateLabel: string | null;
-  clubName: string;
+  /** Nom réel hydraté — `null` si manquant / placeholder, jamais inventé. */
+  clubName: string | null;
   clubId: string;
   /** Club adverse si `opponent_club_id` + nom déjà hydratés. Jamais inventé. */
   opponentClubId: string | null;
@@ -111,18 +113,16 @@ export function formatMatchScore(ourScore: unknown, opponentScore: unknown): str
 
 function nameFromMap(
   clubId: string,
-  names: Map<string, string> | Record<string, string> | undefined,
-  fallback: string
-): string {
-  if (!names) return fallback;
+  names: Map<string, string> | Record<string, string> | undefined
+): string | null {
+  if (!names) return null;
   const raw = names instanceof Map ? names.get(clubId) : names[clubId];
-  const trimmed = raw?.trim();
-  return trimmed ? trimmed : fallback;
+  return tournamentClubDisplayName(raw);
 }
 
 function toHistoryItem(
   row: MatchHistoryResultInput,
-  clubName: string,
+  clubName: string | null,
   names?: Map<string, string> | Record<string, string>
 ): MatchHistoryItem | null {
   if (!row.id || !isPersistedMatchOutcome(row.outcome) || !row.created_at) return null;
@@ -131,15 +131,14 @@ function toHistoryItem(
       ? row.opponent_club_id.trim()
       : null;
   const opponentRaw = opponentId && names ? (names instanceof Map ? names.get(opponentId) : names[opponentId]) : undefined;
-  const opponentClubName = opponentRaw?.trim() ? opponentRaw.trim() : null;
   return {
     id: row.id,
     createdAt: row.created_at,
     dateLabel: formatMatchHistoryDate(row.created_at),
-    clubName,
+    clubName: tournamentClubDisplayName(clubName),
     clubId: row.club_id,
     opponentClubId: opponentId,
-    opponentClubName,
+    opponentClubName: opponentId ? tournamentClubDisplayName(opponentRaw) : null,
     scoreLine: formatMatchScore(row.our_score, row.opponent_score),
     outcome: row.outcome,
   };
@@ -171,7 +170,7 @@ export function buildPlayerMatchHistory(input: {
   const items: MatchHistoryItem[] = [];
   for (const row of input.results) {
     if (!presentCheckins.has(row.match_checkin_id)) continue;
-    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, "Club Pro Clubs"), input.clubNames);
+    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames), input.clubNames);
     if (item) items.push(item);
   }
   return sortAndLimit(items, input.limit ?? MATCH_HISTORY_LIMIT);
@@ -203,11 +202,11 @@ export function buildClubMatchHistory(input: {
   clubNames?: Map<string, string> | Record<string, string>;
   limit?: number;
 }): MatchHistoryItem[] {
-  const fallback = input.clubName?.trim() || "Club Pro Clubs";
   const items: MatchHistoryItem[] = [];
   for (const row of input.results) {
     if (row.club_id !== input.clubId) continue;
-    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, fallback), input.clubNames);
+    const ownName = nameFromMap(row.club_id, input.clubNames) ?? tournamentClubDisplayName(input.clubName);
+    const item = toHistoryItem(row, ownName, input.clubNames);
     if (item) items.push(item);
   }
   return sortAndLimit(items, input.limit ?? MATCH_HISTORY_LIMIT);

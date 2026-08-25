@@ -18,6 +18,8 @@ import {
 } from "../lib/clubCard";
 import type { ClubSessionRow } from "../lib/types";
 import type { LinkedMatchResultInput } from "../lib/competitions";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -314,6 +316,19 @@ test("hydraté : plateforme owner, LIVE session, effectif déjà chargé ; pas d
   assert.equal(data.neededLine, "Gardien", "needed from session");
   assert.equal("ovr" in data, false, "pas d'OVR");
   assert.equal(data.matchRecord, null, "pas de W-D-L sans results");
+});
+
+test("listes fondateur : candidatures / invitations n'inventent pas Club / Club Pro Clubs", () => {
+  const apps = readFileSync(`${process.cwd()}/components/player/MyApplicationsList.tsx`, "utf8");
+  const invs = readFileSync(`${process.cwd()}/components/player/MyInvitationsList.tsx`, "utf8");
+  assert.true(apps.includes("tournamentClubDisplayName"), "apps helper");
+  assert.true(apps.includes("buildClubCardData"), "apps ClubCard");
+  assert.false(apps.includes('name: "Club"'), "apps no Club fallback");
+  assert.false(apps.includes('"Club Pro Clubs"'), "apps no placeholder");
+  assert.true(invs.includes("tournamentClubDisplayName"), "invs helper");
+  assert.true(invs.includes("buildClubCardData"), "invs ClubCard");
+  assert.false(invs.includes('name: "Club"'), "invs no Club fallback");
+  assert.false(invs.includes('"Club Pro Clubs"'), "invs no placeholder");
 });
 
 console.log(`\n${passed} test(s) passés.`);

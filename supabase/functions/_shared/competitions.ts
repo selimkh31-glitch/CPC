@@ -425,9 +425,11 @@ export interface CompetitionLinkedMatchItem {
   id: string;
   clubId: string;
   opponentClubId: string;
-  clubName: string;
-  opponentClubName: string;
-  clubsLine: string;
+  /** Nom réel hydraté — `null` si manquant / placeholder, jamais inventé. */
+  clubName: string | null;
+  opponentClubName: string | null;
+  /** Noms réels joints par « — ». Un seul côté suffit. Aucun → `null` (pas un placeholder). */
+  clubsLine: string | null;
   status: LinkedMatchStatus;
   statusLabel: string;
   scoreLine: string | null;
@@ -435,19 +437,33 @@ export interface CompetitionLinkedMatchItem {
   createdAt: string | null;
 }
 
+/**
+ * Nom affichable : uniquement un nom réel hydraté.
+ * Même doctrine que `tournamentClubDisplayName` (feuille sans import croisé) :
+ * refuse « Club Pro Clubs » / « Club ». Vide / absent → null.
+ */
+function honestClubDisplayName(name: string | null | undefined): string | null {
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === "Club Pro Clubs" || trimmed === "Club") return null;
+  return trimmed;
+}
+
 function nameFromLinkedMatch(
   clubId: string,
   names: Map<string, string> | Record<string, string> | undefined,
   embeddedName?: string | null
-): string {
-  const fromEmbed = embeddedName?.trim();
+): string | null {
+  const fromEmbed = honestClubDisplayName(embeddedName);
   if (fromEmbed) return fromEmbed;
-  if (names) {
-    const raw = names instanceof Map ? names.get(clubId) : names[clubId];
-    const trimmed = raw?.trim();
-    if (trimmed) return trimmed;
-  }
-  return "Club Pro Clubs";
+  if (!names) return null;
+  const raw = names instanceof Map ? names.get(clubId) : names[clubId];
+  return honestClubDisplayName(raw);
+}
+
+function linkedMatchClubsLine(clubName: string | null, opponentClubName: string | null): string | null {
+  if (clubName && opponentClubName) return `${clubName} — ${opponentClubName}`;
+  return clubName ?? opponentClubName;
 }
 
 /**
@@ -473,7 +489,7 @@ export function listCompetitionLinkedMatches(
       opponentClubId,
       clubName,
       opponentClubName,
-      clubsLine: `${clubName} — ${opponentClubName}`,
+      clubsLine: linkedMatchClubsLine(clubName, opponentClubName),
       status,
       statusLabel: linkedMatchStatusLabel(status),
       scoreLine,

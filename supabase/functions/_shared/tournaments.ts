@@ -298,6 +298,17 @@ export function tournamentClubDisplayName(name: string | null | undefined): stri
   return trimmed;
 }
 
+/** Enregistre un nom seulement s'il est affichable (pas un placeholder). */
+export function rememberClubDisplayName(
+  names: Map<string, string>,
+  clubId: string | null | undefined,
+  name: string | null | undefined
+): void {
+  if (!clubId) return;
+  const display = tournamentClubDisplayName(name);
+  if (display) names.set(clubId, display);
+}
+
 export function collectTournamentClubNames(
   clubs: readonly { club_id: string; club?: { name?: string | null } | null }[],
   matches: readonly {
@@ -308,14 +319,10 @@ export function collectTournamentClubNames(
   }[] = []
 ): Map<string, string> {
   const names = new Map<string, string>();
-  const set = (id: string, name: string | null | undefined) => {
-    const display = tournamentClubDisplayName(name);
-    if (display) names.set(id, display);
-  };
-  for (const row of clubs) set(row.club_id, row.club?.name);
+  for (const row of clubs) rememberClubDisplayName(names, row.club_id, row.club?.name);
   for (const match of matches) {
-    set(match.club_a_id, match.club_a?.name);
-    set(match.club_b_id, match.club_b?.name);
+    rememberClubDisplayName(names, match.club_a_id, match.club_a?.name);
+    rememberClubDisplayName(names, match.club_b_id, match.club_b?.name);
   }
   return names;
 }

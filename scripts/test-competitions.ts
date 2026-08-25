@@ -36,6 +36,8 @@ import {
   registerBlockMessage,
   uniqueViolationHttpStatus,
 } from "../lib/competitions";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -423,16 +425,77 @@ test("liste matchs liés : même rows que le classement ; scores manquants ≠ 0
   assert.equal(listed[0].scoreLine, "0 — 0", "persisted draw");
   assert.equal(listed[0].status, "recorded", "draw recorded");
   assert.equal(listed[0].statusLabel, "Enregistré", "draw label");
+  assert.equal(listed[0].clubName, null, "alpha name missing → omit, never placeholder");
+  assert.equal(listed[0].opponentClubName, "Gamma FC", "gamma from map");
+  assert.equal(listed[0].clubsLine, "Gamma FC", "one real name is enough");
+  assert.false(Boolean(listed[0].clubsLine?.includes("Club Pro Clubs")), "no placeholder newest");
   assert.equal(listed[1].clubsLine, "Alpha FC — Beta FC", "names");
+  assert.equal(listed[1].clubName, "Alpha FC", "embedded club");
+  assert.equal(listed[1].opponentClubName, "Beta FC", "embedded opponent");
   assert.equal(listed[1].scoreLine, "2 — 1", "win score");
   assert.equal(listed[2].id, "m-incomplete", "incomplete kept");
   assert.equal(listed[2].status, "incomplete", "incomplete status");
   assert.equal(listed[2].statusLabel, "Pas encore de score", "incomplete label");
   assert.equal(listed[2].scoreLine, null, "no fake score");
   assert.equal(listed[2].outcome, null, "no outcome without scores");
+  assert.equal(listed[2].clubName, null, "beta name missing → omit");
   assert.equal(listed[2].opponentClubName, "Gamma FC", "name map");
+  assert.equal(listed[2].clubsLine, "Gamma FC", "incomplete one-sided name");
   assert.true(hasLinkedCompetitionResults(rows.filter((r) => r.id === "m2" || r.id === "m1") as never, "c1"), "standings same source");
   assert.equal(listCompetitionLinkedMatches([], "c1").length, 0, "empty list");
+
+  const placeholders = listCompetitionLinkedMatches(
+    [
+      {
+        id: "m-ph",
+        club_id: "ghost",
+        opponent_club_id: "generic",
+        competition_id: "c1",
+        outcome: "WIN",
+        our_score: 1,
+        opponent_score: 0,
+        created_at: "2026-08-18T12:00:00.000Z",
+        club: { id: "ghost", name: "Club Pro Clubs" },
+        opponent_club: { id: "generic", name: "Club" },
+      },
+      {
+        id: "m-blank",
+        club_id: "a",
+        opponent_club_id: "b",
+        competition_id: "c1",
+        outcome: "DRAW",
+        our_score: 0,
+        opponent_score: 0,
+        created_at: "2026-08-17T12:00:00.000Z",
+      },
+      {
+        id: "m-one",
+        club_id: "solo",
+        opponent_club_id: "ghost",
+        competition_id: "c1",
+        outcome: "LOSS",
+        our_score: 0,
+        opponent_score: 2,
+        created_at: "2026-08-16T12:00:00.000Z",
+        club: { id: "solo", name: "  Solo FC  " },
+        opponent_club: { id: "ghost", name: "Club Pro Clubs" },
+      },
+    ],
+    "c1",
+    { ghost: "Club Pro Clubs", generic: "Club" }
+  );
+  assert.equal(placeholders.length, 3, "placeholder rows kept as matches");
+  assert.equal(placeholders[0].clubName, null, "embed placeholder omitted");
+  assert.equal(placeholders[0].opponentClubName, null, "generic Club omitted");
+  assert.equal(placeholders[0].clubsLine, null, "neither name → omit line");
+  assert.equal(placeholders[0].scoreLine, "1 — 0", "score réel conservé");
+  assert.equal(placeholders[1].clubsLine, null, "no names at all → omit");
+  assert.equal(placeholders[1].statusLabel, "Enregistré", "status stays");
+  assert.equal(placeholders[2].clubName, "Solo FC", "real name trimmed");
+  assert.equal(placeholders[2].opponentClubName, null, "map placeholder omitted");
+  assert.equal(placeholders[2].clubsLine, "Solo FC", "one side ok");
+  assert.false(placeholders.some((row) => (row.clubsLine ?? "").includes("Club Pro Clubs")), "no placeholder in any line");
+  assert.false(placeholders.some((row) => row.clubName === "Club" || row.opponentClubName === "Club"), "no generic Club");
 });
 
 test("tap match lié : /match si OWNER/MANAGER du club enregistreur, sinon /club/[id]", () => {
@@ -540,6 +603,34 @@ test("SQL 0027 : ALTER match_results + finalize étendu ; pas de table standings
   assert.true(matchResultLinkSqlIssues(withStandings).some((i) => i.startsWith("interdit:")), "no standings table");
   const clientInsert = `${valid}\ncreate policy x on public.match_results for insert to authenticated with check (true);`;
   assert.true(matchResultLinkSqlIssues(clientInsert).some((i) => i.includes("insert")), "no client insert");
+});
+
+test("classement / inscrits / matchs liés : jamais placeholder Club Pro Clubs", () => {
+  const standings = readFileSync(`${process.cwd()}/components/competitions/CompetitionStandings.tsx`, "utf8");
+  const participants = readFileSync(`${process.cwd()}/components/competitions/CompetitionParticipants.tsx`, "utf8");
+  const linked = readFileSync(`${process.cwd()}/components/competitions/CompetitionLinkedMatches.tsx`, "utf8");
+  const shared = readFileSync(`${process.cwd()}/supabase/functions/_shared/competitions.ts`, "utf8");
+
+  assert.true(standings.includes("tournamentClubDisplayName"), "standings honest name");
+  assert.true(standings.includes("buildClubCardData"), "standings ClubCard builder");
+  assert.true(standings.includes('variant="mini"'), "standings MINI");
+  assert.true(standings.includes("clubRankingRowHref"), "standings href");
+  assert.false(standings.includes('"Club Pro Clubs"'), "no placeholder literal in standings");
+  assert.false(standings.includes("?? \"Club Pro Clubs\""), "no standings fallback");
+  assert.false(standings.includes("0-0-0"), "no fake 0-0-0 in standings");
+
+  assert.true(participants.includes("tournamentClubDisplayName"), "participants honest name");
+  assert.true(participants.includes("buildClubCardData"), "participants ClubCard");
+  assert.true(participants.includes('variant="mini"'), "participants MINI");
+  assert.false(participants.includes('"Club Pro Clubs"'), "no placeholder literal in participants");
+  assert.false(participants.includes("|| \"Club Pro Clubs\""), "no participants fallback");
+
+  assert.true(linked.includes("rememberClubDisplayName"), "linked names helper");
+  assert.false(linked.includes('"Club Pro Clubs"'), "no placeholder in linked UI");
+  assert.true(linked.includes("item.clubsLine"), "omits empty clubsLine");
+  assert.false(shared.includes('return "Club Pro Clubs"'), "nameFromLinkedMatch no longer returns placeholder");
+  assert.true(shared.includes("honestClubDisplayName"), "same doctrine as tournamentClubDisplayName");
+  assert.true(shared.includes("linkedMatchClubsLine"), "join real names only");
 });
 
 console.log(`\n${passed} tests OK`);
