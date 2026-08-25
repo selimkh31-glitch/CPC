@@ -1,12 +1,13 @@
 import { Text, View } from "react-native";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
+import { ClubCard } from "@/components/club/ClubCard";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId } from "@/lib/formations";
 import { timeAgo } from "@/lib/utils";
+import { buildClubCardData } from "@/lib/clubCard";
 import { useMyInvitations, useRespondInvitation, useRespondTransitionInvitation } from "@/lib/hooks/useInvitations";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
@@ -82,38 +83,40 @@ export function MyInvitationsList() {
         const isTransition = Boolean(inv.departure_request_id);
         const pending = isTransition ? respondTransition.isPending : respond.isPending;
         return (
-          <Card key={inv.id}>
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="shrink flex-1 flex-row items-center gap-1.5">
-                <Text numberOfLines={1} className="shrink font-display text-lg text-fg">
-                  {inv.club?.name ?? "Club"}
+          <ClubCard
+            key={inv.id}
+            data={buildClubCardData(inv.club ?? { id: inv.club_id, name: "Club" })}
+            variant="mini"
+            rightSlot={
+              <View className="flex-row items-center gap-1.5">
+                {isTransition ? <Badge tone="pro">Transition</Badge> : null}
+                <Badge tone={STATUS_TONES[inv.status]}>{STATUS_LABELS[inv.status]}</Badge>
+              </View>
+            }
+            footer={
+              <View className="mt-1">
+                <Text className="text-xs text-fg-muted">
+                  {inviteLabel(inv.slot_id, inv.club?.formation ?? null)} · {timeAgo(inv.created_at)}
                 </Text>
-                {isTransition && <Badge tone="pro">Transition</Badge>}
+                {inv.status === "RESERVED" ? (
+                  <Text className="mt-3 text-sm text-fg-muted">
+                    Réservé pour ce club — tu restes membre de ton club actuel jusqu&apos;à ta libération effective (après
+                    ton prochain match validé).
+                  </Text>
+                ) : null}
+                {inv.status === "PENDING" ? (
+                  <View className="mt-3 flex-row gap-2">
+                    <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition)}>
+                      Refuser
+                    </Button>
+                    <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition)}>
+                      {isTransition ? "Réserver ma place" : "Accepter"}
+                    </Button>
+                  </View>
+                ) : null}
               </View>
-              <Badge tone={STATUS_TONES[inv.status]}>{STATUS_LABELS[inv.status]}</Badge>
-            </View>
-            <Text className="mt-1 text-xs text-fg-muted">
-              {inviteLabel(inv.slot_id, inv.club?.formation ?? null)} · {timeAgo(inv.created_at)}
-            </Text>
-
-            {inv.status === "RESERVED" && (
-              <Text className="mt-3 text-sm text-fg-muted">
-                Réservé pour ce club — tu restes membre de ton club actuel jusqu'à ta libération effective (après ton
-                prochain match validé).
-              </Text>
-            )}
-
-            {inv.status === "PENDING" && (
-              <View className="mt-3 flex-row gap-2">
-                <Button variant="secondary" className="flex-1" loading={pending} onPress={() => act(inv.id, "DECLINED", isTransition)}>
-                  Refuser
-                </Button>
-                <Button className="flex-1" loading={pending} onPress={() => act(inv.id, "ACCEPTED", isTransition)}>
-                  {isTransition ? "Réserver ma place" : "Accepter"}
-                </Button>
-              </View>
-            )}
-          </Card>
+            }
+          />
         );
       })}
     </View>

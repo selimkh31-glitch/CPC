@@ -242,4 +242,29 @@ test("countPlayerCpcMatches : vide = 0 ; PRESENT + résultat = compte, pas de bu
   );
 });
 
+test("adversaire club : nom MINI seulement si opponent_club_id + nom hydraté", () => {
+  const none = buildPlayerMatchHistory({
+    participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+    results: [result({ id: "r1", match_checkin_id: "c1" })],
+  });
+  assert.equal(none[0].opponentClubId, null, "pas d'adverse");
+  assert.equal(none[0].opponentClubName, null, "pas de nom inventé");
+
+  const named = buildPlayerMatchHistory({
+    participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+    results: [result({ id: "r1", match_checkin_id: "c1", opponent_club_id: "club-b" })],
+    clubNames: { "club-a": "Les Invincibles", "club-b": "Rival FC" },
+  });
+  assert.equal(named[0].opponentClubId, "club-b", "id");
+  assert.equal(named[0].opponentClubName, "Rival FC", "name");
+
+  const idOnly = buildPlayerMatchHistory({
+    participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
+    results: [result({ id: "r1", match_checkin_id: "c1", opponent_club_id: "club-b" })],
+    clubNames: { "club-a": "Les Invincibles" },
+  });
+  assert.equal(idOnly[0].opponentClubId, "club-b", "id known");
+  assert.equal(idOnly[0].opponentClubName, null, "nom non hydraté → omis");
+});
+
 console.log(`\n${passed} test(s) passés.`);

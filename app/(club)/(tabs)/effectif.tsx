@@ -10,7 +10,7 @@ import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
-import { ClubIdentityHeader } from "@/components/club/ClubIdentityHeader";
+import { ClubCard } from "@/components/club/ClubCard";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
@@ -24,7 +24,7 @@ import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
-import { clubOwnerPlatform, clubOwnerUsername } from "@/lib/clubProfile";
+import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
 
 /**
@@ -100,25 +100,31 @@ export default function ClubTab() {
 
   return shell(
     <>
-      <ClubIdentityHeader
-        name={club.name}
-        level={club.level}
-        ownerPlatform={clubOwnerPlatform(club.members)}
-        ownerUsername={clubOwnerUsername(club.members)}
-        languages={club.languages}
-        description={club.description}
+      <ClubCard
+        data={buildClubCardDataFromHydratedClub(club, {
+          members: club.members,
+          sessions: club.sessions,
+          nowMs: now,
+        })}
+        variant="full"
+        interactive={false}
+        footer={
+          <View className="gap-3">
+            {isOwner ? (
+              <Button
+                variant="secondary"
+                className="min-h-[44px] w-full"
+                icon={<Pencil size={15} color="#f4f5f7" />}
+                accessibilityLabel="Modifier l'identité du club"
+                onPress={() => router.push("/edit-club")}
+              >
+                Modifier l'identité du club
+              </Button>
+            ) : null}
+            <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
+          </View>
+        }
       />
-      {isOwner ? (
-        <Button
-          variant="secondary"
-          className="min-h-[44px] w-full"
-          icon={<Pencil size={15} color="#f4f5f7" />}
-          accessibilityLabel="Modifier l'identité du club"
-          onPress={() => router.push("/edit-club")}
-        >
-          Modifier l'identité du club
-        </Button>
-      ) : null}
 
       <ClubSessionStatus
         snapshot={snapshot}
@@ -130,7 +136,6 @@ export default function ClubTab() {
           onPress: () => router.push("/match"),
         }}
       />
-      <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
       <SocialShortcuts />
       <CompetitionsLink />
       <TournamentsLink />

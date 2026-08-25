@@ -16,7 +16,7 @@ export interface PlayerMatchHistoryQuery {
 }
 
 const RESULT_COLUMNS =
-  "id, match_checkin_id, club_id, our_score, opponent_score, outcome, created_at";
+  "id, match_checkin_id, club_id, opponent_club_id, our_score, opponent_score, outcome, created_at";
 
 async function fetchClubNames(clubIds: string[]): Promise<Map<string, string>> {
   const unique = [...new Set(clubIds.filter(Boolean))];
@@ -60,7 +60,9 @@ export function usePlayerMatchHistory(userId: string | null) {
       const rows = parts ?? [];
       const checkinIds = rows.map((row: { match_checkin_id: string }) => row.match_checkin_id);
       const results = await fetchResultsByCheckinIds(checkinIds);
-      const clubNames = await fetchClubNames(results.map((row) => row.club_id));
+      const clubNames = await fetchClubNames(
+        results.flatMap((row) => [row.club_id, row.opponent_club_id].filter((id): id is string => Boolean(id)))
+      );
       const items = buildPlayerMatchHistory({
         participations: rows,
         results,
@@ -90,7 +92,9 @@ export function useClubMatchHistory(clubId: string | null, clubName?: string | n
         .limit(MATCH_HISTORY_LIMIT);
       if (error) throw error;
       const results = (data ?? []) as MatchHistoryResultInput[];
-      const clubNames = await fetchClubNames(results.map((row) => row.club_id));
+      const clubNames = await fetchClubNames(
+        results.flatMap((row) => [row.club_id, row.opponent_club_id].filter((id): id is string => Boolean(id)))
+      );
       return buildClubMatchHistory({
         results,
         clubId: clubId!,

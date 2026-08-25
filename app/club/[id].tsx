@@ -1,12 +1,12 @@
 import { ScrollView, Text, View } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
-import { Globe2, Users } from "lucide-react-native";
+import { Users } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
+import { ClubCard } from "@/components/club/ClubCard";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { PlayerCard } from "@/components/player/PlayerCard";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
@@ -15,11 +15,12 @@ import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
-import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { sortClubRoster } from "@/lib/clubProfile";
 import { buildPlayerCardData } from "@/lib/playerCard";
+import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import type { ClubRole } from "@/lib/types";
 
 const ROLE_LABEL: Record<ClubRole, string> = {
@@ -64,23 +65,20 @@ export default function ClubDetailScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
-      <View>
-        <View className="flex-row items-center gap-2">
-          {activeSession && <PulseDot />}
-          <Text className="font-display text-3xl text-fg">{club.name}</Text>
-        </View>
-        <View className="mt-1 flex-row items-center gap-2">
-          <Badge tone={club.level === "COMPETITIVE" ? "accent" : "neutral"}>{CLUB_LEVEL_LABELS[club.level]}</Badge>
-          <View className="flex-row items-center gap-1">
-            <Globe2 size={12} color="#666c74" />
-            <Text className="text-xs text-fg-subtle">{club.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")}</Text>
-          </View>
-        </View>
-        {club.description && <Text className="mt-3 text-sm text-fg-muted">{club.description}</Text>}
-        <Link href={`/match-sheet?clubId=${club.id}`} className="mt-2 text-sm text-accent">
-          Voir la feuille de match
-        </Link>
-      </View>
+      <ClubCard
+        data={buildClubCardDataFromHydratedClub(club, {
+          members: club.members,
+          sessions: club.sessions,
+          nowMs: now,
+        })}
+        variant="full"
+        interactive={false}
+        footer={
+          <Link href={`/match-sheet?clubId=${club.id}`} className="text-sm text-accent">
+            Voir la feuille de match
+          </Link>
+        }
+      />
 
       <Card>
         <MatchHistoryList
