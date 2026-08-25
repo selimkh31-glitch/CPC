@@ -73,6 +73,17 @@ function honestGroupConversationName(name: string | null | undefined): string | 
   return trimmed ? trimmed : null;
 }
 
+/**
+ * Nom de club affichable : trim, refuse « Club Pro Clubs » / « Club ».
+ * Vide / placeholder → null (fallback `CLUB_CONVERSATION_COPY`).
+ */
+function honestClubConversationName(name: string | null | undefined): string | null {
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === "Club Pro Clubs" || trimmed === "Club") return null;
+  return trimmed;
+}
+
 export function conversationListLabel(conversation: ConversationRow, selfUserId: string): string {
   if (conversation.type === "DIRECT") {
     return getDirectConversationPeer(conversation, selfUserId)?.username ?? "Joueur Pro Clubs";
@@ -80,7 +91,9 @@ export function conversationListLabel(conversation: ConversationRow, selfUserId:
   if (conversation.type === "GROUP") {
     return honestGroupConversationName(conversation.group?.name) ?? "Groupe";
   }
-  if (conversation.type === "CLUB") return "Club Pro Clubs";
+  if (conversation.type === "CLUB") {
+    return honestClubConversationName(conversation.club?.name) ?? CLUB_CONVERSATION_COPY;
+  }
   return "Conversation";
 }
 

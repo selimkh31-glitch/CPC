@@ -100,6 +100,8 @@ export function CompetitionLinkedMatches({
             const nav = competitionLinkedMatchNav({
               recordingClubId: item.clubId,
               managedClubIds,
+              competitionId: competition.id,
+              kind: competition.kind,
             });
             const accessibility = [item.clubsLine, item.statusLabel, item.scoreLine]
               .filter(Boolean)

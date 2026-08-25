@@ -498,21 +498,47 @@ test("liste matchs liés : même rows que le classement ; scores manquants ≠ 0
   assert.false(placeholders.some((row) => row.clubName === "Club" || row.opponentClubName === "Club"), "no generic Club");
 });
 
-test("tap match lié : /match si OWNER/MANAGER du club enregistreur, sinon /club/[id]", () => {
-  const asManager = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-a", "club-x"] });
-  assert.equal(asManager?.href, "/match", "manager sheet");
-  assert.equal(asManager?.selectClubId, "club-a", "select recording club");
-  assert.equal(asManager?.requireClubMode, true, "club mode");
-  const asViewer = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-other"] });
-  assert.equal(asViewer?.href, "/club/club-a", "recording club public");
-  assert.equal(asViewer?.selectClubId, null, "no club select");
-  assert.equal(asViewer?.requireClubMode, false, "stay in current mode");
-  const asOpponentManager = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-b"] });
-  assert.equal(asOpponentManager?.href, "/club/club-a", "opponent manager is not the recording sheet");
+test("tap match lié PLAYED : VIEW compétition/tournoi/club, jamais /match", () => {
+  const asManager = competitionLinkedMatchNav({
+    recordingClubId: "club-a",
+    managedClubIds: ["club-a", "club-x"],
+    competitionId: "comp-1",
+    kind: "COMPETITION",
+  });
+  assert.equal(asManager?.href, "/competitions/comp-1", "manager → competition");
+  assert.equal(asManager?.selectClubId, null, "no club select");
+  assert.equal(asManager?.requireClubMode, false, "no club mode");
+  const asViewer = competitionLinkedMatchNav({
+    recordingClubId: "club-a",
+    managedClubIds: ["club-other"],
+    competitionId: "comp-1",
+    kind: "COMPETITION",
+  });
+  assert.equal(asViewer?.href, "/competitions/comp-1", "viewer same dest");
+  assert.equal(asViewer?.selectClubId, null, "viewer no select");
+  assert.equal(asViewer?.requireClubMode, false, "viewer stay in current mode");
+  const asOpponentManager = competitionLinkedMatchNav({
+    recordingClubId: "club-a",
+    managedClubIds: ["club-b"],
+    competitionId: "comp-1",
+    kind: "COMPETITION",
+  });
+  assert.equal(asOpponentManager?.href, "/competitions/comp-1", "opponent manager same dest");
+  const tourney = competitionLinkedMatchNav({
+    recordingClubId: "club-a",
+    managedClubIds: ["club-a"],
+    competitionId: "t-1",
+    kind: "TOURNAMENT",
+  });
+  assert.equal(tourney?.href, "/tournaments/t-1", "tournament dest");
+  assert.equal(tourney?.requireClubMode, false, "tournament no club mode");
   const none = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: [] });
-  assert.equal(none?.href, "/club/club-a", "no managed");
+  assert.equal(none?.href, "/club/club-a", "no competitionId → club history");
+  assert.equal(none?.requireClubMode, false, "club fallback no club mode");
   assert.equal(competitionLinkedMatchNav({ recordingClubId: "  ", managedClubIds: ["club-a"] }), null, "empty id");
+  assert.false((asManager?.href ?? "").includes("/match"), "manager not feuille");
   assert.false((asViewer?.href ?? "").includes("match-sheet"), "not match-sheet");
+  assert.false((tourney?.href ?? "") === "/match", "tournament not /match");
 });
 
 test("CTA inscription honnête : DRAFT copy, pas de bouton mort ; OPEN + club géré", () => {
@@ -626,9 +652,12 @@ test("classement / inscrits / matchs liés : jamais placeholder Club Pro Clubs",
   assert.false(participants.includes("|| \"Club Pro Clubs\""), "no participants fallback");
 
   assert.true(linked.includes("rememberClubDisplayName"), "linked names helper");
+  assert.true(linked.includes("competitionId: competition.id"), "linked passes competitionId");
+  assert.true(linked.includes("kind: competition.kind"), "linked passes kind");
   assert.false(linked.includes('"Club Pro Clubs"'), "no placeholder in linked UI");
   assert.true(linked.includes("item.clubsLine"), "omits empty clubsLine");
   assert.false(shared.includes('return "Club Pro Clubs"'), "nameFromLinkedMatch no longer returns placeholder");
+  assert.false(shared.includes('href: "/match"'), "played VIEW never /match");
   assert.true(shared.includes("honestClubDisplayName"), "same doctrine as tournamentClubDisplayName");
   assert.true(shared.includes("linkedMatchClubsLine"), "join real names only");
 });

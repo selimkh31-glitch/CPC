@@ -92,6 +92,18 @@ function groupConversation(group?: ConversationRow["group"]): ConversationRow {
   };
 }
 
+function clubConversation(club?: ConversationRow["club"]): ConversationRow {
+  return {
+    id: "cl",
+    type: "CLUB",
+    club_id: "club1",
+    group_id: null,
+    created_by: "a",
+    created_at: "",
+    club,
+  };
+}
+
 console.log("lib/social.ts");
 
 test("getDirectConversationPeer ignore self et les GROUP", () => {
@@ -101,7 +113,7 @@ test("getDirectConversationPeer ignore self et les GROUP", () => {
   assert.equal(getDirectConversationPeer({ ...dm, type: "GROUP" }, "a"), null, "group");
 });
 
-test("conversationListLabel — DIRECT / GROUP hydraté / CLUB inchangé", () => {
+test("conversationListLabel — DIRECT / GROUP hydraté / CLUB hydraté", () => {
   const peer = user("b", "Striker27");
   assert.equal(conversationListLabel(direct("c1", "a", peer), "a"), "Striker27", "dm");
   assert.equal(
@@ -151,27 +163,55 @@ test("conversationListLabel — DIRECT / GROUP hydraté / CLUB inchangé", () =>
   };
   assert.equal(conversationListLabel(withMembers, "a"), "Les habitués", "not member usernames");
   assert.equal(
-    conversationListLabel(
-      { id: "cl", type: "CLUB", club_id: "club1", group_id: null, created_by: "a", created_at: "" },
-      "a"
-    ),
-    "Club Pro Clubs",
-    "club"
+    conversationListLabel(clubConversation({ id: "club1", name: "Invincibles" }), "a"),
+    "Invincibles",
+    "real club"
+  );
+  assert.equal(
+    conversationListLabel(clubConversation({ id: "club1", name: "  Alpha FC  " }), "a"),
+    "Alpha FC",
+    "trimmed club"
+  );
+  assert.equal(conversationListLabel(clubConversation(), "a"), CLUB_CONVERSATION_COPY, "club missing");
+  assert.equal(conversationListLabel(clubConversation(null), "a"), CLUB_CONVERSATION_COPY, "club null embed");
+  assert.equal(
+    conversationListLabel(clubConversation({ id: "club1", name: "" }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "club empty"
+  );
+  assert.equal(
+    conversationListLabel(clubConversation({ id: "club1", name: "   " }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "club whitespace"
+  );
+  assert.equal(
+    conversationListLabel(clubConversation({ id: "club1", name: "Club Pro Clubs" }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "placeholder"
+  );
+  assert.equal(
+    conversationListLabel(clubConversation({ id: "club1", name: "Club" }), "a"),
+    CLUB_CONVERSATION_COPY,
+    "generic Club"
   );
 });
 
-test("useConversations / useConversation hydratent groups(id,name)", () => {
+test("useConversations / useConversation hydratent groups(id,name) et clubs(id,name)", () => {
   const chat = readFileSync(`${process.cwd()}/lib/hooks/useChat.ts`, "utf8");
   const social = readFileSync(`${process.cwd()}/lib/social.ts`, "utf8");
   const list = readFileSync(`${process.cwd()}/app/conversations.tsx`, "utf8");
   const thread = readFileSync(`${process.cwd()}/app/conversation/[id].tsx`, "utf8");
-  assert.true(chat.includes("groups(id,name)"), "hydrate join");
+  assert.true(chat.includes("groups(id,name)"), "hydrate group join");
+  assert.true(chat.includes("clubs(id,name)"), "hydrate club join");
   assert.true(chat.includes("CONVERSATION_SELECT"), "shared select");
   assert.true(chat.includes("useConversations"), "list hook");
   assert.true(chat.includes("useConversation"), "thread hook");
-  assert.false(chat.includes("club:clubs"), "no club join this tree");
   assert.true(social.includes("honestGroupConversationName"), "honest group name");
+  assert.true(social.includes("honestClubConversationName"), "honest club name");
   assert.false(social.includes('"Groupe Pro Clubs"'), "no fake group fallback");
+  assert.false(social.includes('return "Club Pro Clubs"'), "no placeholder club title");
+  assert.false(social.includes('return "Club"'), "no generic Club title");
+  assert.true(social.includes("CLUB_CONVERSATION_COPY"), "club fallback copy");
   assert.true(list.includes("conversationListLabel"), "list helper");
   assert.true(thread.includes("conversationListLabel"), "header helper");
 });

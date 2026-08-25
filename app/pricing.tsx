@@ -1,36 +1,19 @@
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
-import { Check, Crown } from "lucide-react-native";
+import { Crown } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { FEATURE_REVENUECAT, FREE_APPLICATIONS_PER_DAY, PRO_PRICE_EUR, proPurchaseCta } from "@/lib/constants";
+import { FEATURE_REVENUECAT, pricingScreenCopy, proPurchaseCta } from "@/lib/constants";
 import { purchasePro } from "@/lib/revenuecat";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
 
-const FREE_FEATURES = [
-  "Profil de base",
-  "Voir le Live Feed",
-  `${FREE_APPLICATIONS_PER_DAY} candidatures / jour`,
-  "ClubPro Card basique",
-];
-
-const PRO_FEATURES = [
-  "Candidatures illimitées",
-  "Carte animée premium + raretés",
-  "Filtres avancés",
-  "Priorité dans les candidatures",
-  "Scout Report IA",
-  "Saison CPC",
-  "Badges de saison",
-  "Stats EA liées",
-];
-
-/** Paywall Pro (section 6) — achat in-app via RevenueCat (StoreKit / Play Billing). */
+/** Paywall Pro — achat in-app seulement si RevenueCat est réellement branché. */
 export default function PricingScreen() {
   const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const purchase = proPurchaseCta(FEATURE_REVENUECAT);
+  const copy = pricingScreenCopy(FEATURE_REVENUECAT);
 
   const upgrade = async () => {
     if (!purchase.canPurchase) return;
@@ -50,36 +33,36 @@ export default function PricingScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-      <Text className="text-center text-fg-muted">
-        Une identité compétitive vérifiée, sans limites. {PRO_PRICE_EUR}€/mois, annulable à tout moment.
-      </Text>
+      <Text className="text-center text-fg-muted">{copy.intro}</Text>
 
-      <View className="mt-6 gap-4">
-        <Card>
-          <Text className="font-display text-xl text-fg">Free</Text>
-          <Text className="mt-1 text-2xl font-extrabold text-fg">0€</Text>
-          <View className="mt-4 gap-2">
-            {FREE_FEATURES.map((f) => (
-              <View key={f} className="flex-row items-center gap-2">
-                <Check size={15} color="#666c74" />
-                <Text className="text-sm text-fg-muted">{f}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
-
-        <Card className="border-pro/50 bg-pro/5">
+      <View className="mt-6">
+        <Card className={purchase.canPurchase ? "border-pro/50 bg-pro/5" : undefined}>
           <View className="flex-row items-center gap-2">
-            <Crown size={18} color="#ae8bff" />
-            <Text className="font-display text-xl text-pro-200">Pro</Text>
+            <Crown size={18} color={purchase.canPurchase ? "#ae8bff" : "#9aa0a8"} />
+            <Text className={`font-display text-xl ${purchase.canPurchase ? "text-pro-200" : "text-fg"}`}>
+              Pro
+            </Text>
           </View>
-          <Text className="mt-1 text-2xl font-extrabold text-fg">{PRO_PRICE_EUR}€ / mois</Text>
+          {copy.priceLabel ? (
+            <Text className="mt-1 text-2xl font-extrabold text-fg">{copy.priceLabel}</Text>
+          ) : (
+            <Text className="mt-1 text-base text-fg-muted">Aucun tarif affiché — pas encore à vendre.</Text>
+          )}
+          {copy.liveFeatures.length > 0 ? (
+            <View className="mt-4 gap-2">
+              {copy.liveFeatures.map((f) => (
+                <Text key={f} className="text-sm text-fg">
+                  {f}
+                </Text>
+              ))}
+            </View>
+          ) : null}
           <View className="mt-4 gap-2">
-            {PRO_FEATURES.map((f) => (
-              <View key={f} className="flex-row items-center gap-2">
-                <Check size={15} color="#ae8bff" />
-                <Text className="text-sm text-fg">{f}</Text>
-              </View>
+            <Text className="text-xs font-bold uppercase tracking-wide text-fg-muted">{copy.laterHeading}</Text>
+            {copy.laterFeatures.map((f) => (
+              <Text key={f} className="text-sm text-fg-muted">
+                {f} — bientôt
+              </Text>
             ))}
           </View>
           <View className="mt-5">
@@ -87,12 +70,12 @@ export default function PricingScreen() {
               <Text className="mb-3 text-center text-sm text-fg-muted">{purchase.disabledReason}</Text>
             ) : null}
             <Button
-              variant="pro"
+              variant={purchase.canPurchase ? "pro" : "secondary"}
               loading={loading}
               disabled={!purchase.canPurchase}
               onPress={upgrade}
             >
-              Passer Pro
+              {copy.ctaLabel}
             </Button>
           </View>
         </Card>

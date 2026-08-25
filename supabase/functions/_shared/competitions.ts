@@ -514,20 +514,28 @@ export type CompetitionLinkedMatchNav = {
 };
 
 /**
- * Tap : `/match` si le viewer est OWNER/MANAGER du club enregistreur
- * (`club_id` — `/match` est la feuille du club géré). Sinon profil public
- * `/club/[id]` du club enregistreur — jamais un row mort, jamais `/match-sheet`.
+ * Tap VIEW d'un match lié PLAYED — même dest que matchFinalizedNotificationNav.
+ * competitionId + kind TOURNAMENT → `/tournaments/[id]`.
+ * competitionId sinon → `/competitions/[id]`.
+ * sinon club enregistreur → `/club/[id]`.
+ * Jamais `/match` ni `/match-sheet` : `/match` est la feuille, vide après finalize.
+ * requireClubMode false + selectClubId null — MEMBER / manager adverse doivent
+ * pousser. L'enregistrement (paire UNPLAYED) reste `tournamentUnplayedRecordNav`.
+ * `managedClubIds` est accepté (callers existants) mais n'oriente plus la dest.
  */
 export function competitionLinkedMatchNav(input: {
   recordingClubId: string;
-  managedClubIds: readonly string[];
+  managedClubIds?: readonly string[];
+  competitionId?: string | null;
+  kind?: string | null;
 }): CompetitionLinkedMatchNav | null {
   const recordingClubId = input.recordingClubId.trim();
   if (!recordingClubId) return null;
-  if (input.managedClubIds.includes(recordingClubId)) {
-    return { href: "/match", selectClubId: recordingClubId, requireClubMode: true };
-  }
-  return { href: `/club/${recordingClubId}`, selectClubId: null, requireClubMode: false };
+  const competitionId = typeof input.competitionId === "string" ? input.competitionId.trim() : "";
+  const href = competitionId
+    ? competitionOrTournamentHref(competitionId, input.kind)
+    : `/club/${recordingClubId}`;
+  return { href, selectClubId: null, requireClubMode: false };
 }
 
 const REQUIRED_SQL_FRAGMENTS = [

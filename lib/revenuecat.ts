@@ -1,12 +1,12 @@
 import { Platform } from "react-native";
 import Purchases, { type CustomerInfo } from "react-native-purchases";
-import { FEATURE_REVENUECAT } from "@/lib/constants";
+import { FEATURE_REVENUECAT, PRO_PURCHASE_UNAVAILABLE_REASON } from "@/lib/constants";
 
 export const PRO_ENTITLEMENT_ID = "pro";
 
 /**
- * Achats in-app mobile (section 6) — abonnement Pro 5€/mois via RevenueCat
- * (au-dessus de StoreKit / Google Play Billing, PAS de Stripe direct sur mobile).
+ * Achats in-app mobile — abonnement Pro via RevenueCat (StoreKit / Play Billing).
+ * Pas de prix affiché tant que FEATURE_REVENUECAT est false.
  * Nécessite un dev build EAS (react-native-purchases est un module natif, non
  * disponible dans Expo Go). Voir README > "Brancher RevenueCat".
  */
@@ -33,6 +33,9 @@ export async function getOfferings() {
 }
 
 export async function purchasePro(packageIdentifier: string) {
+  if (!FEATURE_REVENUECAT) {
+    throw new Error(PRO_PURCHASE_UNAVAILABLE_REASON);
+  }
   const offerings = await Purchases.getOfferings();
   const pkg = offerings.current?.availablePackages.find((p) => p.identifier === packageIdentifier);
   if (!pkg) throw new Error("Offre Pro introuvable.");

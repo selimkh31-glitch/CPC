@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
 
 /**
  * Onglet Profil — ClubPro Card d'abord, puis switch Joueur/Club et réglages.
@@ -32,6 +33,8 @@ export default function ProfileTabScreen() {
   }, [session]);
 
   if (!session) return null;
+
+  const proEntry = profileProEntryCopy(FEATURE_REVENUECAT);
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -63,11 +66,23 @@ export default function ProfileTabScreen() {
 
         {profile?.plan !== "PRO" && (
           <Pressable
+            accessibilityLabel={proEntry.accessibilityLabel}
             onPress={() => router.push("/pricing")}
-            className="mb-6 min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-xl border border-pro/40 bg-pro/10 px-4 active:opacity-80"
+            className={
+              proEntry.looksLikeStore
+                ? "mb-6 min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-xl border border-pro/40 bg-pro/10 px-4 active:opacity-80"
+                : "mb-6 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl border border-border bg-bg-elevated px-4 active:opacity-80"
+            }
           >
-            <Crown size={16} color="#ae8bff" />
-            <Text className="font-bold text-pro-200">Passer Pro</Text>
+            <Crown size={16} color={proEntry.looksLikeStore ? "#ae8bff" : "#9aa0a8"} />
+            <View className="items-start">
+              <Text className={proEntry.looksLikeStore ? "font-bold text-pro-200" : "font-bold text-fg-muted"}>
+                {proEntry.title}
+              </Text>
+              {proEntry.subtitle ? (
+                <Text className="text-xs text-fg-muted">{proEntry.subtitle}</Text>
+              ) : null}
+            </View>
           </Pressable>
         )}
 
