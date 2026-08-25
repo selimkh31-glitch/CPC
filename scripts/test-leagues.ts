@@ -69,11 +69,12 @@ test("futur : live ligues seulement si match_results liés ET agrégés dans sea
   );
 });
 
-test("copy FR honnête : pas de classement réel tant que non lié", () => {
+test("copy FR honnête : classement saison vide (pas seed/EA), distinct du tableau CPC", () => {
   assert.equal(LEAGUE_COPY.title, "Ligues", "title");
-  assert.true(LEAGUE_COPY.empty.includes("classement réel"), "empty ranking");
+  assert.true(LEAGUE_COPY.empty.includes("ligue saison"), "empty saison");
   assert.true(LEAGUE_COPY.empty.includes("résultats Pro Clubs"), "empty pro clubs");
   assert.true(LEAGUE_COPY.emptyHint.includes("inventés"), "hint no invent");
+  assert.true(LEAGUE_COPY.emptyHint.includes("seed"), "hint seed");
   assert.false(LEAGUE_COPY.empty.includes("%"), "no percent empty");
   assert.false(LEAGUE_COPY.emptyHint.includes("%"), "no percent hint");
   assert.false(LEAGUE_COPY.empty.toLowerCase().includes("ovr"), "no ovr");

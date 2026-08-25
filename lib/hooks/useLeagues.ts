@@ -6,6 +6,7 @@ import type { SeasonRow, SeasonStatRow } from "@/lib/types";
  * Lecture brute `seasons` / `season_stats`. `/leagues` ne les affiche PAS
  * comme classement live : ces lignes ne viennent pas de `match_results`
  * (voir `canShowLiveLeagueRanking` dans `lib/leagues.ts`).
+ * Le tableau clubs CPC lit `match_results` via `useCpcClubRankingResults`.
  */
 export function useActiveSeason() {
   return useQuery({
