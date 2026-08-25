@@ -31,6 +31,7 @@ import { useClubInvitations } from "@/lib/hooks/useInvitations";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
+import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 
 /**
  * Feuille de match — organisation (hors tab bar, `href: null`).
@@ -270,6 +271,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
         <Text className="text-sm text-fg-muted">Aucune invitation en attente.</Text>
       ) : (
         <View className="gap-2">
+          <Text className="text-xs text-fg-subtle">{FINALIZE_MATCH_COPY.invitationsHint}</Text>
           {invitations.map((inv) => {
             const position = inv.slot_id ? positionBySlotId.get(inv.slot_id) : null;
             return (

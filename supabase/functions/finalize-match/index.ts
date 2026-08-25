@@ -2,36 +2,29 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { optionalUuid, requireIntInRange, requireUuid, ValidationError } from "../_shared/validate.ts";
 import { notifyUser } from "../_shared/notify.ts";
+import { usersAreBlocked } from "../_shared/blocked.ts";
+import {
+  FINALIZE_MATCH_COPY,
+  FINALIZE_SCORE_MAX,
+  FINALIZE_SCORE_MIN,
+  mapFinalizeError,
+  shouldRefuseFinalizeOpponentOwner,
+} from "../_shared/finalizeMatch.ts";
 import {
   matchFinalizedCopy,
   matchFinalizedNotificationData,
   matchFinalizedRecipientIds,
 } from "../_shared/safety.ts";
 
-function mapFinalizeError(message: string): { text: string; status: number } {
-  if (message.includes("checkin_not_found")) return { text: "Match introuvable.", status: 404 };
-  if (message.includes("not_authorized")) return { text: "Non autorisé.", status: 403 };
-  if (message.includes("invalid_score")) return { text: "Score invalide.", status: 400 };
-  if (message.includes("already_finalized")) return { text: "Ce match a déjà un résultat enregistré.", status: 409 };
-  if (message.includes("mvp_not_present")) return { text: "Le MVP doit avoir été présent à ce match.", status: 400 };
-  if (message.includes("opponent_is_self")) return { text: "Le club adverse doit être distinct du tien.", status: 400 };
-  if (message.includes("opponent_not_found")) return { text: "Club adverse introuvable.", status: 404 };
-  if (message.includes("competition_requires_opponent")) {
-    return { text: "Une compétition ne peut être liée que si un club adverse est choisi.", status: 400 };
-  }
-  if (message.includes("competition_not_found")) return { text: "Compétition introuvable.", status: 404 };
-  if (message.includes("competition_not_open")) return { text: "On ne peut lier qu'une compétition ouverte.", status: 400 };
-  if (message.includes("clubs_not_in_competition")) {
-    return { text: "Les deux clubs doivent être inscrits à cette compétition.", status: 400 };
-  }
-  return { text: message, status: 500 };
-}
-
 /**
  * Match Result Engine — l'owner/manager finalise le résultat d'un match
  * déjà check-in (score + MVP optionnel + club adverse CPC optionnel +
  * compétition optionnelle). `outcome` n'est jamais reçu du client : calculé
  * côté serveur dans finalize_match() (0014 + 0027).
+ *
+ * Garde Edge (en plus du RPC) : si opponentClubId, le owner de ce club ne
+ * doit pas être dans la paire bloquée (les deux sens) — même règle que
+ * filterClubsHiddenByBlock sur la recherche d'adversaire.
  *
  * Après RPC réussie : notif in-app MATCH_FINALIZED (create_notification via
  * notifyUser) aux club_members (OWNER/MANAGER/MEMBER) du club enregistreur
@@ -40,6 +33,9 @@ function mapFinalizeError(message: string): { text: string; status: number } {
  * Échec notify : log seulement, jamais de rollback du match_results (RPC
  * déjà commitée). Pas de notif chat GROUP/CLUB. Realtime = canal existant
  * notifications-${userId} ; pas de second canal.
+ *
+ * Unique match_checkin_id (0014 + unique_violation 0027) : 409 FR, pas de
+ * 2e ligne. Client authenticated : aucune policy INSERT (service_role only).
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -56,8 +52,8 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     matchCheckinId = requireUuid(body.matchCheckinId, "matchCheckinId");
-    ourScore = requireIntInRange(body.ourScore, "ourScore", 0, 99);
-    opponentScore = requireIntInRange(body.opponentScore, "opponentScore", 0, 99);
+    ourScore = requireIntInRange(body.ourScore, "ourScore", FINALIZE_SCORE_MIN, FINALIZE_SCORE_MAX);
+    opponentScore = requireIntInRange(body.opponentScore, "opponentScore", FINALIZE_SCORE_MIN, FINALIZE_SCORE_MAX);
     mvpUserId = body.mvpUserId === undefined || body.mvpUserId === null ? null : requireUuid(body.mvpUserId, "mvpUserId");
     opponentClubId = optionalUuid(body.opponentClubId, "opponentClubId");
     competitionId = optionalUuid(body.competitionId, "competitionId");
@@ -67,6 +63,11 @@ Deno.serve(async (req) => {
   }
 
   const admin = getAdminClient();
+
+  if (opponentClubId) {
+    const blocked = await refuseIfOpponentOwnerBlocked(admin, user.id, opponentClubId);
+    if (blocked) return blocked;
+  }
 
   const { data: result, error } = await admin.rpc("finalize_match", {
     p_match_checkin_id: matchCheckinId,
@@ -79,8 +80,8 @@ Deno.serve(async (req) => {
   });
 
   if (error) {
-    const { text, status } = mapFinalizeError(error.message);
-    return jsonResponse({ error: text }, status);
+    const mapped = mapFinalizeError(error.message, error.code);
+    return jsonResponse({ error: mapped.text }, mapped.status);
   }
 
   try {
@@ -91,6 +92,45 @@ Deno.serve(async (req) => {
 
   return jsonResponse({ matchResult: result });
 });
+
+async function refuseIfOpponentOwnerBlocked(
+  admin: ReturnType<typeof getAdminClient>,
+  actorId: string,
+  opponentClubId: string
+): Promise<Response | null> {
+  const { data: opponentClub, error } = await admin
+    .from("clubs")
+    .select("id, owner_id")
+    .eq("id", opponentClubId)
+    .maybeSingle();
+  if (error) {
+    console.warn("[finalize-match] opponent club:", error.message);
+    return jsonResponse({ error: "Impossible de vérifier le club adverse." }, 500);
+  }
+  if (!opponentClub) {
+    const mapped = mapFinalizeError("opponent_not_found");
+    return jsonResponse({ error: mapped.text }, mapped.status);
+  }
+  const ownerId = typeof opponentClub.owner_id === "string" ? opponentClub.owner_id : null;
+  if (!ownerId || ownerId === actorId) return null;
+
+  const block = await usersAreBlocked(admin, actorId, ownerId);
+  if (block.error) {
+    console.error("[finalize-match] users_are_blocked:", block.error);
+    return jsonResponse({ error: "Vérification de blocage indisponible." }, 500);
+  }
+  const blockedIds = block.blocked ? [ownerId] : [];
+  if (
+    shouldRefuseFinalizeOpponentOwner({
+      actorId,
+      opponentOwnerId: ownerId,
+      blockedIds,
+    })
+  ) {
+    return jsonResponse({ error: FINALIZE_MATCH_COPY.opponentBlocked }, 403);
+  }
+  return null;
+}
 
 function asMatchResultRow(data: unknown): Record<string, unknown> | null {
   const row = Array.isArray(data) ? data[0] : data;

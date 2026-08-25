@@ -15,6 +15,7 @@
 --   4) finalize_match accepte p_opponent_club_id / p_competition_id optionnels.
 --      Toujours service_role ; OWNER/MANAGER de club_id ; scores ≥ 0 ;
 --      outcome toujours calculé serveur.
+--      unique_violation (match_checkin_id) → already_finalized (pas de 2e row).
 --   5) RLS inchangée : SELECT authenticated ; aucune INSERT client.
 --
 -- PAS de table standings : le classement se calcule depuis les lignes
@@ -203,6 +204,11 @@ begin
     returning * into v_result;
 
   return v_result;
+exception
+  -- Course concurrente : l'unique match_results_match_checkin_id_key (0014)
+  -- reste la garantie. Même code métier que le pré-check, jamais un 2e row.
+  when unique_violation then
+    raise exception 'already_finalized';
 end;
 $$;
 

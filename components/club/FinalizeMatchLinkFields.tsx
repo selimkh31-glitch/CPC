@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/Screen";
 import { CLUB_NAME_SEARCH_MIN, useClubNameSearch } from "@/lib/hooks/useClubNameSearch";
 import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import { COMPETITION_COPY } from "@/lib/competitions";
+import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 import type { ClubRow, CompetitionRow } from "@/lib/types";
 
 export function OpponentClubPicker({
@@ -89,20 +90,29 @@ export function OptionalCompetitionPicker({
   selectedId: string | null;
   onSelect: (competitionId: string | null) => void;
 }) {
-  const { data, isLoading, isError, refetch } = useClubOpenCompetitions(clubId, opponentClubId);
+  const { data, isLoading, isError, refetch } = useClubOpenCompetitions(
+    opponentClubId ? clubId : null,
+    opponentClubId
+  );
   const competitions = data ?? [];
 
   useEffect(() => {
+    if (!opponentClubId) {
+      if (selectedId) onSelect(null);
+      return;
+    }
     if (isLoading || isError || !data) return;
     if (selectedId && !data.some((c) => c.id === selectedId)) {
       onSelect(null);
     }
-  }, [isLoading, isError, selectedId, data, onSelect]);
+  }, [isLoading, isError, selectedId, data, onSelect, opponentClubId]);
 
   return (
     <View>
       <Label>{COMPETITION_COPY.competitionOptionalLabel}</Label>
-      {isLoading ? (
+      {!opponentClubId ? (
+        <Text className="text-sm text-fg-muted">{FINALIZE_MATCH_COPY.competitionNeedOpponent}</Text>
+      ) : isLoading ? (
         <Skeleton className="h-10" />
       ) : isError ? (
         <ErrorState message={COMPETITION_COPY.competitionLoadError} onRetry={() => refetch()} />
