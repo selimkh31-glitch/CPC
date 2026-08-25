@@ -160,7 +160,7 @@ Relance **complète** sur `cursor/qa-autonomous-stack-5884` (`61f34a3` + commits
 | `npm run test:session-state` | **PASS** (10) |
 | `npm run test:club-profile` | **PASS** (10) |
 | `npm run test:leagues` | **PASS** (5) |
-| `npm run test:competitions` | **PASS** (scorer + lien 0027) |
+| `npm run test:competitions` | **PASS** (12 — scorer + lien 0027) |
 | `npm run test:social` | **PASS** (5) |
 | `npm run test:notification-read` | **PASS** (3) |
 | `npm run test:profile-identity` | **PASS** (7) |
