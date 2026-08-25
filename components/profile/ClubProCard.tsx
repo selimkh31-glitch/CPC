@@ -12,6 +12,8 @@ import type { EaIdentityKind } from "@/lib/statsSource";
 import { eaIdentityBadge, hasVerifiedEaStatValues, normalizeEaIdentityKind } from "@/lib/statsSource";
 import { ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
+import type { MatchHistoryItem } from "@/lib/matchHistory";
 import { cn } from "@/lib/utils";
 
 export interface ClubProCardData {
@@ -39,11 +41,19 @@ export function ClubProCard({
   loading = false,
   error = false,
   onRetry,
+  matchHistory,
+  matchHistoryLoading = false,
+  matchHistoryError = false,
+  onRetryMatchHistory,
 }: {
   data?: ClubProCardData | null;
   loading?: boolean;
   error?: boolean;
   onRetry?: () => void;
+  matchHistory?: MatchHistoryItem[] | null;
+  matchHistoryLoading?: boolean;
+  matchHistoryError?: boolean;
+  onRetryMatchHistory?: () => void;
 }) {
   if (error) {
     return (
@@ -201,6 +211,14 @@ export function ClubProCard({
             </View>
           )}
         </View>
+
+        <MatchHistoryList
+          variant="embedded"
+          items={matchHistory}
+          loading={matchHistoryLoading}
+          error={matchHistoryError}
+          onRetry={onRetryMatchHistory}
+        />
       </LinearGradient>
     </MotiView>
   );

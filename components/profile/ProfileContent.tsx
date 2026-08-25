@@ -9,6 +9,7 @@ import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
 import { ReviewForm } from "@/components/profile/ReviewForm";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useUserProfile, useUserReviews } from "@/lib/hooks/useProfile";
+import { usePlayerMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { shouldHideContactCta } from "@/lib/safety";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -20,6 +21,12 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const { session } = useAuth();
   const { data: user, isLoading, isError, refetch } = useUserProfile(userId);
   const { data: reviews } = useUserReviews(userId);
+  const {
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = usePlayerMatchHistory(userId);
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const { data: myBlocks } = useMyBlocks(session?.user.id ?? null);
   const blockUser = useBlockUser();
@@ -65,6 +72,10 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
               }
             : null
         }
+        matchHistory={matchHistory}
+        matchHistoryLoading={matchHistoryLoading}
+        matchHistoryError={matchHistoryError}
+        onRetryMatchHistory={refetchMatchHistory}
       />
 
       {isOwn && user && (
