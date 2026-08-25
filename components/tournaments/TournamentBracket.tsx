@@ -1,36 +1,37 @@
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import { router } from "expo-router";
+import * as Haptics from "expo-haptics";
 import {
   canScheduleRound,
   canShowTournamentBracket,
   clubIdsInRound,
+  collectTournamentClubNames,
   latestRoundNumber,
   matchesInRound,
   MIN_CLUBS_TO_SCHEDULE,
   scheduleCtaLabel,
   TOURNAMENT_COPY,
+  tournamentBracketRecordingClubId,
   tournamentMatchScoreLabel,
   tournamentMatchWinnerId,
   unpairedClubIdsInRound,
 } from "@/lib/tournaments";
+import { competitionLinkedMatchNav } from "@/lib/competitions";
+import { useAppMode } from "@/lib/providers/AppModeProvider";
 import type { LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
 import type { CompetitionRow, TournamentMatchRow, TournamentRoundClubRow } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
+import { TournamentClubMini } from "@/components/tournaments/TournamentClubMini";
 
-function clubName(
-  match: TournamentMatchRow,
-  side: "a" | "b",
-  names: Map<string, string>
-): string {
-  const id = side === "a" ? match.club_a_id : match.club_b_id;
-  const embedded = side === "a" ? match.club_a?.name : match.club_b?.name;
-  return embedded?.trim() || names.get(id) || "Club Pro Clubs";
-}
+const MINI_FLAT = "border-0 bg-transparent px-0 py-0";
 
 /**
  * Tableau = lignes tournament_matches persistées uniquement.
  * Scores / vainqueurs = match_results liés. Unplayed → « pas encore joué ».
+ * Clubs = ClubCard MINI hydratés. Tap paire PLAYED = competitionLinkedMatchNav.
  */
 export function TournamentBracket({
   tournament,
@@ -38,6 +39,7 @@ export function TournamentBracket({
   roundClubs,
   results,
   viewerId,
+  managedClubIds,
   isLoading,
   isError,
   onRetry,
@@ -49,20 +51,28 @@ export function TournamentBracket({
   roundClubs: TournamentRoundClubRow[] | undefined;
   results: LinkedMatchResultRow[] | undefined;
   viewerId: string | null;
+  managedClubIds: readonly string[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
   scheduling?: boolean;
   onSchedule?: () => void;
 }) {
+  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
+  const [pendingNav, setPendingNav] = useState<{ href: string; requireClubMode: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!pendingNav) return;
+    if (pendingNav.requireClubMode && mode !== "CLUB") return;
+    router.push(pendingNav.href as any);
+    setPendingNav(null);
+  }, [pendingNav, mode]);
+
   const rows = matches ?? [];
   const linked = results ?? [];
   const pool = roundClubs ?? [];
   const registeredIds = (tournament.clubs ?? []).map((row) => row.club_id);
-  const names = new Map<string, string>();
-  for (const row of tournament.clubs ?? []) {
-    if (row.club?.name) names.set(row.club_id, row.club.name);
-  }
+  const names = collectTournamentClubNames(tournament.clubs ?? [], rows);
 
   const scheduleGate = canScheduleRound({
     actorId: viewerId ?? "",
@@ -155,22 +165,78 @@ export function TournamentBracket({
                   {roundMatches.map((match) => {
                     const score = tournamentMatchScoreLabel(match, linked);
                     const winnerId = tournamentMatchWinnerId(match, linked);
-                    const nameA = clubName(match, "a", names);
-                    const nameB = clubName(match, "b", names);
-                    return (
-                      <View key={match.id} className="rounded-xl border border-border bg-bg-elevated px-3 py-2">
-                        <Text className="text-sm font-semibold text-fg">
-                          {nameA} vs {nameB}
-                        </Text>
+                    const nameA = names.get(match.club_a_id);
+                    const nameB = names.get(match.club_b_id);
+                    const recordingClubId = tournamentBracketRecordingClubId(match, linked);
+                    const nav = recordingClubId
+                      ? competitionLinkedMatchNav({ recordingClubId, managedClubIds })
+                      : null;
+                    const accessibility = [nameA, nameB ? `vs ${nameB}` : null, score]
+                      .filter(Boolean)
+                      .join(" ");
+                    const body = (
+                      <>
+                        <View className="flex-row items-center gap-1.5">
+                          <View className="min-w-0 flex-1">
+                            <TournamentClubMini
+                              clubId={match.club_a_id}
+                              name={nameA}
+                              interactive={!nav}
+                              className={MINI_FLAT}
+                            />
+                          </View>
+                          <Text className="text-xs font-bold text-fg-muted">vs</Text>
+                          <View className="min-w-0 flex-1">
+                            <TournamentClubMini
+                              clubId={match.club_b_id}
+                              name={nameB}
+                              interactive={!nav}
+                              className={MINI_FLAT}
+                            />
+                          </View>
+                        </View>
                         <Text className="mt-0.5 text-xs text-fg-muted">{score}</Text>
                         {winnerId ? (
-                          <Text className="mt-0.5 text-xs font-bold text-accent">
-                            {TOURNAMENT_COPY.winnerLabel} · {names.get(winnerId) ?? (winnerId === match.club_a_id ? nameA : nameB)}
-                          </Text>
+                          <View className="mt-1">
+                            <Text className="text-xs font-bold text-accent">{TOURNAMENT_COPY.winnerLabel}</Text>
+                            <TournamentClubMini
+                              clubId={winnerId}
+                              name={names.get(winnerId)}
+                              interactive={!nav}
+                              className={MINI_FLAT}
+                            />
+                          </View>
                         ) : score !== TOURNAMENT_COPY.notPlayed ? (
                           <Text className="mt-0.5 text-xs text-fg-subtle">{TOURNAMENT_COPY.drawNoWinner}</Text>
                         ) : null}
-                      </View>
+                      </>
+                    );
+                    if (!nav) {
+                      return (
+                        <View key={match.id} className="rounded-xl border border-border bg-bg-elevated px-3 py-2">
+                          {body}
+                        </View>
+                      );
+                    }
+                    return (
+                      <Pressable
+                        key={match.id}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          if (nav.requireClubMode) {
+                            if (nav.selectClubId) setSelectedManagedClubId(nav.selectClubId);
+                            setMode("CLUB");
+                            setPendingNav({ href: nav.href, requireClubMode: true });
+                            return;
+                          }
+                          router.push(nav.href as any);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={accessibility}
+                        className="rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
+                      >
+                        {body}
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -180,9 +246,10 @@ export function TournamentBracket({
                       {TOURNAMENT_COPY.unpairedTitle}
                     </Text>
                     {unpaired.map((clubId) => (
-                      <Text key={clubId} className="text-xs text-fg-muted">
-                        {names.get(clubId) ?? "Club Pro Clubs"} — {TOURNAMENT_COPY.unpairedHint}
-                      </Text>
+                      <View key={clubId} className="mb-1">
+                        <TournamentClubMini clubId={clubId} name={names.get(clubId)} />
+                        <Text className="text-xs text-fg-muted">{TOURNAMENT_COPY.unpairedHint}</Text>
+                      </View>
                     ))}
                   </View>
                 ) : null}

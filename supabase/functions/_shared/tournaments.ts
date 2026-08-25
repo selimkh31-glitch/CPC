@@ -286,6 +286,51 @@ export function linkedResultForPair(
   return null;
 }
 
+/**
+ * Nom affichable : uniquement un nom réel hydraté.
+ * Refuse les placeholders « Club Pro Clubs » / « Club » (même doctrine que
+ * `clubRankingRowHref`). Vide / absent → null (omettre le label).
+ */
+export function tournamentClubDisplayName(name: string | null | undefined): string | null {
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === "Club Pro Clubs" || trimmed === "Club") return null;
+  return trimmed;
+}
+
+export function collectTournamentClubNames(
+  clubs: readonly { club_id: string; club?: { name?: string | null } | null }[],
+  matches: readonly {
+    club_a_id: string;
+    club_b_id: string;
+    club_a?: { name?: string | null } | null;
+    club_b?: { name?: string | null } | null;
+  }[] = []
+): Map<string, string> {
+  const names = new Map<string, string>();
+  const set = (id: string, name: string | null | undefined) => {
+    const display = tournamentClubDisplayName(name);
+    if (display) names.set(id, display);
+  };
+  for (const row of clubs) set(row.club_id, row.club?.name);
+  for (const match of matches) {
+    set(match.club_a_id, match.club_a?.name);
+    set(match.club_b_id, match.club_b?.name);
+  }
+  return names;
+}
+
+/**
+ * Club enregistreur du `match_results` lié à la paire.
+ * Null si pas encore joué — pas de bouton mort, pas de score inventé.
+ */
+export function tournamentBracketRecordingClubId(
+  match: Pick<TournamentMatchInput, "club_a_id" | "club_b_id" | "competition_id">,
+  results: readonly TournamentLinkedResultInput[]
+): string | null {
+  return linkedResultForPair(results, match.competition_id, match.club_a_id, match.club_b_id)?.club_id ?? null;
+}
+
 /** Joué = un match_results lié existe. Le statut PLAYED seul ne suffit pas (pas de score inventé). */
 export function tournamentMatchIsPlayed(
   match: Pick<TournamentMatchInput, "club_a_id" | "club_b_id" | "competition_id">,
