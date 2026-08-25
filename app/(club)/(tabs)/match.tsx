@@ -33,7 +33,6 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 import { buildPlayerCardData } from "@/lib/playerCard";
-import { managedClubScreenState } from "@/lib/clubRead";
 
 /**
  * Feuille de match — organisation (hors tab bar, `href: null`).
@@ -44,7 +43,7 @@ export default function MatchTab() {
   const { session } = useAuth();
   const now = useLiveClock();
   const { setSelectedManagedClubId } = useAppMode();
-  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
+  const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const [isMatchDay, setIsMatchDay] = useState(false);
   const [prepExpanded, setPrepExpanded] = useState(false);
@@ -57,13 +56,11 @@ export default function MatchTab() {
     refetch: refetchCheckin,
   } = useActiveMatchCheckin(club?.id ?? null);
 
-  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
-
   useFocusEffect(
     useCallback(() => {
-      if (!clubId) return;
+      if (!club) return;
       refetch();
-    }, [clubId, refetch])
+    }, [club, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -83,16 +80,16 @@ export default function MatchTab() {
     </SafeAreaView>
   );
 
-  if (screen === "loading") {
+  if (isLoading) {
     return shell(<Skeleton className="h-[420px]" />);
   }
 
-  if (screen === "error") {
-    return shell(<ErrorState message="Impossible de charger la feuille de match." onRetry={refetch} />);
+  if (!club) {
+    return shell(<ManagedClubEmpty />);
   }
 
-  if (screen === "empty" || !club) {
-    return shell(<ManagedClubEmpty />);
+  if (isError) {
+    return shell(<ErrorState message="Impossible de charger la feuille de match." onRetry={refetch} />);
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;

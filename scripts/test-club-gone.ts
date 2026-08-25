@@ -63,7 +63,7 @@ test("useClub : maybeSingle + club gone = null ; jamais id null vers PostgREST",
   assert.false(/\.eq\("id", clubId!\)\s*\.single\(\)/.test(src), "no single on club read");
 });
 
-test("0 clubs / pas d'id = empty même si isError (refetch TanStack)", () => {
+test("0 clubs / pas de data = empty même si isError (refetch TanStack)", () => {
   assert.equal(
     managedClubScreenState({ clubId: null, club: null, isLoading: false, isFetching: true, isError: true }),
     "empty",
@@ -76,13 +76,18 @@ test("0 clubs / pas d'id = empty même si isError (refetch TanStack)", () => {
   );
   assert.equal(
     managedClubScreenState({ clubId: "c1", club: null, isLoading: false, isFetching: false, isError: true }),
-    "error",
-    "real id + fail = error"
+    "empty",
+    "no club data = empty, not red"
   );
   assert.equal(
-    managedClubScreenState({ clubId: "c1", club: null, isLoading: false, isFetching: true, isError: false }),
+    managedClubScreenState({ clubId: "c1", club: null, isLoading: true, isFetching: false, isError: false }),
     "loading",
-    "real id fetching = loading"
+    "real id first load = loading"
+  );
+  assert.equal(
+    managedClubScreenState({ clubId: "c1", club: { id: "c1" }, isLoading: false, isError: true }),
+    "error",
+    "club data + fail = error"
   );
   assert.equal(
     managedClubScreenState({ clubId: "c1", club: { id: "c1" }, isLoading: false, isError: false }),
@@ -118,13 +123,12 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
   ];
   for (const rel of screens) {
     const src = read(rel);
-    assert.true(src.includes("managedClubScreenState"), `${rel} screen state`);
     assert.true(src.includes("<ManagedClubEmpty"), `${rel} empty component`);
-    const errorBefore = src.indexOf('if (screen === "error")');
-    const emptyBefore = src.indexOf('if (screen === "empty"');
-    assert.true(errorBefore >= 0 && emptyBefore >= 0, `${rel} error+empty branches`);
-    assert.true(emptyBefore > errorBefore, `${rel} empty after error branch (error only with id)`);
-    assert.true(src.includes("ManagedClubEmpty"), `${rel} uses shared empty`);
+    const emptyIf = src.indexOf("if (!club)");
+    const errorIf = src.indexOf("if (isError)");
+    assert.true(emptyIf >= 0, `${rel} if (!club)`);
+    assert.true(errorIf >= 0, `${rel} if (isError)`);
+    assert.true(emptyIf < errorIf, `${rel} empty BEFORE isError`);
     if (rel !== "app/(club)/(tabs)/match.tsx") {
       assert.true(src.includes('message="Impossible de charger ce club."'), `${rel} real error still exists`);
     }
@@ -138,14 +142,12 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
     ["Club", clubTab],
     ["match", match],
   ] as const) {
-    assert.true(src.includes("if (!clubId) return"), `${rel} skip refetch without id`);
+    assert.true(src.includes("if (!club) return"), `${rel} skip refetch without club`);
   }
 
   const rec = read("app/(club)/(tabs)/candidatures.tsx");
-  const recError = rec.indexOf('if (screen === "error")');
-  const recEmpty = rec.indexOf('if (screen === "empty"');
-  assert.true(recEmpty > recError, "recrutement empty is not before error with a real id");
   assert.true(rec.includes("<ManagedClubEmpty"), "recrutement create empty");
+  assert.true(rec.indexOf("if (!club)") < rec.indexOf("if (isError)"), "recrutement empty before error");
 });
 
 test("onglet Club : switcher même en empty et en erreur réseau", () => {

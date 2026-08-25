@@ -13,7 +13,6 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
-import { managedClubScreenState } from "@/lib/clubRead";
 import {
   CLUB_MATCH_SHEET_HREF,
   LIVE_UX_COPY,
@@ -28,15 +27,14 @@ import {
 export default function ClubLiveTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
+  const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: activeCheckin } = useActiveMatchCheckin(club?.id ?? null);
-  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
 
   useFocusEffect(
     useCallback(() => {
-      if (!clubId) return;
+      if (!club) return;
       refetch();
-    }, [clubId, refetch])
+    }, [club, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -47,16 +45,16 @@ export default function ClubLiveTab() {
     </SafeAreaView>
   );
 
-  if (screen === "loading") {
+  if (isLoading) {
     return shell(<Skeleton className="h-40" />);
   }
 
-  if (screen === "error") {
-    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
+  if (!club) {
+    return shell(<ManagedClubEmpty />);
   }
 
-  if (screen === "empty" || !club) {
-    return shell(<ManagedClubEmpty />);
+  if (isError) {
+    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;

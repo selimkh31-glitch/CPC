@@ -23,7 +23,6 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { canMutateClub } from "@/lib/sessionState";
-import { managedClubScreenState } from "@/lib/clubRead";
 
 /**
  * Club — identité manager. Recrutement LIVE et invitations sont ailleurs.
@@ -32,7 +31,7 @@ import { managedClubScreenState } from "@/lib/clubRead";
 export default function ClubTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
+  const { data: club, isLoading, isError, refetch } = useManagedClub();
   const {
     data: matchHistory,
     isLoading: matchHistoryLoading,
@@ -40,13 +39,11 @@ export default function ClubTab() {
     refetch: refetchMatchHistory,
   } = useClubMatchHistory(club?.id ?? null, club?.name);
 
-  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
-
   useFocusEffect(
     useCallback(() => {
-      if (!clubId) return;
+      if (!club) return;
       refetch();
-    }, [clubId, refetch])
+    }, [club, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -57,21 +54,11 @@ export default function ClubTab() {
     </SafeAreaView>
   );
 
-  if (screen === "loading") {
+  if (isLoading) {
     return shell(<Skeleton className="h-40" />);
   }
 
-  if (screen === "error") {
-    return shell(
-      <View className="gap-4">
-        <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
-        <ModeLifeToggle target="PLAYER" />
-        <DevTestAccountSwitcher />
-      </View>
-    );
-  }
-
-  if (screen === "empty" || !club) {
+  if (!club) {
     return shell(
       <ManagedClubEmpty
         extras={
@@ -81,6 +68,16 @@ export default function ClubTab() {
           </>
         }
       />
+    );
+  }
+
+  if (isError) {
+    return shell(
+      <View className="gap-4">
+        <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
+        <ModeLifeToggle target="PLAYER" />
+        <DevTestAccountSwitcher />
+      </View>
     );
   }
 
