@@ -67,3 +67,39 @@ export function liveOffRecruitmentEvent(expiresAt: string | null, nowMs: number)
   if (expiresAt && new Date(expiresAt).getTime() <= nowMs) return "EXPIRE";
   return "CANCEL";
 }
+
+export type RecruitmentNotificationNav = {
+  href: string;
+  /** Club à sélectionner avant d'ouvrir Recrutement (file d'attente de CE club). */
+  selectClubId: string | null;
+  /** Recrutement vit dans l'arbre Mode Club (`/candidatures`). */
+  requireClubMode: boolean;
+};
+
+function clubIdFromData(data: Record<string, unknown> | null | undefined): string | null {
+  const id = data?.clubId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
+ * Cible réelle du tap notification recrutement.
+ * APPLICATION_RECEIVED → Recrutement (`/candidatures`) où ApplicationsPanel
+ * accepte/refuse — jamais la page publique `/club/[id]` (pas d'actions).
+ * INVITATION_RECEIVED → `/my-invitations` (bouton Accepter côté joueur).
+ */
+export function recruitmentNotificationNav(
+  type: string,
+  data: Record<string, unknown> | null | undefined
+): RecruitmentNotificationNav | null {
+  switch (type) {
+    case "APPLICATION_RECEIVED":
+      return { href: "/candidatures", selectClubId: clubIdFromData(data), requireClubMode: true };
+    case "APPLICATION_ACCEPTED":
+    case "APPLICATION_DECLINED":
+      return { href: "/my-applications", selectClubId: null, requireClubMode: false };
+    case "INVITATION_RECEIVED":
+      return { href: "/my-invitations", selectClubId: null, requireClubMode: false };
+    default:
+      return null;
+  }
+}

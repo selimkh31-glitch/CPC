@@ -84,9 +84,10 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                   disabled={Boolean(actingId)}
                   onPress={() => act(app.id, "ACCEPTED")}
                   icon={<Check size={16} color="#39ff8a" />}
-                  className="px-2.5"
+                  className="min-h-[44px] px-2.5"
+                  accessibilityLabel="Accepter"
                 >
-                  {""}
+                  Accepter
                 </Button>
                 <Button
                   size="sm"
@@ -95,9 +96,10 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                   disabled={Boolean(actingId)}
                   onPress={() => act(app.id, "DECLINED")}
                   icon={<X size={16} color="#ff4d4f" />}
-                  className="px-2.5"
+                  className="min-h-[44px] px-2.5"
+                  accessibilityLabel="Refuser"
                 >
-                  {""}
+                  Refuser
                 </Button>
               </View>
             </View>

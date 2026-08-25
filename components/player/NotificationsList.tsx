@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
@@ -12,6 +13,7 @@ import {
   useNotifications,
 } from "@/lib/hooks/useNotifications";
 import { unreadNotificationCount } from "@/lib/notificationRead";
+import { recruitmentNotificationNav } from "@/lib/recruitment";
 import { inAppNotificationHref, notificationTitle } from "@/lib/safety";
 import { toast } from "@/lib/toast";
 import { timeAgo } from "@/lib/utils";
@@ -20,15 +22,32 @@ import type { NotificationRow } from "@/lib/types";
 /** Liste des notifications in-app — extraite de app/notifications.tsx pour l'onglet Activité. */
 export function NotificationsList() {
   const { session } = useAuth();
-  const { mode } = useAppMode();
+  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
   const userId = session?.user.id ?? null;
   const { data, isLoading, isError, refetch } = useNotifications(userId);
   const markRead = useMarkNotificationRead(userId);
   const markAll = useMarkAllNotificationsRead(userId);
   const unread = unreadNotificationCount(data ?? []);
+  const [pendingNav, setPendingNav] = useState<{ href: string; requireClubMode: boolean } | null>(null);
+
+  // Navigation après commit React : setMode("CLUB") doit avoir monté l'arbre
+  // (club) avant router.push("/candidatures") — même doctrine que create-club.
+  useEffect(() => {
+    if (!pendingNav) return;
+    if (pendingNav.requireClubMode && mode !== "CLUB") return;
+    router.push(pendingNav.href as any);
+    setPendingNav(null);
+  }, [pendingNav, mode]);
 
   const open = (item: NotificationRow) => {
     if (!item.read_at) markRead.mutate(item.id);
+    const recruitment = recruitmentNotificationNav(item.type, item.data);
+    if (recruitment) {
+      if (recruitment.selectClubId) setSelectedManagedClubId(recruitment.selectClubId);
+      if (recruitment.requireClubMode) setMode("CLUB");
+      setPendingNav({ href: recruitment.href, requireClubMode: recruitment.requireClubMode });
+      return;
+    }
     router.push(inAppNotificationHref(item.type, item.data, mode) as any);
   };
 
