@@ -242,13 +242,13 @@ L'app mobile n'appelle jamais `proclubs.ea.com`. RN → Edge (`link-ea-club` / `
 
 Titres : chaque ligne d'import a `ea_title` (`fc26`, `fc27`, …). Ledger **produit CPC = `fc27`**, vide au jour 1 — **jamais de mix fc26**. Le JSON live `/api/fc` (août 2026) est l'ancien titre : `EA_FC_TITLE=fc26` par défaut.
 
-Calendrier GTM (Clubs Pro only, ingest + lien + affichage club/joueur/match — pas le marketing) :
+Calendrier GTM (Clubs Pro only, DATA/INGEST — pas le marketing, pas de redesign d'écrans) :
 
 - **25 Sep 2026** (The Grounds / lancement FC 27) : CPC prêt pour les testeurs — lier un club et ingérer dans le ledger fc27 vide. Poser `EA_FC_TITLE=fc27` (et `EA_FC_BASE_URL` si l'origine change). Pas de bascule auto à la date.
 - **14 jours** de collecte silencieuse.
 - **~9 Oct 2026** : ouverture publique avec deux semaines d'historique fc27.
 
-Lecture : `link-ea-club` action `history` + bind `lib/hooks/useEaProduct.ts` (`useEaProductHistory`). Payloads `club` / `members` / `matches` / `player` (listes vides OK). Lignes joueur d'un match = `{ name, goals, assists, rating }`, jamais la clé persona. Pas de proxy ClubsZone. Node fetch EA seulement.
+Lecture : `link-ea-club` action `history` (et `link`) renvoie des payloads `club` / `members` / `matches` / `player` honnêtes (listes vides OK tant que le live n'est pas fc27). Lignes joueur d'un match = `{ name, goals, assists, rating }`, jamais la clé persona. L'UX PR bind ces formes plus tard. Pas de proxy ClubsZone. Node fetch EA seulement.
 
 ```bash
 EA_HTTP_HOP_SECRET=... npx tsx scripts/ea-http-hop.ts
