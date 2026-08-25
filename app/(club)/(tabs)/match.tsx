@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, ChevronUp, Mail, Users } from "lucide-react-native";
@@ -62,10 +62,19 @@ export default function MatchTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
-        <ModeSwitch managedClubs={managedClubs} />
-        {body}
-      </ScrollView>
+      {/* iOS: padding, offset 0 — contenu déjà sous le notch, au-dessus de la tab bar (pas un header stack). */}
+      {/* Android: undefined — windowSoftInputMode resize (app.json) rétrécit la fenêtre ; padding doublerait. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+        style={{ flex: 1 }}
+        className="flex-1"
+      >
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
+          <ModeSwitch managedClubs={managedClubs} />
+          {body}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 

@@ -98,7 +98,7 @@ export function LiveFilters({
         <View className="gap-1.5">
           <Pressable
             onPress={() => onChange({ ...value, language: "" })}
-            className={`rounded-xl px-4 py-3 ${value.language === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
+            className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${value.language === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
           >
             <Text className={`font-semibold ${value.language === "" ? "text-fg" : "text-fg-muted"}`}>Toutes</Text>
           </Pressable>
@@ -111,7 +111,7 @@ export function LiveFilters({
                   Haptics.selectionAsync();
                   onChange({ ...value, language: active ? "" : l });
                 }}
-                className={`rounded-xl px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
+                className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
               >
                 <Text className={`font-semibold ${active ? "text-fg" : "text-fg-muted"}`}>{LANGUAGE_LABELS[l]}</Text>
               </Pressable>
@@ -125,7 +125,7 @@ export function LiveFilters({
               onChange(EMPTY_LIVE_FILTERS);
               setMoreOpen(false);
             }}
-            className="mt-4 items-center py-2"
+            className="mt-4 min-h-[44px] items-center justify-center py-2"
           >
             <Text className="text-sm font-bold text-fg-muted">Réinitialiser</Text>
           </Pressable>
