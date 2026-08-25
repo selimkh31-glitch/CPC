@@ -5,6 +5,7 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { CompetitionLinkedMatches } from "@/components/competitions/CompetitionLinkedMatches";
 import { CompetitionParticipants } from "@/components/competitions/CompetitionParticipants";
 import { CompetitionRegisterCta } from "@/components/competitions/CompetitionRegisterCta";
 import { TournamentBracket } from "@/components/tournaments/TournamentBracket";
@@ -44,6 +45,7 @@ export default function TournamentDetailScreen() {
   const selectedClub = clubs.find((c) => c.id === clubId) ?? null;
   const linkedIds = useMemo(() => (tournamentId ? [tournamentId] : []), [tournamentId]);
   const linkedResults = useCompetitionLinkedResults(linkedIds);
+  const managedClubIds = useMemo(() => (managedClubs ?? []).map((club) => club.id), [managedClubs]);
 
   if (isLoading) {
     return (
@@ -164,12 +166,24 @@ export default function TournamentDetailScreen() {
       </Card>
 
       <Card className="mb-4">
+        <CompetitionLinkedMatches
+          competition={tournament}
+          results={linkedResults.data}
+          isLoading={linkedResults.isLoading}
+          isError={linkedResults.isError}
+          onRetry={() => linkedResults.refetch()}
+          managedClubIds={managedClubIds}
+        />
+      </Card>
+
+      <Card className="mb-4">
         <TournamentBracket
           tournament={tournament}
           matches={matchesQuery.data}
           roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
           viewerId={session?.user.id ?? null}
+          managedClubIds={managedClubIds}
           isLoading={matchesQuery.isLoading || roundClubsQuery.isLoading || linkedResults.isLoading}
           isError={matchesQuery.isError || roundClubsQuery.isError || linkedResults.isError}
           onRetry={() => {

@@ -29,7 +29,13 @@ import {
   tournamentQualifiedClubIds,
   tournamentV1SqlIssues,
   unpairedRegisteredClubIds,
+  tournamentClubDisplayName,
+  collectTournamentClubNames,
+  tournamentBracketRecordingClubId,
 } from "../lib/tournaments";
+import { competitionLinkedMatchNav } from "../lib/competitions";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -471,6 +477,78 @@ test("détail /tournaments/[id] ; liste si id absent", () => {
   assert.equal(tournamentDetailHref(null), "/tournaments", "null");
 });
 
+test("noms hydratés : refuse Club Pro Clubs / Club ; omet si vide", () => {
+  assert.equal(tournamentClubDisplayName("Invincibles"), "Invincibles", "real");
+  assert.equal(tournamentClubDisplayName("  Alpha FC  "), "Alpha FC", "trim");
+  assert.equal(tournamentClubDisplayName("Club Pro Clubs"), null, "placeholder");
+  assert.equal(tournamentClubDisplayName("Club"), null, "generic Club");
+  assert.equal(tournamentClubDisplayName(""), null, "empty");
+  assert.equal(tournamentClubDisplayName("   "), null, "whitespace");
+  assert.equal(tournamentClubDisplayName(null), null, "null");
+  assert.equal(tournamentClubDisplayName(undefined), null, "undefined");
+  const names = collectTournamentClubNames(
+    [
+      { club_id: "alpha", club: { name: "Alpha FC" } },
+      { club_id: "ghost", club: { name: "Club Pro Clubs" } },
+      { club_id: "generic", club: { name: "Club" } },
+      { club_id: "missing", club: { name: "  " } },
+    ],
+    [
+      {
+        club_a_id: "gamma",
+        club_b_id: "delta",
+        club_a: { name: "Gamma FC" },
+        club_b: { name: "Club Pro Clubs" },
+      },
+    ]
+  );
+  assert.equal(names.get("alpha"), "Alpha FC", "registered");
+  assert.equal(names.get("gamma"), "Gamma FC", "match embedded");
+  assert.equal(names.has("ghost"), false, "no placeholder registered");
+  assert.equal(names.has("generic"), false, "no Club");
+  assert.equal(names.has("missing"), false, "no blank");
+  assert.equal(names.has("delta"), false, "no placeholder match side");
+});
+
+test("tap paire : recording club seulement si match_results PLAYED lié", () => {
+  assert.equal(tournamentBracketRecordingClubId(MATCH_AB, []), null, "unplayed");
+  const unlinked = [
+    {
+      club_id: "alpha",
+      opponent_club_id: null,
+      competition_id: "t1",
+      outcome: "WIN",
+      our_score: 0,
+      opponent_score: 0,
+    },
+  ];
+  assert.equal(tournamentBracketRecordingClubId(MATCH_AB, unlinked), null, "unlinked ignored");
+  const played = [
+    {
+      club_id: "beta",
+      opponent_club_id: "alpha",
+      competition_id: "t1",
+      outcome: "LOSS",
+      our_score: 1,
+      opponent_score: 3,
+    },
+  ];
+  assert.equal(tournamentBracketRecordingClubId(MATCH_AB, played), "beta", "recorder");
+  const recordingId = tournamentBracketRecordingClubId(MATCH_AB, played);
+  const asManager = competitionLinkedMatchNav({
+    recordingClubId: recordingId!,
+    managedClubIds: ["beta"],
+  });
+  assert.equal(asManager?.href, "/match", "manager sheet");
+  assert.equal(asManager?.requireClubMode, true, "club mode");
+  const asViewer = competitionLinkedMatchNav({
+    recordingClubId: recordingId!,
+    managedClubIds: ["other"],
+  });
+  assert.equal(asViewer?.href, "/club/beta", "public club");
+  assert.false((asViewer?.href ?? "").includes("match-sheet"), "not match-sheet");
+});
+
 test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide", () => {
   assert.true(TOURNAMENT_COPY.subtitle.includes("EA SPORTS FC 27 Pro Clubs"), "fc27");
   assert.true(TOURNAMENT_COPY.needTwoClubs.includes("deux clubs"), "two clubs");
@@ -484,6 +562,35 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide",
   assert.false(TOURNAMENT_COPY.subtitle.includes("%"), "no percent");
   assert.equal(TOURNAMENT_COPY.linkedResultCta, "Voir le tournoi", "cta after result");
   assert.equal(TOURNAMENT_COPY.kindLabel, "Tournoi", "picker kind");
+});
+
+test("écran tournoi : matchs liés + ClubCard MINI, jamais fallback Club Pro Clubs", () => {
+  const root = process.cwd();
+  const detail = readFileSync(`${root}/app/tournaments/[id].tsx`, "utf8");
+  const bracket = readFileSync(`${root}/components/tournaments/TournamentBracket.tsx`, "utf8");
+  const progression = readFileSync(`${root}/components/tournaments/TournamentProgression.tsx`, "utf8");
+  const mini = readFileSync(`${root}/components/tournaments/TournamentClubMini.tsx`, "utf8");
+
+  assert.true(detail.includes("CompetitionLinkedMatches"), "mount linked matches");
+  assert.true(detail.includes("managedClubIds"), "managedClubIds to linked + bracket");
+  assert.true(detail.includes("useCompetitionLinkedResults"), "reuse existing query");
+  assert.false(detail.includes("useTournamentLinked"), "no extra tournament query");
+
+  assert.true(bracket.includes("TournamentClubMini"), "bracket mini cards");
+  assert.true(bracket.includes("competitionLinkedMatchNav"), "played pair reuses competition nav");
+  assert.true(bracket.includes("tournamentBracketRecordingClubId"), "played gate");
+  assert.true(bracket.includes("TOURNAMENT_COPY.notPlayed"), "honest unplayed copy");
+  assert.false(bracket.includes("Club Pro Clubs"), "no placeholder in bracket");
+  assert.false(bracket.includes('"Club"'), "no Club fallback in bracket");
+
+  assert.true(progression.includes("TournamentClubMini"), "progression mini cards");
+  assert.false(progression.includes("Club Pro Clubs"), "no placeholder in progression");
+  assert.false(progression.includes('"Club"'), "no Club fallback in progression");
+
+  assert.true(mini.includes("buildClubCardData"), "builder");
+  assert.true(mini.includes('variant="mini"'), "MINI density");
+  assert.true(mini.includes("clubRankingRowHref"), "same href doctrine");
+  assert.true(mini.includes("tournamentClubDisplayName"), "honest name");
 });
 
 test("SQL 0029 : kind + tournament_matches ; refuse table tournaments dupliquée / scores / season_stats", () => {
