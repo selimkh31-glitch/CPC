@@ -43,6 +43,34 @@ function hydrateConversationEmbeds(row: ConversationRow): ConversationRow {
   };
 }
 
+async function fetchLastMessages(
+  conversationIds: string[]
+): Promise<Map<string, NonNullable<ConversationRow["last_message"]>>> {
+  const map = new Map<string, NonNullable<ConversationRow["last_message"]>>();
+  if (conversationIds.length === 0) return map;
+  const results = await Promise.all(
+    conversationIds.map(async (id) => {
+      try {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("body, created_at, deleted_at")
+          .eq("conversation_id", id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error || !data) return null;
+        return { id, message: data as NonNullable<ConversationRow["last_message"]> };
+      } catch {
+        return null;
+      }
+    })
+  );
+  for (const row of results) {
+    if (row?.message) map.set(row.id, row.message);
+  }
+  return map;
+}
+
 /** Conversations dont l'utilisateur connecté est membre (les plus récentes en premier). */
 export function useConversations(userId: string | null) {
   return useQuery({
@@ -75,8 +103,23 @@ export function useConversations(userId: string | null) {
       } catch {
         blocked = new Set();
       }
-      const rows = ((data ?? []) as ConversationRow[]).map(hydrateConversationEmbeds);
-      return filterVisibleConversations(rows, userId!, blocked);
+      let lastById = new Map<string, NonNullable<ConversationRow["last_message"]>>();
+      try {
+        lastById = await fetchLastMessages(conversationIds);
+      } catch {
+        lastById = new Map();
+      }
+      const rows = ((data ?? []) as ConversationRow[]).map((row) => {
+        const hydrated = hydrateConversationEmbeds(row);
+        return { ...hydrated, last_message: lastById.get(hydrated.id) ?? null };
+      });
+      const visible = filterVisibleConversations(rows, userId!, blocked);
+      visible.sort((a, b) => {
+        const ta = a.last_message?.created_at ?? a.created_at;
+        const tb = b.last_message?.created_at ?? b.created_at;
+        return tb.localeCompare(ta);
+      });
+      return visible;
     },
   });
 }

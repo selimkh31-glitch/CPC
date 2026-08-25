@@ -115,7 +115,7 @@ export default function ClubTab() {
                 <Text className="text-sm text-fg-subtle">Modifier le club</Text>
               </Pressable>
             ) : null}
-            <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
+            <StartClubConversationButton clubId={club.id} role={myMembership?.role} clubName={club.name} />
           </View>
         }
       />

@@ -6,12 +6,16 @@
 import { readFileSync } from "fs";
 import {
   BLOCKED_DM_COPY,
+  CHAT_UX_COPY,
   CLUB_CONVERSATION_COPY,
   canOpenClubConversation,
   canStartDirectMessage,
   clubConversationSqlIssues,
   clubRoleToConversationRole,
+  conversationIsUnread,
+  conversationKindLabel,
   conversationListLabel,
+  conversationMessagePreview,
   filterVisibleConversations,
   filterVisibleGroupMembers,
   getDirectConversationPeer,
@@ -194,6 +198,9 @@ test("conversationListLabel — DIRECT / GROUP hydraté / CLUB hydraté", () => 
     CLUB_CONVERSATION_COPY,
     "generic Club"
   );
+  assert.equal(conversationKindLabel("DIRECT"), null, "dm no kind");
+  assert.equal(conversationKindLabel("GROUP"), "Groupe", "group kind");
+  assert.equal(conversationKindLabel("CLUB"), "Club", "club kind");
 });
 
 test("useConversations / useConversation hydratent groups(id,name) et clubs(id,name)", () => {
@@ -212,8 +219,17 @@ test("useConversations / useConversation hydratent groups(id,name) et clubs(id,n
   assert.false(social.includes('return "Club Pro Clubs"'), "no placeholder club title");
   assert.false(social.includes('return "Club"'), "no generic Club title");
   assert.true(social.includes("CLUB_CONVERSATION_COPY"), "club fallback copy");
+  const groups = readFileSync(`${process.cwd()}/app/groups.tsx`, "utf8");
   assert.true(list.includes("conversationListLabel"), "list helper");
+  assert.true(list.includes("conversationMessagePreview"), "last message");
   assert.true(thread.includes("conversationListLabel"), "header helper");
+  assert.true(thread.includes("conversationKindLabel"), "kind in header");
+  assert.true(thread.includes("CHAT_UX_COPY.composerPlaceholder"), "composer");
+  assert.equal(CHAT_UX_COPY.composerPlaceholder, "Message", "placeholder tu");
+  assert.equal(CHAT_UX_COPY.newGroup, "Nouveau groupe", "group create");
+  assert.equal(CHAT_UX_COPY.whoIsIn, "Qui est dedans", "members");
+  assert.true(groups.includes("CHAT_UX_COPY.newGroup"), "group entry");
+  assert.false(groups.includes("create-group"), "no buried jargon");
 });
 
 test("filtre DM bloqués ; GROUP et CLUB restent visibles", () => {
@@ -260,6 +276,21 @@ test("canStartDirectMessage refuse self et blocked ; copy honnête non vide", ()
   assert.false(canStartDirectMessage("me", "x", ["x"]), "blocked");
   assert.true(canStartDirectMessage("me", "x", ["y"]), "ok");
   assert.true(BLOCKED_DM_COPY.includes("blocage"), "copy");
+});
+
+test("aperçu + non-lu — pas un receipt, pas un placeholder", () => {
+  assert.equal(conversationMessagePreview(null), null, "none");
+  assert.equal(conversationMessagePreview({ body: "On lance à 21h", deleted_at: null }), "On lance à 21h", "body");
+  assert.equal(conversationMessagePreview({ body: "  salut\nà tous  ", deleted_at: null }), "salut à tous", "ws");
+  assert.equal(conversationMessagePreview({ body: "x".repeat(90), deleted_at: null })?.endsWith("…"), true, "truncate");
+  assert.equal(conversationMessagePreview({ body: "ciao", deleted_at: "2026-01-01T00:00:00.000Z" }), "Message supprimé", "deleted");
+  const members = [
+    { id: "m1", conversation_id: "c", user_id: "me", role: "MEMBER" as const, joined_at: "", last_read_at: "2026-01-01T12:00:00.000Z" },
+  ];
+  assert.false(conversationIsUnread({ selfUserId: "me", members, lastMessageAt: null }), "no msg");
+  assert.true(conversationIsUnread({ selfUserId: "me", members, lastMessageAt: "2026-01-01T13:00:00.000Z" }), "newer");
+  assert.false(conversationIsUnread({ selfUserId: "me", members, lastMessageAt: "2026-01-01T11:00:00.000Z" }), "older");
+  assert.true(conversationIsUnread({ selfUserId: "me", members: [], lastMessageAt: "2026-01-01T13:00:00.000Z" }), "never read");
 });
 
 test("canOpenClubConversation — OWNER/MANAGER/MEMBER, pas un tiers", () => {

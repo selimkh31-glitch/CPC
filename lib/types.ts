@@ -282,6 +282,8 @@ export interface ConversationRow {
    *  Jamais inventé : nom vide / placeholder « Club Pro Clubs » / « Club »
    *  → fallback `CLUB_CONVERSATION_COPY`. */
   club?: Pick<ClubRow, "id" | "name"> | null;
+  /** Dernier message — hydraté côté liste chat, jamais inventé. */
+  last_message?: { body: string; created_at: string; deleted_at: string | null } | null;
 }
 
 export interface ConversationMemberRow {
