@@ -11,38 +11,21 @@ import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 
 /**
- * Racine de l'arbre Mode Club (Foundation #1). Monté uniquement quand
- * `mode === "CLUB"` (garde posée dans app/_layout.tsx — jamais ici, ce
- * composant suppose déjà session+profile+mode valides).
- *
- * Rôle unique : garantir qu'un `selectedManagedClubId` valide existe avant de
- * rendre les tabs Mode Club (app/(club)/(tabs)/...). `selectedManagedClubId`
- * n'est JAMAIS pris pour une vérité persistante (le ModeSwitch ne le pose
- * lui-même que dans le cas non ambigu à 1 seul club géré) — revalidé ici
- * contre `useMyMemberships`, la même source de vérité que partout ailleurs.
- * Jamais de `managedClubs[0]` implicite : 1 club -> sélection directe (non
- * ambigu) ; plusieurs -> sélecteur explicite (réutilise MyClubsList en mode
- * sélection, sans navigation).
+ * Racine Mode Manager. Monté uniquement quand `mode === "CLUB"`.
+ * Sans club géré : les tabs (LIVE / Recrutement / Club) gardent l'empty
+ * state existant — pas de rebond forcé vers Joueur, pas de wizard club.
  */
 export default function ClubModeLayout() {
   const { session } = useAuth();
-  const { data: memberships, isLoading, isError, refetch } = useMyMemberships(session?.user.id ?? null);
-  const { setMode, selectedManagedClubId, setSelectedManagedClubId } = useAppMode();
+  const { data: memberships, isLoading, isError } = useMyMemberships(session?.user.id ?? null);
+  const { selectedManagedClubId, setSelectedManagedClubId } = useAppMode();
 
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
   const validSelection = Boolean(selectedManagedClubId) && managedClubs.some((m) => m.club.id === selectedManagedClubId);
 
   useEffect(() => {
     if (isLoading) return;
-    // Défensif — ne devrait pas arriver si le ModeSwitch est correctement
-    // conditionné (masqué dès managedClubs.length === 0), mais un compte peut
-    // en théorie perdre son dernier club géré (libéré, transféré) pendant
-    // qu'il est déjà en Mode Club : jamais d'écran vide, retour Mode Joueur.
-    if (managedClubs.length === 0) {
-      setMode("PLAYER");
-      return;
-    }
-    // 1 seul club géré, non ambigu : sélection directe sans sélecteur.
+    if (managedClubs.length === 0) return;
     if (!validSelection && managedClubs.length === 1) {
       setSelectedManagedClubId(managedClubs[0].club.id);
     }
@@ -69,9 +52,10 @@ export default function ClubModeLayout() {
     );
   }
 
-  // Plusieurs clubs gérés, aucune sélection valide : sélecteur explicite,
-  // jamais un `[0]` implicite. `onManagedSelect` -> callback pur (pose
-  // seulement selectedManagedClubId), aucune navigation.
+  if (managedClubs.length === 0) {
+    return <Slot />;
+  }
+
   if (!validSelection && managedClubs.length > 1) {
     return (
       <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -87,8 +71,6 @@ export default function ClubModeLayout() {
   }
 
   if (!validSelection) {
-    // managedClubs.length === 0 (retour Mode Joueur en cours) ou
-    // auto-sélection à 1 club pas encore appliquée (un seul re-render).
     return (
       <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
         <View style={{ padding: 16 }}>

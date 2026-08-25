@@ -76,10 +76,10 @@ export default function RootLayout() {
  */
 function RootNavigator() {
   const { session, profile, profileError, loading, refreshProfile } = useAuth();
-  const { mode } = useAppMode();
+  const { mode, hydrated } = useAppMode();
   const [retrying, setRetrying] = useState(false);
 
-  if (loading) {
+  if (loading || (Boolean(session) && Boolean(profile) && !hydrated)) {
     return <View className="flex-1 bg-bg" />;
   }
 
@@ -116,9 +116,14 @@ function RootNavigator() {
         <Stack.Screen name="onboarding" />
       </Stack.Protected>
 
+      {/* Porte Joueur / Manager — une fois, puis mode persisté. Pas un 3e nav. */}
+      <Stack.Protected guard={Boolean(session) && Boolean(profile) && hydrated && mode === null}>
+        <Stack.Screen name="mode-door" />
+      </Stack.Protected>
+
       {/* Foundation #1 — deux arbres de mode distincts, jamais montés en même
           temps : le guard AND (session ET profil ET mode) remplace l'ancien
-          groupe unique "(tabs)". Le switch (ModeSwitch) ne fait QUE changer
+          groupe unique "(tabs)". La porte / le toggle Profil·Club changent
           `mode` — c'est ce guard, pas une navigation impérative, qui décide
           quel arbre est monté (même principe que le guard d'auth ci-dessus). */}
       <Stack.Protected guard={Boolean(session) && Boolean(profile) && mode === "PLAYER"}>
@@ -131,7 +136,7 @@ function RootNavigator() {
 
       {/* Écrans partagés, indépendants du mode actif (deep links historiques
           conservés — voir app/dashboard.tsx pour le shim /dashboard?clubId=X). */}
-      <Stack.Protected guard={Boolean(session) && Boolean(profile)}>
+      <Stack.Protected guard={Boolean(session) && Boolean(profile) && Boolean(mode)}>
         <Stack.Screen
           name="club/[id]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}

@@ -7,7 +7,7 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
+import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { ClubCard } from "@/components/club/ClubCard";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
@@ -16,26 +16,21 @@ import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { LeaguesLink } from "@/components/leagues/LeaguesLink";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
-import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { canMutateClub } from "@/lib/sessionState";
 
 /**
- * Club — identité + stats réelles. Recrutement LIVE et invitations sont ailleurs.
- * Lien EA club : affiché si `ea_club_id` existe (ingest) — pas de bouton mort.
+ * Club — identité manager. Recrutement LIVE et invitations sont ailleurs.
+ * Seule bascule « Passer en joueur » : ici, pas dans LIVE / Recrutement / tabs.
  */
 export default function ClubTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { setMode } = useAppMode();
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
-  const { data: memberships } = useMyMemberships(session?.user.id ?? null);
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
   const {
     data: matchHistory,
     isLoading: matchHistoryLoading,
@@ -52,7 +47,6 @@ export default function ClubTab() {
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
-        <ModeSwitch managedClubs={managedClubs} />
         {body}
       </ScrollView>
     </SafeAreaView>
@@ -71,20 +65,12 @@ export default function ClubTab() {
       <View className="gap-4">
         <EmptyState
           title="Aucun club géré"
-          subtitle="Crée un club EA SPORTS FC 27 Pro Clubs en mode Joueur, ou fais-toi nommer manager."
+          subtitle="Crée un club, ou fais-toi nommer manager."
         />
-        <Button
-          variant="secondary"
-          onPress={() => {
-            setMode("PLAYER");
-            router.push("/create-club");
-          }}
-        >
+        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
           Créer un club
         </Button>
-        <Button variant="ghost" onPress={() => setMode("PLAYER")}>
-          Retour mode Joueur
-        </Button>
+        <ModeLifeToggle target="PLAYER" />
       </View>
     );
   }
@@ -119,6 +105,8 @@ export default function ClubTab() {
           </View>
         }
       />
+
+      <ModeLifeToggle target="PLAYER" />
 
       <MatchHistoryList
         items={matchHistory}

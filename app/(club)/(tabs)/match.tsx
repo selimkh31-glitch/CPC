@@ -14,7 +14,6 @@ import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
@@ -43,7 +42,7 @@ import { buildPlayerCardData } from "@/lib/playerCard";
 export default function MatchTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { setMode, setSelectedManagedClubId } = useAppMode();
+  const { setSelectedManagedClubId } = useAppMode();
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const [isMatchDay, setIsMatchDay] = useState(false);
@@ -74,7 +73,6 @@ export default function MatchTab() {
         className="flex-1"
       >
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
-          <ModeSwitch managedClubs={managedClubs} />
           {body}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -94,10 +92,10 @@ export default function MatchTab() {
       <View className="gap-4">
         <EmptyState
           title="Aucun club géré"
-          subtitle="La feuille de match est réservée à l'owner ou un manager d'un club EA SPORTS FC 27 Pro Clubs."
+          subtitle="Crée un club, ou fais-toi nommer manager."
         />
-        <Button variant="ghost" onPress={() => setMode("PLAYER")}>
-          Retour mode Joueur
+        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
+          Créer un club
         </Button>
       </View>
     );

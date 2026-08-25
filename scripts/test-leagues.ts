@@ -113,7 +113,7 @@ test("stack /leagues enregistré dans l'arbre partagé — plus de collision ave
   assert.true(stack.includes("clubRankingRowHref") || readFileSync(`${root}/components/rankings/CpcClubRanking.tsx`, "utf8").includes("clubRankingRowHref"), "row href helper");
 
   const layout = readFileSync(layoutFile, "utf8");
-  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
+  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile) && Boolean(mode)}>");
   const leaguesName = layout.indexOf('name="leagues"');
   const competitionsName = layout.indexOf('name="competitions/index"');
   assert.true(sharedGuard >= 0, "shared guard");

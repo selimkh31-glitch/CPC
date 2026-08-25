@@ -33,10 +33,9 @@ import type { FormationId, FormationSlot } from "@/lib/formations";
  *   - app/match-sheet.tsx : wrapper fin conservant le header natif/retour,
  *     pour les entrées externes (page publique d'un club, raccourci "Mes
  *     clubs" du profil pour une ligne MEMBER/MANAGER).
- * Le switch vers Mode Club (pour OWNER/MANAGER) vit dans l'écran appelant
- * (ModeSwitch, à côté de ClubHome) — jamais dans ce composant lui-même, pour
- * qu'il reste une vue joueur pure quel que soit le club affiché (y compris un
- * club où le viewer n'est ni membre ni gestionnaire).
+ * La bascule vers Mode Manager vit uniquement sur Profil (et onglet Club
+ * côté manager) — jamais dans ce composant, pour qu'il reste une vue joueur
+ * pure quel que soit le club affiché.
  */
 export function ClubHome({ clubId }: { clubId: string | null }) {
   const { session } = useAuth();

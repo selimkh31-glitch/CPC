@@ -7,11 +7,8 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
-import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
@@ -24,10 +21,7 @@ import { formatLiveRemaining, liveUiState, LIVE_UX_COPY } from "@/lib/live";
 export default function ClubLiveTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { setMode } = useAppMode();
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
-  const { data: memberships } = useMyMemberships(session?.user.id ?? null);
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
   const { data: activeCheckin } = useActiveMatchCheckin(club?.id ?? null);
 
   useFocusEffect(
@@ -39,7 +33,6 @@ export default function ClubLiveTab() {
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
-        <ModeSwitch managedClubs={managedClubs} />
         {body}
       </ScrollView>
     </SafeAreaView>
@@ -58,10 +51,13 @@ export default function ClubLiveTab() {
       <View className="gap-4">
         <EmptyState
           title="Aucun club géré"
-          subtitle="Crée un club EA SPORTS FC 27 Pro Clubs en mode Joueur, ou fais-toi nommer manager."
+          subtitle="Crée un club, ou fais-toi nommer manager."
         />
-        <Button variant="ghost" onPress={() => setMode("PLAYER")}>
-          Retour mode Joueur
+        <Button
+          className="min-h-[48px]"
+          onPress={() => router.push("/create-club")}
+        >
+          Créer un club
         </Button>
       </View>
     );

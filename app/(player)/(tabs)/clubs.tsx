@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ClubHome } from "@/components/club/ClubHome";
 import { FindClubPanel } from "@/components/club/FindClubPanel";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useMyDepartureUpdates } from "@/lib/hooks/useDepartures";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -22,7 +21,6 @@ export default function ClubsScreen() {
   useMyDepartureUpdates(session?.user.id ?? null, onDepartureChange);
 
   const playerMembership = memberships?.find((m) => m.role === "MEMBER" || m.role === "MANAGER") ?? null;
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
 
   if (membershipsLoading) {
     return (
@@ -37,11 +35,6 @@ export default function ClubsScreen() {
   if (playerMembership) {
     return (
       <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-        {managedClubs.length > 0 && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-            <ModeSwitch managedClubs={managedClubs} />
-          </View>
-        )}
         <ClubHome clubId={playerMembership.club.id} />
       </SafeAreaView>
     );
@@ -49,9 +42,6 @@ export default function ClubsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <View className="px-4 pt-2">
-        {managedClubs.length > 0 && <ModeSwitch managedClubs={managedClubs} />}
-      </View>
       <FindClubPanel />
     </SafeAreaView>
   );

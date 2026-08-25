@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { Crown, LogOut, Plus } from "lucide-react-native";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
+import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
@@ -18,7 +18,7 @@ import { registerForPushNotificationsAsync } from "@/lib/notifications";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
 
 /**
- * Onglet Profil — ClubPro Card d'abord, puis switch Joueur/Club et réglages.
+ * Onglet Profil — Card d'abord, puis la seule bascule « Passer en manager ».
  * Candidatures / invitations / notifications : onglet Activité.
  * Trouver un club : onglet LIVE. Messages, groupes, bloqués : raccourcis.
  */
@@ -54,14 +54,12 @@ export default function ProfileTabScreen() {
           </Pressable>
         </View>
 
-        {managedClubs.length > 0 && (
-          <View className="mb-4">
-            <ModeSwitch managedClubs={managedClubs} />
-          </View>
-        )}
-
         <View className="mb-8 items-center">
           <ProfileContent userId={session.user.id} isOwn />
+        </View>
+
+        <View className="mb-8">
+          <ModeLifeToggle target="CLUB" managedClubs={managedClubs} />
         </View>
 
         {profile?.plan !== "PRO" && (
