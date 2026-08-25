@@ -70,7 +70,7 @@ npx prisma db execute --file supabase/migrations/0026_competitions_foundation.sq
 npx prisma db execute --file supabase/migrations/0027_match_result_competition_link.sql --schema prisma/schema.prisma
 ```
 
-Puis déployer `create-competition`, `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés. Après RPC `finalize_match` réussie, l’Edge crée une notif in-app `MATCH_FINALIZED` (membres des deux clubs, **sauf le recorder**) ; un échec notify n’annule pas le résultat. **Pas de 0029** : `notifications.type` est du texte libre (0025), comme `MESSAGE_RECEIVED`.
+Puis déployer `create-competition`, **redéployer** `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés. Après RPC `finalize_match` réussie, l’Edge crée une notif in-app `MATCH_FINALIZED` (membres des deux clubs, **sauf le recorder**) ; un échec notify n’annule pas le résultat. Après INSERT `competition_clubs` réussi, `register-competition-club` crée une notif in-app `COMPETITION_CLUB_REGISTERED` (`created_by` + OWNER/MANAGER du club, dédupliqués) ; un échec notify n’annule pas l’inscription. **Pas de SQL** pour cette notif : `notifications.type` est du texte libre (0025), comme `MESSAGE_RECEIVED` / `MATCH_FINALIZED`. **Pas de 0029.**
 
 **Conversation club (0028)** — après 0016–0017 (tables + RLS chat). Get-or-create `start_club_conversation`, pas de nouvelle table.
 
@@ -106,7 +106,7 @@ supabase/functions/
   moderate/                    POST — modération générique
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
   create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN)
-  register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409
+  register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409 ; notif COMPETITION_CLUB_REGISTERED après INSERT
   start-direct-conversation/   POST — get-or-create DM
   start-club-conversation/     POST — get-or-create conversation CLUB (0028)
 ```

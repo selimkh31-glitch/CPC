@@ -1,6 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { requireUuid, ValidationError } from "../_shared/validate.ts";
+import { notifyUser } from "../_shared/notify.ts";
 import {
   canRegisterCompetitionClub,
   COMPETITION_COPY,
@@ -8,10 +9,22 @@ import {
   registerBlockMessage,
   uniqueViolationHttpStatus,
 } from "../_shared/competitions.ts";
+import {
+  competitionClubRegisteredCopy,
+  competitionClubRegisteredNotificationData,
+  competitionClubRegisteredRecipientIds,
+} from "../_shared/safety.ts";
 
 /**
  * Inscrit un club géré (OWNER/MANAGER) à une compétition OPEN.
  * Unique (competition_id, club_id) : doublon → 409, jamais un 2e row.
+ *
+ * Après INSERT réussi : notif in-app COMPETITION_CLUB_REGISTERED
+ * (create_notification via notifyUser) au created_by de la compétition
+ * et aux OWNER/MANAGER du club inscrit (dédupliqués). Échec notify : log
+ * seulement, jamais de rollback de competition_clubs. Realtime = canal
+ * existant notifications-${userId} ; pas de second canal. Pas de notif
+ * COMPETITION_CREATED (le créateur voit déjà l'écran).
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -34,7 +47,7 @@ Deno.serve(async (req) => {
 
   const { data: competition, error: competitionError } = await admin
     .from("competitions")
-    .select("id, status")
+    .select("id, status, name, created_by")
     .eq("id", competitionId)
     .maybeSingle();
   if (competitionError) return jsonResponse({ error: competitionError.message }, 500);
@@ -69,5 +82,104 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: error.message }, 500);
   }
 
+  try {
+    await notifyCompetitionClubRegistered(admin, {
+      registration: data,
+      competitionId,
+      clubId,
+      competitionName: typeof competition.name === "string" ? competition.name : "",
+      createdBy: typeof competition.created_by === "string" ? competition.created_by : null,
+    });
+  } catch (err) {
+    console.warn("[register-competition-club] notify exception:", err);
+  }
+
   return jsonResponse({ registration: data });
 });
+
+function asRegistrationRow(data: unknown): Record<string, unknown> | null {
+  if (!data || typeof data !== "object") return null;
+  return data as Record<string, unknown>;
+}
+
+async function notifyCompetitionClubRegistered(
+  admin: ReturnType<typeof getAdminClient>,
+  input: {
+    registration: unknown;
+    competitionId: string;
+    clubId: string;
+    competitionName: string;
+    createdBy: string | null;
+  }
+): Promise<void> {
+  const registration = asRegistrationRow(input.registration);
+  const registrationId = typeof registration?.id === "string" ? registration.id : "";
+
+  const { data: club, error: clubError } = await admin
+    .from("clubs")
+    .select("id, name")
+    .eq("id", input.clubId)
+    .maybeSingle();
+  if (clubError) console.warn("[register-competition-club] notify club:", clubError.message);
+
+  const copy = competitionClubRegisteredCopy({
+    clubName: typeof club?.name === "string" ? club.name : "",
+    competitionName: input.competitionName,
+  });
+  const data = competitionClubRegisteredNotificationData({
+    clubId: input.clubId,
+    competitionId: input.competitionId,
+    registrationId,
+  });
+
+  const { data: members, error: membersError } = await admin
+    .from("club_members")
+    .select("user_id, role, user:users(id, push_token)")
+    .eq("club_id", input.clubId)
+    .in("role", ["OWNER", "MANAGER"]);
+  if (membersError) {
+    console.warn("[register-competition-club] notify members:", membersError.message);
+  }
+
+  const rows = members ?? [];
+  const recipientIds = competitionClubRegisteredRecipientIds({
+    createdBy: input.createdBy,
+    clubMembers: rows.map((row) => ({ userId: row.user_id, role: row.role })),
+  });
+  if (recipientIds.length === 0) return;
+
+  const tokenByUser = new Map<string, string | null>();
+  for (const row of rows) {
+    if (tokenByUser.has(row.user_id)) continue;
+    tokenByUser.set(
+      row.user_id,
+      (row.user as { push_token?: string | null } | null)?.push_token ?? null
+    );
+  }
+
+  const missing = recipientIds.filter((id) => !tokenByUser.has(id));
+  if (missing.length > 0) {
+    const { data: users, error: usersError } = await admin
+      .from("users")
+      .select("id, push_token")
+      .in("id", missing);
+    if (usersError) {
+      console.warn("[register-competition-club] notify creator token:", usersError.message);
+    } else {
+      for (const row of users ?? []) {
+        if (typeof row.id === "string") tokenByUser.set(row.id, row.push_token ?? null);
+      }
+    }
+  }
+
+  for (const userId of recipientIds) {
+    await notifyUser(admin, {
+      userId,
+      type: copy.type,
+      title: copy.title,
+      body: copy.body,
+      data,
+      pushToken: tokenByUser.get(userId),
+    });
+  }
+}

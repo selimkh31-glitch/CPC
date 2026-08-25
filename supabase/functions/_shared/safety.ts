@@ -27,6 +27,7 @@ export const NOTIFICATION_TYPES = [
   "INVITATION_DECLINED",
   "MESSAGE_RECEIVED",
   "MATCH_FINALIZED",
+  "COMPETITION_CLUB_REGISTERED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -40,6 +41,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   INVITATION_DECLINED: "Invitation déclinée",
   MESSAGE_RECEIVED: "Nouveau message",
   MATCH_FINALIZED: "Résultat de match",
+  COMPETITION_CLUB_REGISTERED: "Club inscrit",
 };
 
 export const EA_IDENTITY_KINDS = ["NONE", "USERNAME_EQUALITY"] as const;
@@ -236,6 +238,63 @@ export function matchFinalizedNotificationNav(
   };
 }
 
+/**
+ * COMPETITION_CLUB_REGISTERED — notif in-app après un vrai INSERT
+ * competition_clubs (Edge register-competition-club). Destinataires :
+ * competitions.created_by (le champ owner n'existe pas) + OWNER/MANAGER
+ * du club inscrit. Un user présent des deux côtés = une seule notif.
+ * MEMBER du club : pas destinataire. Échec notify ≠ rollback de l'inscription.
+ */
+export function competitionClubRegisteredRecipientIds(input: {
+  createdBy?: string | null;
+  clubMembers: readonly { userId: string; role: string }[];
+}): string[] {
+  const ids = new Set<string>();
+  if (input.createdBy && input.createdBy.length > 0) ids.add(input.createdBy);
+  for (const member of input.clubMembers) {
+    if (!member.userId) continue;
+    if (member.role !== "OWNER" && member.role !== "MANAGER") continue;
+    ids.add(member.userId);
+  }
+  return [...ids];
+}
+
+export function competitionClubRegisteredCopy(input: {
+  clubName: string;
+  competitionName: string;
+}): {
+  type: NotificationType;
+  title: string;
+  body: string;
+} {
+  const club = input.clubName.trim() || "Un club";
+  const competition = input.competitionName.trim() || "une compétition";
+  return {
+    type: "COMPETITION_CLUB_REGISTERED",
+    title: NOTIFICATION_TYPE_LABELS.COMPETITION_CLUB_REGISTERED,
+    body: `${club} s'est inscrit à ${competition}.`,
+  };
+}
+
+export function competitionClubRegisteredNotificationData(input: {
+  clubId: string;
+  competitionId: string;
+  registrationId: string;
+}): Record<string, unknown> {
+  return {
+    clubId: input.clubId,
+    competitionId: input.competitionId,
+    registrationId: input.registrationId,
+  };
+}
+
+/** Deep link COMPETITION_CLUB_REGISTERED : toujours `/competitions`. */
+export function competitionClubRegisteredHref(
+  _data?: Record<string, unknown> | null
+): string {
+  return "/competitions";
+}
+
 export function notificationHref(type: string, data: Record<string, unknown> | null | undefined): string {
   const clubId = typeof data?.clubId === "string" ? data.clubId : null;
   switch (type) {
@@ -255,6 +314,8 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
     }
     case "MATCH_FINALIZED":
       return matchFinalizedHref(data, "CLUB");
+    case "COMPETITION_CLUB_REGISTERED":
+      return competitionClubRegisteredHref(data);
     default:
       return "/notifications";
   }

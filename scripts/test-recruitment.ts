@@ -80,6 +80,11 @@ test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
   assert.equal(recruitmentNotificationNav("APPLICATION_DECLINED", {})?.href, "/my-applications", "declined");
   assert.equal(recruitmentNotificationNav("MESSAGE_RECEIVED", { conversationId: "x" }), null, "not recruitment");
   assert.equal(recruitmentNotificationNav("MATCH_FINALIZED", { clubId: "c1" }), null, "match not recruitment");
+  assert.equal(
+    recruitmentNotificationNav("COMPETITION_CLUB_REGISTERED", { competitionId: "comp-1" }),
+    null,
+    "register not recruitment"
+  );
 });
 
 console.log(`\n${passed} tests recruitment OK`);
