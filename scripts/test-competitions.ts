@@ -337,6 +337,7 @@ test("SQL 0027 : ALTER match_results + finalize étendu ; pas de table standings
       p_mvp_user_id uuid, p_opponent_club_id uuid, p_competition_id uuid
     )
     raise exception 'clubs_not_in_competition';
+    when unique_violation then raise exception 'already_finalized';
     grant execute on function public.finalize_match(uuid, uuid, int, int, uuid, uuid, uuid) to service_role;
   `;
   assert.equal(matchResultLinkSqlIssues(valid).join(" | "), "", "contrat 0027");

@@ -331,6 +331,7 @@ const REQUIRED_LINK_SQL_FRAGMENTS = [
   "p_opponent_club_id",
   "p_competition_id",
   "clubs_not_in_competition",
+  "when unique_violation then",
   "grant execute on function public.finalize_match",
   "to service_role",
 ] as const;

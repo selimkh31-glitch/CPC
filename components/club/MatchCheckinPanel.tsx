@@ -20,6 +20,7 @@ import {
 } from "@/lib/hooks/useMatchCheckin";
 import { toast } from "@/lib/toast";
 import { COMPETITION_COPY } from "@/lib/competitions";
+import { FINALIZE_MATCH_COPY, parseUiMatchScore } from "@/lib/finalizeMatch";
 import type { ClubMemberRow, MatchOutcome, MatchResultRow, SlotAssignmentRow } from "@/lib/types";
 
 type Step = "idle" | "confirm" | "absences" | "ready" | "live" | "finalize" | "finalized";
@@ -164,17 +165,20 @@ export function MatchCheckinPanel({
 
   // Bornes UI uniquement (0-99) — l'Edge Function applique déjà cette
   // validation (requireIntInRange côté finalize-match) ; ce n'est qu'un
-  // garde-fou de saisie, jamais une règle métier dupliquée.
-  const isScoreValid = ourScoreInput !== "" && opponentScoreInput !== "";
+  // garde-fou de saisie, jamais une règle métier dupliquée. Vide ≠ 0 inventé.
+  const parsedOurScore = parseUiMatchScore(ourScoreInput);
+  const parsedOpponentScore = parseUiMatchScore(opponentScoreInput);
+  const isScoreValid = parsedOurScore !== null && parsedOpponentScore !== null;
   const canSubmitFinalize = isScoreValid && Boolean(opponentClub);
 
   const submitFinalize = () => {
     if (!activeCheckinId || !canSubmitFinalize || !opponentClub || finalize.isPending) return;
+    if (parsedOurScore === null || parsedOpponentScore === null) return;
     finalize.mutate(
       {
         matchCheckinId: activeCheckinId,
-        ourScore: Number(ourScoreInput),
-        opponentScore: Number(opponentScoreInput),
+        ourScore: parsedOurScore,
+        opponentScore: parsedOpponentScore,
         mvpUserId: mvpUserId[0] ?? null,
         opponentClubId: opponentClub.id,
         competitionId,
@@ -254,7 +258,14 @@ export function MatchCheckinPanel({
               />
             </View>
           </View>
-          <OpponentClubPicker clubId={clubId} selected={opponentClub} onSelect={setOpponentClub} />
+          <OpponentClubPicker
+            clubId={clubId}
+            selected={opponentClub}
+            onSelect={(club) => {
+              setOpponentClub(club);
+              if (!club) setCompetitionId(null);
+            }}
+          />
           <OptionalCompetitionPicker
             clubId={clubId}
             opponentClubId={opponentClub?.id ?? null}
@@ -288,10 +299,17 @@ export function MatchCheckinPanel({
             )}
           </View>
           <View className="gap-2">
-            {!opponentClub ? (
+            {!isScoreValid ? (
+              <Text className="text-xs text-fg-muted">{FINALIZE_MATCH_COPY.scoresRequired}</Text>
+            ) : !opponentClub ? (
               <Text className="text-xs text-fg-muted">{COMPETITION_COPY.opponentRequired}</Text>
             ) : null}
-            <Button loading={finalize.isPending} disabled={!canSubmitFinalize} onPress={submitFinalize}>
+            <Button
+              loading={finalize.isPending}
+              disabled={!canSubmitFinalize}
+              onPress={submitFinalize}
+              accessibilityState={{ disabled: !canSubmitFinalize || finalize.isPending }}
+            >
               Valider le résultat
             </Button>
             <Button variant="secondary" onPress={() => setStep("live")}>
