@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import {
   MATCH_HISTORY_LIMIT,
+  PLAYER_MATCH_HISTORY_LOOKBACK,
   buildClubMatchHistory,
   buildPlayerMatchHistory,
   type MatchHistoryItem,
@@ -45,15 +46,15 @@ export function usePlayerMatchHistory(userId: string | null) {
         .from("match_participations")
         .select("match_checkin_id, club_id, status")
         .eq("user_id", userId!)
-        .eq("status", "PRESENT");
+        .eq("status", "PRESENT")
+        .order("launched_at", { referencedTable: "match_checkins", ascending: false })
+        .limit(PLAYER_MATCH_HISTORY_LOOKBACK);
       if (partsError) throw partsError;
 
       const rows = parts ?? [];
       const checkinIds = rows.map((row: { match_checkin_id: string }) => row.match_checkin_id);
-      const [results, clubNames] = await Promise.all([
-        fetchResultsByCheckinIds(checkinIds),
-        fetchClubNames(rows.map((row: { club_id: string }) => row.club_id)),
-      ]);
+      const results = await fetchResultsByCheckinIds(checkinIds);
+      const clubNames = await fetchClubNames(results.map((row) => row.club_id));
       return buildPlayerMatchHistory({
         participations: rows,
         results,
