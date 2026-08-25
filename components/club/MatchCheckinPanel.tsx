@@ -8,6 +8,7 @@ import { Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { LiveMatchScreen } from "@/components/club/LiveMatchScreen";
+import { OpponentClubPicker, OptionalCompetitionPicker } from "@/components/club/FinalizeMatchLinkFields";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId } from "@/lib/formations";
 import {
@@ -18,6 +19,7 @@ import {
   type MatchCheckinResult,
 } from "@/lib/hooks/useMatchCheckin";
 import { toast } from "@/lib/toast";
+import { COMPETITION_COPY } from "@/lib/competitions";
 import type { ClubMemberRow, MatchOutcome, MatchResultRow, SlotAssignmentRow } from "@/lib/types";
 
 type Step = "idle" | "confirm" | "absences" | "ready" | "live" | "finalize" | "finalized";
@@ -107,6 +109,8 @@ export function MatchCheckinPanel({
   const [opponentScoreInput, setOpponentScoreInput] = useState("");
   const [mvpUserId, setMvpUserId] = useState<string[]>([]);
   const [finalizedResult, setFinalizedResult] = useState<MatchResultRow | null>(null);
+  const [opponentClub, setOpponentClub] = useState<{ id: string; name: string } | null>(null);
+  const [competitionId, setCompetitionId] = useState<string | null>(null);
 
   // Phase G.3.2 — "Match Day" au sens du parent = tout step qui n'est plus
   // la préparation (ready/live/finalize/finalized). idle/confirm/absences
@@ -132,6 +136,8 @@ export function MatchCheckinPanel({
     setOpponentScoreInput("");
     setMvpUserId([]);
     setFinalizedResult(null);
+    setOpponentClub(null);
+    setCompetitionId(null);
   };
 
   const doLaunch = (absentUserIds: string[]) => {
@@ -160,15 +166,18 @@ export function MatchCheckinPanel({
   // validation (requireIntInRange côté finalize-match) ; ce n'est qu'un
   // garde-fou de saisie, jamais une règle métier dupliquée.
   const isScoreValid = ourScoreInput !== "" && opponentScoreInput !== "";
+  const canSubmitFinalize = isScoreValid && Boolean(opponentClub);
 
   const submitFinalize = () => {
-    if (!activeCheckinId || !isScoreValid || finalize.isPending) return;
+    if (!activeCheckinId || !canSubmitFinalize || !opponentClub || finalize.isPending) return;
     finalize.mutate(
       {
         matchCheckinId: activeCheckinId,
         ourScore: Number(ourScoreInput),
         opponentScore: Number(opponentScoreInput),
         mvpUserId: mvpUserId[0] ?? null,
+        opponentClubId: opponentClub.id,
+        competitionId,
       },
       {
         onSuccess: ({ matchResult }) => {
@@ -202,6 +211,9 @@ export function MatchCheckinPanel({
             {finalizedResult.our_score} — {finalizedResult.opponent_score}
           </Text>
           {mvp && <Text className="text-sm text-fg-muted">MVP : {mvp.username}</Text>}
+          {opponentClub && (
+            <Text className="text-sm text-fg-muted">Adversaire : {opponentClub.name}</Text>
+          )}
         </View>
         <Button variant="secondary" className="mt-2" onPress={reset}>
           Nouveau check-in
@@ -232,7 +244,7 @@ export function MatchCheckinPanel({
               />
             </View>
             <View className="flex-1">
-              <Label>Adversaire</Label>
+              <Label>Score adverse</Label>
               <Input
                 keyboardType="number-pad"
                 maxLength={2}
@@ -242,6 +254,13 @@ export function MatchCheckinPanel({
               />
             </View>
           </View>
+          <OpponentClubPicker clubId={clubId} selected={opponentClub} onSelect={setOpponentClub} />
+          <OptionalCompetitionPicker
+            clubId={clubId}
+            opponentClubId={opponentClub?.id ?? null}
+            selectedId={competitionId}
+            onSelect={setCompetitionId}
+          />
           <View>
             <Label>MVP (optionnel)</Label>
             {participantsLoading ? (
@@ -269,7 +288,10 @@ export function MatchCheckinPanel({
             )}
           </View>
           <View className="gap-2">
-            <Button loading={finalize.isPending} disabled={!isScoreValid} onPress={submitFinalize}>
+            {!opponentClub ? (
+              <Text className="text-xs text-fg-muted">{COMPETITION_COPY.opponentRequired}</Text>
+            ) : null}
+            <Button loading={finalize.isPending} disabled={!canSubmitFinalize} onPress={submitFinalize}>
               Valider le résultat
             </Button>
             <Button variant="secondary" onPress={() => setStep("live")}>

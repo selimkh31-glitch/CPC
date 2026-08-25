@@ -139,21 +139,28 @@ export interface FinalizeMatchResult {
  * (service_role, appelle finalize_match SECURITY DEFINER). `outcome` n'est
  * JAMAIS envoyé ni recalculé côté client — reçu tel quel dans la réponse.
  * `actor_id` n'est JAMAIS envoyé : dérivé du JWT côté Edge Function
- * (getCallingUser). Les erreurs nommées du backend (checkin_not_found,
- * not_authorized, invalid_score, already_finalized, mvp_not_present) arrivent
- * déjà traduites en message FR par mapFinalizeError (supabase/functions/
- * finalize-match/index.ts) — callEdgeFunction les relaie telles quelles,
- * aucune règle à recréer ici.
+ * (getCallingUser). opponentClubId / competitionId sont optionnels côté
+ * Edge ; l'UI owner/manager exige un club adverse CPC réel. Les erreurs
+ * nommées du backend arrivent déjà traduites en FR par mapFinalizeError.
  */
 export function useFinalizeMatch(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { matchCheckinId: string; ourScore: number; opponentScore: number; mvpUserId: string | null }) =>
+    mutationFn: (input: {
+      matchCheckinId: string;
+      ourScore: number;
+      opponentScore: number;
+      mvpUserId: string | null;
+      opponentClubId: string | null;
+      competitionId: string | null;
+    }) =>
       callEdgeFunction<FinalizeMatchResult>("finalize-match", {
         matchCheckinId: input.matchCheckinId,
         ourScore: input.ourScore,
         opponentScore: input.opponentScore,
         mvpUserId: input.mvpUserId,
+        opponentClubId: input.opponentClubId,
+        competitionId: input.competitionId,
       }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -163,6 +170,8 @@ export function useFinalizeMatch(clubId: string) {
       // fichier : le client ne fait jamais confiance à un état local pour ce
       // qui doit venir de la DB).
       queryClient.invalidateQueries({ queryKey: ["active-match-checkin", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

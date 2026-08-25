@@ -218,9 +218,10 @@ export interface MatchCheckinRow {
 export type MatchOutcome = "WIN" | "DRAW" | "LOSS";
 
 /** Résultat d'un match (match_results) — colonnes exactes retournées par
- *  finalize_match (voir supabase/migrations/0014_match_results.sql,
- *  `returns public.match_results`). `outcome` n'est jamais calculé côté
- *  client : reçu tel quel dans la réponse de l'Edge Function finalize-match. */
+ *  finalize_match (0014 + 0027). `outcome` n'est jamais calculé côté
+ *  client : reçu tel quel dans la réponse de l'Edge Function finalize-match.
+ *  `opponent_club_id` / `competition_id` sont optionnels ; un classement
+ *  compétition n'existe que si les deux sont posés sur au moins une ligne. */
 export interface MatchResultRow {
   id: string;
   match_checkin_id: string;
@@ -231,6 +232,8 @@ export interface MatchResultRow {
   mvp_user_id: string | null;
   recorded_by: string;
   created_at: string;
+  opponent_club_id: string | null;
+  competition_id: string | null;
 }
 
 /** Match Result Engine, Phase F.2 — joueur éligible au MVP, dérivé de

@@ -258,6 +258,7 @@ model Club {
   matchParticipations     MatchParticipation[]
   // Match Result Engine, Phase A.
   matchResults            MatchResult[]
+  matchResultsAsOpponent  MatchResult[]      @relation("MatchResultOpponent")
   competitionClubs        CompetitionClub[]
   // Social Foundations — au plus une conversation CLUB par club (index
   // unique partiel posé en SQL, non exprimable ici — voir migration RLS).
@@ -618,9 +619,15 @@ model MatchResult {
   mvpUserId      String?      @map("mvp_user_id") @db.Uuid
   recordedBy     String       @map("recorded_by") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at")
+  // 0027 — club adverse CPC réel (nullable) + compétition optionnelle.
+  // CHECK SQL : opponent_club_id IS DISTINCT FROM club_id. Pas de seed.
+  opponentClubId String?      @map("opponent_club_id") @db.Uuid
+  competitionId  String?      @map("competition_id") @db.Uuid
 
   checkin MatchCheckin @relation(fields: [matchCheckinId, clubId], references: [id, clubId], onDelete: Cascade)
   club    Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  opponentClub Club?   @relation("MatchResultOpponent", fields: [opponentClubId], references: [id], onDelete: SetNull)
+  competition  Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
   mvp     User?        @relation("MatchResultMvp", fields: [mvpUserId], references: [id], onDelete: SetNull)
   // Onupdate Restrict n'a pas de sens ici (id ne change jamais) — seul onDelete est fixé explicitement.
   recorder User        @relation("MatchResultRecordedBy", fields: [recordedBy], references: [id], onDelete: Restrict)
@@ -631,6 +638,8 @@ model MatchResult {
   // règle métier supplémentaire.
   @@unique([matchCheckinId, clubId])
   @@index([clubId])
+  @@index([opponentClubId])
+  @@index([competitionId])
   @@map("match_results")
 }
 
@@ -800,8 +809,9 @@ model Notification {
 // ------------------------------------------------------------------
 // Compétitions virtuelles EA SPORTS FC 27 Pro Clubs (fondation).
 // Miroir de supabase/migrations/0026_competitions_foundation.sql —
-// NE PAS prisma migrate deploy (Option B). Pas de standings : match_results
-// n'a pas de competition_id (aucun classement remplissable sans inventer).
+// NE PAS prisma migrate deploy (Option B). Classement : uniquement si
+// match_results a competition_id + opponent_club_id (0027) ET au moins
+// une ligne réelle liée — jamais season_stats, jamais de rows inventés.
 // ------------------------------------------------------------------
 
 model Competition {
@@ -815,6 +825,7 @@ model Competition {
 
   creator User              @relation("CompetitionsCreated", fields: [createdBy], references: [id], onDelete: Cascade)
   clubs   CompetitionClub[]
+  matchResults MatchResult[]
 
   @@index([status])
   @@index([createdBy])

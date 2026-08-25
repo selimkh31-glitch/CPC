@@ -63,7 +63,14 @@ npm run prisma:migrate
 # 2. supabase/migrations/0003_triggers.sql   (dépend des policies ci-dessus)
 ```
 
-**Compétitions (0026) — à appliquer manuellement, pas depuis l'agent :** coller `supabase/migrations/0026_competitions_foundation.sql` dans le SQL Editor du projet distant **après** 0025. Ne **pas** `prisma migrate deploy` (Option B, double-apply). Puis déployer les Edge `create-competition` et `register-competition-club`. Aucune table de classements : `match_results` n'a pas de `competition_id`.
+**Compétitions (0026 + 0027) — à appliquer manuellement, pas depuis l'agent :** Option B, **pas** `prisma migrate deploy` (double-apply).
+
+```bash
+npx prisma db execute --file supabase/migrations/0026_competitions_foundation.sql --schema prisma/schema.prisma
+npx prisma db execute --file supabase/migrations/0027_match_result_competition_link.sql --schema prisma/schema.prisma
+```
+
+Puis déployer `create-competition`, `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés.
 
 Tous les `id` (sauf `users.id`, toujours l'UID Supabase Auth) utilisent `@default(dbgenerated("gen_random_uuid()"))` — un vrai DEFAULT Postgres — pour que les INSERT faits hors Prisma Client (app mobile via `supabase-js`, Edge Functions) fonctionnent sans fournir `id`.
 

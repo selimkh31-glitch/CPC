@@ -10,8 +10,9 @@
  * - `ea-sync` — formule goals×4 + assists×3 + cleanSheets×2 (payload club EA,
  *   rapprochement username, pas un id joueur vérifié)
  * - `season-ranking` — percentiles de `division` sur ces points
- * `mvp_count` n'est jamais incrémenté hors seed. `match_results` n'a pas
- * `competition_id`. Ne pas inventer de standings.
+ * `mvp_count` n'est jamais incrémenté hors seed. `/leagues` n'affiche pas
+ * de classement live (`season_stats` ≠ `match_results`). Le classement
+ * compétition vit sur `/competitions`, uniquement depuis des résultats liés.
  */
 import { canFillStandingsFromMatchResults } from "./competitions";
 

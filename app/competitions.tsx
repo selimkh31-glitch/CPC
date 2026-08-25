@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CreateCompetitionForm } from "@/components/competitions/CreateCompetitionForm";
+import { CompetitionStandings } from "@/components/competitions/CompetitionStandings";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyClubs } from "@/lib/hooks/useClubs";
 import { useCompetitions, useRegisterCompetitionClub } from "@/lib/hooks/useCompetitions";
+import { useCompetitionLinkedResults, type LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
 import { toast } from "@/lib/toast";
 import {
   COMPETITION_COPY,
@@ -21,7 +23,8 @@ import type { ClubRow, CompetitionRow } from "@/lib/types";
 
 /**
  * Compétitions virtuelles EA SPORTS FC 27 Pro Clubs — stack, pas un onglet.
- * Ligues (`/leagues`) reste hors tab bar. Pas de brackets / classements / saisons.
+ * Ligues (`/leagues`) reste hors tab bar. Classement seulement si des
+ * `match_results` liés existent (competition_id + opponent_club_id).
  */
 export default function CompetitionsScreen() {
   const { session } = useAuth();
@@ -33,6 +36,8 @@ export default function CompetitionsScreen() {
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const clubId = selectedClubId ?? clubs[0]?.id ?? null;
   const selectedClub = clubs.find((c) => c.id === clubId) ?? null;
+  const competitionIds = useMemo(() => (competitions ?? []).map((c) => c.id), [competitions]);
+  const linkedResults = useCompetitionLinkedResults(competitionIds);
 
   const clubOptions = useMemo(
     () => clubs.map((c) => ({ id: c.id, name: c.name })),
@@ -122,6 +127,10 @@ export default function CompetitionsScreen() {
               competition={competition}
               managedClub={selectedClub}
               registering={register.isPending}
+              linkedResults={linkedResults.data}
+              linkedLoading={linkedResults.isLoading}
+              linkedError={linkedResults.isError}
+              onRetryLinked={() => linkedResults.refetch()}
               onRegister={() => {
                 if (!selectedClub) {
                   toast.error(COMPETITION_COPY.noManagedClub);
@@ -155,11 +164,19 @@ function CompetitionCard({
   competition,
   managedClub,
   registering,
+  linkedResults,
+  linkedLoading,
+  linkedError,
+  onRetryLinked,
   onRegister,
 }: {
   competition: CompetitionRow;
   managedClub: ClubRow | null;
   registering: boolean;
+  linkedResults: LinkedMatchResultRow[] | undefined;
+  linkedLoading: boolean;
+  linkedError: boolean;
+  onRetryLinked: () => void;
   onRegister: () => void;
 }) {
   const registeredIds = (competition.clubs ?? []).map((row) => row.club_id);
@@ -190,6 +207,13 @@ function CompetitionCard({
       ) : already ? (
         <Text className="text-xs font-bold text-accent">{COMPETITION_COPY.alreadyRegistered}</Text>
       ) : null}
+      <CompetitionStandings
+        competition={competition}
+        results={linkedResults}
+        isLoading={linkedLoading}
+        isError={linkedError}
+        onRetry={onRetryLinked}
+      />
     </Card>
   );
 }

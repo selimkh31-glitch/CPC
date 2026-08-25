@@ -36,7 +36,11 @@ console.log("lib/leagues.ts");
 test("pas de classement live par défaut (season_stats ≠ match_results)", () => {
   assert.false(SEASON_STATS_WRITTEN_FROM_MATCH_RESULTS, "flag");
   assert.false(canShowLiveLeagueRanking(), "default");
-  assert.false(canFillStandingsFromMatchResults(), "0014 columns");
+  assert.true(canFillStandingsFromMatchResults(), "0027 columns exist");
+  assert.false(
+    canFillStandingsFromMatchResults(["id", "club_id", "our_score", "opponent_score", "outcome"]),
+    "0014 columns still insufficient"
+  );
 });
 
 test("colonnes 0014 seules ne suffisent pas ; pas de shortcut seed/EA", () => {
@@ -55,7 +59,7 @@ test("colonnes 0014 seules ne suffisent pas ; pas de shortcut seed/EA", () => {
   );
 });
 
-test("futur : live seulement si match_results liés ET agrégés", () => {
+test("futur : live ligues seulement si match_results liés ET agrégés dans season_stats", () => {
   assert.true(
     canShowLiveLeagueRanking({
       matchResultsColumns: ["competition_id", "opponent_club_id"],

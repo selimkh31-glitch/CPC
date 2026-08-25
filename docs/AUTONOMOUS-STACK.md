@@ -1,9 +1,9 @@
-# Pile autonome CPC — PR #5 à #13
+# Pile autonome CPC — PR #5 à #14
 
 **Produit :** ClubPro Connect = matchmaking **EA SPORTS FC 27 Pro Clubs** uniquement. Joueur = profil virtuel Pro Clubs. Club = équipe virtuelle Pro Clubs. Pas de football IRL, pas de stats EA inventées, pas d’Expo Go.
 
-**Date QA :** 25 août 2026 (P0 stabilize) — realtime audit 24 août.  
-**Tip de la pile :** `cursor/qa-autonomous-stack-5884` (PR **#14**) — contient **PR #5** (LIVE UX compacte) **et** PR **#6–#13**.  
+**Date QA :** 25 août 2026 (lien match → club adverse + compétition) — P0 stabilize le même jour.  
+**Tip de la pile :** `cursor/qa-autonomous-stack-5884` (PR **#14**) — contient **PR #5** (LIVE UX compacte) **et** PR **#6–#13**, plus le lien `match_results` (0027).  
 **Base d’intégration :** `social-ea-foundations-phase-2` (contient déjà PR **#2** merged — P0/P1 LIVE + safety/notifications — et PR **#3** merged — retab IA).  
 **Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone, **prêt EAS iOS/Android** (config réelle, pas de build lancé). L’agent n’applique **pas** les migrations et ne merge **pas** les PR GitHub vers la base.
 
@@ -64,9 +64,18 @@ Hors séquence : PR **#1** (env cloud), PR **#4** (fix manager). Ne pas les glis
 
 ## 4. Migrations prod (Option B)
 
-Source SQL = `supabase/migrations/`. Miroir Prisma dans `schema.prisma` seulement — **ne pas** `prisma migrate deploy` pour 0021–0026 (double-apply).
+Source SQL = `supabase/migrations/`. Miroir Prisma dans `schema.prisma` seulement — **ne pas** `prisma migrate deploy` pour 0021–0027 (double-apply).
 
-L’agent **n’applique pas** le SQL en production. Le fondateur colle dans le SQL Editor du projet distant, **dans l’ordre**, après 0002–0020 déjà en place :
+L’agent **n’applique pas** le SQL en production. Le fondateur / CoS applique **dans l’ordre**, après 0002–0020 déjà en place.
+
+**Option B (0026 et 0027)** — même commande, depuis la racine du repo, avec `DATABASE_URL` (Direct) :
+
+```bash
+npx prisma db execute --file supabase/migrations/0026_competitions_foundation.sql --schema prisma/schema.prisma
+npx prisma db execute --file supabase/migrations/0027_match_result_competition_link.sql --schema prisma/schema.prisma
+```
+
+Alternative : coller le fichier dans le SQL Editor du projet distant. **Windows :** PowerShell, même commande `npx prisma db execute --file ...` (pas `prisma migrate deploy`).
 
 | Fichier | Origine | Rôle |
 |---|---|---|
@@ -75,11 +84,12 @@ L’agent **n’applique pas** le SQL en production. Le fondateur colle dans le 
 | `0023_expire_live_janitor.sql` | PR #2 | RPC janitor + pg_cron optionnel |
 | `0024_apply_live_match_rls.sql` | PR #2 | CHECK LIVE + trigger apply + RLS manager |
 | `0025_safety_notifications.sql` | PR #2 | `user_blocks` / `user_reports` / `notifications` + RPC |
-| **`0026_competitions_foundation.sql`** | **PR #9** | **`competitions` + `competition_clubs` (unique paire). Pas de standings. Pas d’ALTER `match_results`.** |
+| **`0026_competitions_foundation.sql`** | **PR #9** | **`competitions` + `competition_clubs` (unique paire).** |
+| **`0027_match_result_competition_link.sql`** | **PR #14 (ce slice)** | **`match_results.opponent_club_id` + `competition_id` (nullable FKs). CHECK adverse ≠ club. Trigger : si compétition, les deux clubs sont dans `competition_clubs`. `finalize_match` étendu. Pas de table standings.** |
 
-**0026 est obligatoire en prod** dès que le code #9+ tourne. Sans 0026 : création / liste / inscription compétition cassées. Appliquer **après** 0025.
+**0026 est obligatoire en prod** dès que le code #9+ tourne. **0027 est obligatoire** dès que le code de finalisation avec club adverse / compétition tourne. Sans 0027 : `finalize-match` envoie `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas. Appliquer **0026 puis 0027**. L’agent n’a pas `DATABASE_URL` ici — **humain / CoS doit appliquer**.
 
-Pas de migration 0027 pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
+Pas de migration 0028 pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
 PR **#5** : aucune migration (UX / filtres UI seulement).
 
 ---
@@ -118,14 +128,15 @@ npx supabase functions deploy \
 | `request-departure` / `respond-departure` / `release-member` | true | Départ / libération (onglet Club) |
 | `invite-to-club` / `invite-to-slot` | true | Invitations |
 | `launch-match-checkin` | true | Session LIVE → check-in (`match_checkins`) |
-| `finalize-match` | true | Check-in → `match_results` (score / outcome serveur) |
+| `finalize-match` | true | Check-in → `match_results` (score / outcome serveur / club adverse / compétition optionnelle) — **redéployer après 0027** |
 | `expire-live-sessions` | **`verify_jwt = false`** (auth `CRON_SECRET`) | Janitor LIVE ; pg_cron SQL 0023 est l’alternative |
 | `create-competition` / `register-competition-club` | true | Fondation #9 |
 | `notify-message-received` | true | Notif in-app DM (#10) |
 
 Sans `notify-message-received` : le message s’insère quand même (INSERT client + RLS) ; **pas** de ligne `notifications` `MESSAGE_RECEIVED`.  
 Sans `create-competition` / `register-competition-club` : pas de création / inscription compétition.  
-Sans `launch-match-checkin` / `finalize-match` : la feuille `/match` affiche le check-in, mais lancer / enregistrer un résultat échoue (Edge absente). **Ça n’alimente pas les compétitions** : `match_results` n’a toujours pas `competition_id` (voir §6.3).  
+Sans `launch-match-checkin` / `finalize-match` : la feuille `/match` affiche le check-in, mais lancer / enregistrer un résultat échoue (Edge absente).  
+Sans **0027 + redéploiement `finalize-match`** : le club adverse / la compétition ne sont pas persistés ; le classement compétition reste vide (honnête).  
 `expire-live-sessions` : si pg_cron 0023 est actif, le SQL janitor tourne déjà ; l’Edge reste l’invoke HTTP documenté.
 
 Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `create-group`, `set-group-member-role`, `link-ea-club`, …) : les redéployer si le distant n’a pas la version de cette pile. Toutes les fonctions invocables par l’app sont maintenant déclarées dans `supabase/config.toml` (`verify_jwt = true`, sauf crons / webhook).
@@ -149,7 +160,7 @@ Relance **complète** sur `cursor/qa-autonomous-stack-5884` (`61f34a3` + commits
 | `npm run test:session-state` | **PASS** (10) |
 | `npm run test:club-profile` | **PASS** (10) |
 | `npm run test:leagues` | **PASS** (5) |
-| `npm run test:competitions` | **PASS** (9) |
+| `npm run test:competitions` | **PASS** (scorer + lien 0027) |
 | `npm run test:social` | **PASS** (5) |
 | `npm run test:notification-read` | **PASS** (3) |
 | `npm run test:profile-identity` | **PASS** (7) |
@@ -186,27 +197,30 @@ Travail incomplet **réel** (pas des faux positifs) :
 
 Crash visé : `supabase.channel(topic)` réutilise l’instance ; un 2ᵉ `.on()` après `.subscribe()` plante. Un canal réel par topic, listeners en Set.
 
-### 6.3 Trous P0 pour l’agent suivant — session → match → résultat
+### 6.3 Session → match → résultat → compétition (0027)
 
-Le moteur **existe** déjà, il n’est **pas** branché sur les compétitions.
+Le moteur **existe** et le **lien compétition** est désormais dans le schéma (à appliquer en prod : 0027).
 
 ```
 LIVE club (is_live + expires_at)
   → feuille /match (roster réel, invite-to-slot)
   → launch-match-checkin  → match_checkins + match_participations
-  → finalize-match        → match_results (our_score, opponent_score, outcome, mvp)
-  ✗  competition_id / opponent_club_id ABSENTS (0014, aucun ALTER 0026)
-  ✗  Ligues : canShowLiveLeagueRanking() = false (season_stats ≠ match_results)
-  ✗  Compétitions : create + register only ; pas de standings
+  → finalize-match        → match_results
+       our_score, opponent_score, outcome (serveur), mvp
+       opponent_club_id (FK clubs, CHECK ≠ club_id)
+       competition_id (FK competitions, optionnel)
+  → Classement /competitions : UNIQUEMENT si ≥1 ligne avec
+       competition_id ET opponent_club_id
+       W=3 / D=1 / L=0, les deux clubs crédités, pas de season_stats
 ```
 
-Ne **pas** inventer de classement. Ne **pas** ALTER `match_results` dans un hotfix P0 « pour que Ligues affiche quelque chose ». Le lien compétition doit être un schéma réel (FK, club adverse, agrégation) + Edge, pas un mashup `season_stats` / seed / EA.
+Ne **pas** inventer de classement. Ne **pas** remplir Ligues depuis `season_stats` / seed / EA. `canShowLiveLeagueRanking()` reste false tant que `season_stats` n’est pas agrégé depuis `match_results`.
 
 Autres trous hors moteurs LIVE (volontaires, pas des régressions de ce tip) :
 
 - Conversation type **CLUB** : schéma prêt, **non provisionnée**.
 - Passer Pro : `FEATURE_REVENUECAT` off → CTA désactivée FR. Pas de paiement fictif.
-- 0026 + Edge §5 : à coller / déployer **par un humain** ; sans ça création compétition et notif DM cassées en prod.
+- 0026 + 0027 + Edge §5 : à coller / déployer **par un humain / CoS** ; sans ça création compétition, notif DM, et lien résultat cassés en prod.
 - README « Expo Go » encore présent (démarrage historique) — **ne pas** l’utiliser (Dev Client).
 
 ---
@@ -233,7 +247,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 ### Sessions / effectif (#7)
 
 - Recrutement LIVE et « match lancé » (check-in sans `match_results`) peuvent coexister — pas d’enum OPEN/FULL.
-- Feuille `/match` : roster réel, slot vide → recherche → `invite-to-slot`. Check-in via `launch-match-checkin`, résultat via `finalize-match`. Le résultat **n’est pas** rattaché à une compétition (pas de `competition_id`).
+- Feuille `/match` : roster réel, slot vide → recherche → `invite-to-slot`. Check-in via `launch-match-checkin`. Finaliser : scores + **club adverse CPC réel** (recherche, pas un nom libre) + compétition **optionnelle** (OPEN où les deux clubs sont inscrits). Outcome serveur.
 
 ### Social (#8)
 
@@ -241,11 +255,11 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 - Joueur bloqué : pas de DM, copy « Tu ne peux pas envoyer de message à ce joueur (blocage). »
 - Groupes : liste + détail. Pas de 4e onglet. Conversation type **CLUB** toujours non provisionnée.
 
-### Compétitions (#9) — exige 0026 + Edge
+### Compétitions (#9 + 0027) — exige 0026 + 0027 + Edge `finalize-match` redéployée
 
 - Créer une compétition (DRAFT ou OPEN), la voir dans la liste.
 - OWNER/MANAGER : inscrire un club géré sur une OPEN. Doublon → **409**, pas une 2ᵉ ligne.
-- Pas de classement généré (volontaire : `match_results` n’a pas `competition_id`).
+- Classement **seulement** s’il existe au moins un `match_results` avec `competition_id` **et** `opponent_club_id`. Sinon copy honnête, **pas** de rows 0-0-0, **pas** de `season_stats`.
 
 ### Notifications (#10 + #11)
 
@@ -270,7 +284,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 
 ### Hors scope à ne pas « tester comme livré »
 
-- Expo Go, CPCP, stats EA inventées, brackets / standings compétition, conversation CLUB.
+- Expo Go, CPCP, stats EA inventées, conversation CLUB, classement Ligues (`season_stats`).
 
 ---
 
