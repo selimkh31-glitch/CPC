@@ -17,3 +17,23 @@ export function clubReadOrNull<T>(input: { data: T | null; error: unknown }): T 
   if (input.error) throw input.error;
   return input.data ?? null;
 }
+
+export type ManagedClubScreen = "loading" | "error" | "empty" | "ready";
+
+/**
+ * 0 clubs / pas d'id → empty + créer. ErrorState seulement si un id club
+ * existe ET la lecture a vraiment échoué (réseau / RLS).
+ */
+export function managedClubScreenState(input: {
+  clubId: string | null;
+  club: unknown;
+  isLoading: boolean;
+  isFetching?: boolean;
+  isError: boolean;
+}): ManagedClubScreen {
+  if (!input.clubId) return "empty";
+  if (input.isLoading || (Boolean(input.isFetching) && !input.club && !input.isError)) return "loading";
+  if (input.isError) return "error";
+  if (!input.club) return "empty";
+  return "ready";
+}

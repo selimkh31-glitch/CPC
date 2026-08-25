@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
-import { Button } from "@/components/ui/Button";
+import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { PlayerCard } from "@/components/player/PlayerCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { FormationSelector } from "@/components/club/FormationSelector";
@@ -33,6 +33,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 import { buildPlayerCardData } from "@/lib/playerCard";
+import { managedClubScreenState } from "@/lib/clubRead";
 
 /**
  * Feuille de match — organisation (hors tab bar, `href: null`).
@@ -43,7 +44,7 @@ export default function MatchTab() {
   const { session } = useAuth();
   const now = useLiveClock();
   const { setSelectedManagedClubId } = useAppMode();
-  const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
+  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const [isMatchDay, setIsMatchDay] = useState(false);
   const [prepExpanded, setPrepExpanded] = useState(false);
@@ -56,10 +57,13 @@ export default function MatchTab() {
     refetch: refetchCheckin,
   } = useActiveMatchCheckin(club?.id ?? null);
 
+  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
+
   useFocusEffect(
     useCallback(() => {
+      if (!clubId) return;
       refetch();
-    }, [refetch])
+    }, [clubId, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -79,26 +83,16 @@ export default function MatchTab() {
     </SafeAreaView>
   );
 
-  if (isLoading || (isFetching && !club && !isError)) {
+  if (screen === "loading") {
     return shell(<Skeleton className="h-[420px]" />);
   }
 
-  if (isError) {
+  if (screen === "error") {
     return shell(<ErrorState message="Impossible de charger la feuille de match." onRetry={refetch} />);
   }
 
-  if (!club) {
-    return shell(
-      <View className="gap-4">
-        <EmptyState
-          title="Aucun club géré"
-          subtitle="Crée un club, ou fais-toi nommer manager."
-        />
-        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
-          Créer un club
-        </Button>
-      </View>
-    );
+  if (screen === "empty" || !club) {
+    return shell(<ManagedClubEmpty />);
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;

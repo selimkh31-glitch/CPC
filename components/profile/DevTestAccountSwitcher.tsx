@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
-import { supabase } from "@/lib/supabase/client";
-import { queryClient } from "@/lib/queryClient";
 import { toast } from "@/lib/toast";
+import { switchDevTestAccount } from "@/lib/devTestAccountSwitch";
 import {
   CPC_DEV_TEST_ACCOUNTS,
   cpcDevTestPassword,
@@ -12,7 +11,7 @@ import {
 
 /**
  * Switcher Comptes test — Profil (et Club en __DEV__). Jamais en production.
- * Sign-in email/mot de passe existant. Pas de wipe DB.
+ * Sign-in email/mot de passe existant. Pas de wipe DB. Pas de coupe LIVE.
  */
 export function DevTestAccountSwitcher() {
   const [busy, setBusy] = useState<CpcDevTestEmail | null>(null);
@@ -26,10 +25,7 @@ export function DevTestAccountSwitcher() {
     setBusy(email);
     try {
       Haptics.selectionAsync();
-      queryClient.clear();
-      await supabase.auth.signOut();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      await switchDevTestAccount(email);
       toast.success(`Connecté : ${email}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Connexion test impossible.";

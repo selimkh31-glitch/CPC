@@ -4,6 +4,8 @@
  *
  * Lancer : npx tsx scripts/test-live.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   computeLiveExpiresAt,
   clubLiveLayout,
@@ -24,6 +26,12 @@ const assert = {
     if (actual !== expected) {
       throw new Error(`Assertion échouée (${label}).\n  reçu: ${actual}\n  attendu: ${expected}`);
     }
+  },
+  true(actual: unknown, label: string) {
+    if (actual !== true) throw new Error(`Assertion échouée (${label}) : attendu true, reçu ${actual}`);
+  },
+  false(actual: unknown, label: string) {
+    if (actual !== false) throw new Error(`Assertion échouée (${label}) : attendu false, reçu ${actual}`);
   },
 };
 
@@ -126,6 +134,19 @@ test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
   assert.equal(LIVE_UX_COPY.emptyNoClubs.includes("invent"), false, "no fake");
 });
 
+test("joueur LIVE = club, pas un match ; club LIVE = joueurs", () => {
+  assert.equal(LIVE_UX_COPY.playerHeadline, "Je cherche un club", "player headline");
+  assert.equal(LIVE_UX_COPY.clubHeadline, "On cherche des joueurs", "club headline");
+  assert.equal(LIVE_UX_COPY.clubOpenTitle, "Club en LIVE", "club open");
+  assert.equal(LIVE_UX_COPY.emptySelfLive.includes("club"), true, "self live clubs");
+  assert.equal(LIVE_UX_COPY.emptyNoPlayers.includes("club"), true, "empty players = club");
+  assert.equal(/match/i.test(LIVE_UX_COPY.playerHeadline), false, "player title not match");
+  assert.equal(/match/i.test(LIVE_UX_COPY.emptyNoClubs), false, "empty clubs not match");
+  assert.equal(/match/i.test(LIVE_UX_COPY.emptySelfLive), false, "self empty not match");
+  assert.equal(/match/i.test(LIVE_UX_COPY.emptyNoPlayers), false, "others empty not match");
+  assert.equal(/On cherche un match/.test(LIVE_UX_COPY.clubHeadline), false, "club not match hunt");
+});
+
 test("liveUiState — ready > open > off", () => {
   assert.equal(liveUiState({ liveActive: false }), "off", "off");
   assert.equal(liveUiState({ liveActive: true }), "open", "open");
@@ -159,6 +180,17 @@ test("clubLiveLayout — ready ne cache pas Passer LIVE ; feuille remplie si mat
   assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "go live copy");
   assert.equal(LIVE_UX_COPY.quit, "Quitter", "quit");
   assert.equal(LIVE_UX_COPY.newLive, "Nouveau LIVE", "new live copy");
+});
+
+test("panels LIVE : joueur = playerHeadline, club = clubHeadline / Club en LIVE", () => {
+  const player = readFileSync(`${process.cwd()}/components/live/PlayerLivePanel.tsx`, "utf8");
+  const club = readFileSync(`${process.cwd()}/components/club/LiveSessionPanel.tsx`, "utf8");
+  assert.true(player.includes("LIVE_UX_COPY.playerHeadline"), "player uses playerHeadline");
+  assert.false(player.includes("LIVE_UX_COPY.clubHeadline"), "player not clubHeadline");
+  assert.false(player.includes("On cherche un match"), "player panel no match hunt");
+  assert.true(club.includes("LIVE_UX_COPY.clubHeadline"), "club off uses clubHeadline");
+  assert.true(club.includes("LIVE_UX_COPY.clubOpenTitle"), "club open title");
+  assert.false(club.includes("LIVE_UX_COPY.playerHeadline"), "club not playerHeadline");
 });
 
 console.log(`\n${passed} tests live OK`);

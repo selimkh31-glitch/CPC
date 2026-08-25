@@ -3,12 +3,12 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, ErrorState } from "@/components/ui/Screen";
-import { Button } from "@/components/ui/Button";
+import { ErrorState } from "@/components/ui/Screen";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
+import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { ClubCard } from "@/components/club/ClubCard";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
@@ -23,6 +23,7 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { canMutateClub } from "@/lib/sessionState";
+import { managedClubScreenState } from "@/lib/clubRead";
 
 /**
  * Club — identité manager. Recrutement LIVE et invitations sont ailleurs.
@@ -31,7 +32,7 @@ import { canMutateClub } from "@/lib/sessionState";
 export default function ClubTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
+  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
   const {
     data: matchHistory,
     isLoading: matchHistoryLoading,
@@ -39,10 +40,13 @@ export default function ClubTab() {
     refetch: refetchMatchHistory,
   } = useClubMatchHistory(club?.id ?? null, club?.name);
 
+  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
+
   useFocusEffect(
     useCallback(() => {
+      if (!clubId) return;
       refetch();
-    }, [refetch])
+    }, [clubId, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -53,11 +57,11 @@ export default function ClubTab() {
     </SafeAreaView>
   );
 
-  if (isLoading || (isFetching && !club && !isError)) {
+  if (screen === "loading") {
     return shell(<Skeleton className="h-40" />);
   }
 
-  if (isError) {
+  if (screen === "error") {
     return shell(
       <View className="gap-4">
         <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
@@ -67,19 +71,16 @@ export default function ClubTab() {
     );
   }
 
-  if (!club) {
+  if (screen === "empty" || !club) {
     return shell(
-      <View className="gap-4">
-        <EmptyState
-          title="Aucun club géré"
-          subtitle="Crée un club, ou fais-toi nommer manager."
-        />
-        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
-          Créer un club
-        </Button>
-        <ModeLifeToggle target="PLAYER" />
-        <DevTestAccountSwitcher />
-      </View>
+      <ManagedClubEmpty
+        extras={
+          <>
+            <ModeLifeToggle target="PLAYER" />
+            <DevTestAccountSwitcher />
+          </>
+        }
+      />
     );
   }
 

@@ -4,7 +4,7 @@
  */
 // @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
 import { readFileSync } from "fs";
-import { clubReadOrNull, isGoneClubReadError } from "../lib/clubRead";
+import { clubReadOrNull, isGoneClubReadError, managedClubScreenState } from "../lib/clubRead";
 
 const root = process.cwd();
 
@@ -54,11 +54,43 @@ test("PGRST116 et 0 rows = club gone, pas une erreur à throw", () => {
   assert.true(threw, "rls still throws");
 });
 
-test("useClub : maybeSingle + club gone = null", () => {
+test("useClub : maybeSingle + club gone = null ; jamais id null vers PostgREST", () => {
   const src = read("lib/hooks/useClubs.ts");
   assert.true(src.includes("clubReadOrNull"), "helper");
   assert.true(src.includes("maybeSingle"), "maybeSingle");
+  assert.true(src.includes("if (!clubId) return null"), "queryFn no-op without id");
+  assert.false(/\.eq\("id", clubId!\)/.test(src), "no clubId! eq");
   assert.false(/\.eq\("id", clubId!\)\s*\.single\(\)/.test(src), "no single on club read");
+});
+
+test("0 clubs / pas d'id = empty même si isError (refetch TanStack)", () => {
+  assert.equal(
+    managedClubScreenState({ clubId: null, club: null, isLoading: false, isFetching: true, isError: true }),
+    "empty",
+    "null id + isError is empty"
+  );
+  assert.equal(
+    managedClubScreenState({ clubId: null, club: null, isLoading: true, isFetching: true, isError: false }),
+    "empty",
+    "null id never loading skeleton"
+  );
+  assert.equal(
+    managedClubScreenState({ clubId: "c1", club: null, isLoading: false, isFetching: false, isError: true }),
+    "error",
+    "real id + fail = error"
+  );
+  assert.equal(
+    managedClubScreenState({ clubId: "c1", club: null, isLoading: false, isFetching: true, isError: false }),
+    "loading",
+    "real id fetching = loading"
+  );
+  assert.equal(
+    managedClubScreenState({ clubId: "c1", club: { id: "c1" }, isLoading: false, isError: false }),
+    "ready",
+    "ready"
+  );
+  const hook = read("lib/hooks/useManagedClub.ts");
+  assert.true(hook.includes("if (!selectedManagedClubId) return Promise.resolve()"), "refetch no-op");
 });
 
 test("layout vide l'id stale, ne persiste pas selectedManagedClubId", () => {
@@ -72,34 +104,59 @@ test("layout vide l'id stale, ne persiste pas selectedManagedClubId", () => {
 });
 
 test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'erreur", () => {
+  const empty = read("components/club/ManagedClubEmpty.tsx");
+  assert.true(empty.includes('title="Aucun club géré"'), "empty title");
+  assert.true(empty.includes("Créer un club"), "create cta");
+  assert.true(empty.includes('router.push("/create-club")'), "create route");
+  assert.false(empty.includes("Impossible de charger ce club."), "empty is not error copy");
+
   const screens = [
     "app/(club)/(tabs)/index.tsx",
     "app/(club)/(tabs)/candidatures.tsx",
     "app/(club)/(tabs)/effectif.tsx",
+    "app/(club)/(tabs)/match.tsx",
   ];
   for (const rel of screens) {
     const src = read(rel);
-    const emptyIdx = src.indexOf('title="Aucun club géré"');
-    const createIdx = src.indexOf('router.push("/create-club")');
-    const errorIdx = src.indexOf('message="Impossible de charger ce club."');
-    assert.true(emptyIdx >= 0, `${rel} empty`);
-    assert.true(createIdx >= 0, `${rel} create`);
-    assert.true(errorIdx >= 0, `${rel} real error still exists`);
-    const emptyBlock = src.slice(emptyIdx, emptyIdx + 500);
-    assert.true(emptyBlock.includes("Créer un club") || src.slice(Math.max(0, createIdx - 200), createIdx + 80).includes("create-club"), `${rel} create near empty`);
-    assert.false(emptyBlock.includes("Impossible de charger ce club."), `${rel} empty is not error copy`);
+    assert.true(src.includes("managedClubScreenState"), `${rel} screen state`);
+    assert.true(src.includes("<ManagedClubEmpty"), `${rel} empty component`);
+    const errorBefore = src.indexOf('if (screen === "error")');
+    const emptyBefore = src.indexOf('if (screen === "empty"');
+    assert.true(errorBefore >= 0 && emptyBefore >= 0, `${rel} error+empty branches`);
+    assert.true(emptyBefore > errorBefore, `${rel} empty after error branch (error only with id)`);
+    assert.true(src.includes("ManagedClubEmpty"), `${rel} uses shared empty`);
+    if (rel !== "app/(club)/(tabs)/match.tsx") {
+      assert.true(src.includes('message="Impossible de charger ce club."'), `${rel} real error still exists`);
+    }
   }
+
+  const live = read("app/(club)/(tabs)/index.tsx");
+  const clubTab = read("app/(club)/(tabs)/effectif.tsx");
+  const match = read("app/(club)/(tabs)/match.tsx");
+  for (const [rel, src] of [
+    ["LIVE", live],
+    ["Club", clubTab],
+    ["match", match],
+  ] as const) {
+    assert.true(src.includes("if (!clubId) return"), `${rel} skip refetch without id`);
+  }
+
   const rec = read("app/(club)/(tabs)/candidatures.tsx");
-  const recEmpty = rec.slice(rec.indexOf("if (!club)"), rec.indexOf("if (!club)") + 450);
-  assert.true(recEmpty.includes("Créer un club"), "recrutement create button");
-  assert.false(recEmpty.includes("Impossible de charger ce club."), "recrutement empty not error");
+  const recError = rec.indexOf('if (screen === "error")');
+  const recEmpty = rec.indexOf('if (screen === "empty"');
+  assert.true(recEmpty > recError, "recrutement empty is not before error with a real id");
+  assert.true(rec.includes("<ManagedClubEmpty"), "recrutement create empty");
 });
 
-test("onglet Club : switcher même en erreur réseau", () => {
+test("onglet Club : switcher même en empty et en erreur réseau", () => {
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const errorIdx = clubTab.indexOf('message="Impossible de charger ce club."');
   const afterError = clubTab.slice(errorIdx, errorIdx + 400);
   assert.true(afterError.includes("DevTestAccountSwitcher"), "switcher on error");
+  const emptyIdx = clubTab.indexOf("<ManagedClubEmpty");
+  const afterEmpty = clubTab.slice(emptyIdx, emptyIdx + 350);
+  assert.true(afterEmpty.includes("DevTestAccountSwitcher"), "switcher on empty");
+  assert.true(afterEmpty.includes('ModeLifeToggle target="PLAYER"'), "passer en joueur on empty");
 });
 
 console.log(`\n${passed} tests OK`);

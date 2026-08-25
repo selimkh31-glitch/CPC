@@ -197,6 +197,7 @@ export function useGoPlayerLive(userId: string | null) {
   });
 }
 
+/** Coupe LIVE — uniquement le bouton Arrêter, jamais unmount / signOut / switch. */
 export function useGoPlayerOffline(userId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({

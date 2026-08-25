@@ -81,6 +81,7 @@ test("usernames cpc_* et postes du seed", () => {
 
 test("switcher Profil + Club, jamais LIVE, jamais wipe DB", () => {
   const switcher = read("components/profile/DevTestAccountSwitcher.tsx");
+  const helper = read("lib/devTestAccountSwitch.ts");
   const profile = read("app/(player)/(tabs)/profile.tsx");
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const liveClub = read("app/(club)/(tabs)/index.tsx");
@@ -90,14 +91,37 @@ test("switcher Profil + Club, jamais LIVE, jamais wipe DB", () => {
   assert.false(liveClub.includes("DevTestAccountSwitcher"), "not on club LIVE");
   assert.false(livePlayer.includes("DevTestAccountSwitcher"), "not on player LIVE");
   assert.true(switcher.includes("__DEV__"), "dev guard");
-  assert.true(switcher.includes("signInWithPassword"), "existing auth");
-  assert.true(switcher.includes("signOut"), "reload session");
+  assert.true(helper.includes("signInWithPassword"), "existing auth");
+  assert.true(switcher.includes("switchDevTestAccount"), "uses helper");
   assert.true(switcher.includes("CPC_DEV_TEST_ACCOUNTS"), "uses accounts list");
   assert.false(/from\(['\"]rpc/.test(switcher), "no rpc wipe");
   assert.false(switcher.includes("delete("), "no delete");
   assert.false(switcher.includes("truncate"), "no truncate");
   assert.false(switcher.includes("console.log"), "don't log password");
   assert.false(switcher.includes("CpcDevTest1"), "password not in UI");
+});
+
+test("switcher / signOut ne coupent pas le LIVE joueur", () => {
+  const helper = read("lib/devTestAccountSwitch.ts");
+  const switcher = read("components/profile/DevTestAccountSwitcher.tsx");
+  const auth = read("lib/providers/AuthProvider.tsx");
+  const panel = read("components/live/PlayerLivePanel.tsx");
+  const blob = `${helper}\n${switcher}`;
+  assert.false(blob.includes('.from("player_sessions")'), "no player_sessions write");
+  assert.false(/update\(\s*\{\s*is_live:\s*false/.test(blob), "no is_live false write");
+  assert.false(blob.includes("useGoPlayerOffline"), "no go-offline hook");
+  assert.false(helper.includes("auth.signOut"), "switcher does not signOut first");
+  assert.false(switcher.includes("auth.signOut"), "UI does not signOut");
+  assert.true(helper.includes("queryClient.clear()"), "clear cache after switch");
+  const signOutAt = auth.indexOf("const signOut = useCallback");
+  assert.true(signOutAt >= 0, "auth signOut exists");
+  const signOutFn = auth.slice(signOutAt, signOutAt + 280);
+  assert.true(signOutFn.includes("supabase.auth.signOut"), "auth signOut is auth only");
+  assert.false(signOutFn.includes('.from("player_sessions")'), "auth signOut no live table");
+  assert.false(/update\(\s*\{\s*is_live:\s*false/.test(signOutFn), "auth signOut no is_live write");
+  assert.false(/useEffect\(/.test(panel), "panel has no unmount go-offline");
+  const stop = panel.slice(panel.indexOf("const stop"), panel.indexOf("const openSheet"));
+  assert.true(stop.includes("goOffline.mutate"), "Arrêter still cuts LIVE");
 });
 
 test("mot de passe env ou fallback __DEV__, pas loggé", () => {

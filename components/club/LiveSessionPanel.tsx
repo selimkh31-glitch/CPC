@@ -122,7 +122,7 @@ export function LiveSessionPanel({
         </>
       ) : (
         <>
-          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.offTitle}</Text>
+          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.clubHeadline}</Text>
           <Text className="mb-5 mt-2 text-sm text-fg-muted">Passe LIVE. Les joueurs te voient tout de suite.</Text>
           {canManage ? (
             <Button size="lg" loading={createSession.isPending} onPress={() => setSheetOpen(true)}>

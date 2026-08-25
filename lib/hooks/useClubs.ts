@@ -35,12 +35,13 @@ export function useClub(clubId: string | null) {
     queryKey: ["club", clubId],
     enabled: Boolean(clubId),
     queryFn: async () => {
+      if (!clubId) return null;
       const { data, error } = await supabase
         .from("clubs")
         .select(
           `*, members:club_members(*, user:users(${USER_PUBLIC_COLUMNS})), sessions:club_sessions(*), slotAssignments:slot_assignments(*, user:users(${USER_PUBLIC_COLUMNS}))`
         )
-        .eq("id", clubId!)
+        .eq("id", clubId)
         .maybeSingle();
       return clubReadOrNull({ data, error }) as
         | (ClubRow & { members: ClubMemberRow[]; sessions: ClubSessionRow[]; slotAssignments: SlotAssignmentRow[] })

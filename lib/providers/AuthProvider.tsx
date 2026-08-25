@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, fetchProfile]);
 
   const signOut = useCallback(async () => {
+    // Auth only. Couper le LIVE = bouton Arrêter, pas la déconnexion.
     await supabase.auth.signOut();
   }, []);
 

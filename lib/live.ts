@@ -101,26 +101,24 @@ export function clubLiveLayout(input: {
 }
 
 /**
- * Copy LIVE (tu, football, courte). Pas de TTL / session / matching à l'écran.
- * Empty = on cherche un match, jamais un vide muet ni une session fake.
+ * Copy LIVE (tu, football, courte). Joueur = club. Club = joueurs.
+ * Pas de « on cherche un match » côté joueur.
  */
 export const LIVE_UX_COPY = {
   title: "LIVE",
-  playerHeadline: "On cherche un match",
-  clubHeadline: "On cherche un match",
+  playerHeadline: "Je cherche un club",
+  clubHeadline: "On cherche des joueurs",
   goLive: "Passer LIVE",
   findClub: "Clubs en LIVE",
   backToLive: "LIVE",
-  emptyNoClubs: "Personne ne cherche un match. Passe LIVE, ou vois les clubs.",
-  emptySelfLive: "On cherche. Personne d'autre pour l'instant.",
-  emptyNoPlayers: "Personne d'autre ne cherche pour l'instant.",
+  emptyNoClubs: "Aucun club en LIVE. Passe LIVE, ou vois les clubs.",
+  emptySelfLive: "Je cherche un club. Personne d'autre pour l'instant.",
+  emptyNoPlayers: "Personne d'autre ne cherche un club pour l'instant.",
   liveClubsNow: (n: number) => (n === 1 ? "1 club en LIVE" : `${n} clubs en LIVE`),
   noLiveClubs: "Aucun club en LIVE",
   otherPlayers: "Ils veulent jouer",
   clubEmptyPlayersLive: "Personne de dispo sur tes postes.",
   clubEmptyPlayersOffline: "Passe LIVE pour voir qui veut jouer.",
-  offTitle: "On cherche un match",
-  openTitle: "On cherche un match",
   clubOpenTitle: "Club en LIVE",
   readyTitle: "Le match est lancé",
   stop: "Arrêter",

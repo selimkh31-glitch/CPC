@@ -3,15 +3,17 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, ErrorState } from "@/components/ui/Screen";
+import { ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
+import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
+import { managedClubScreenState } from "@/lib/clubRead";
 import {
   CLUB_MATCH_SHEET_HREF,
   LIVE_UX_COPY,
@@ -26,13 +28,15 @@ import {
 export default function ClubLiveTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
+  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
   const { data: activeCheckin } = useActiveMatchCheckin(club?.id ?? null);
+  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
 
   useFocusEffect(
     useCallback(() => {
+      if (!clubId) return;
       refetch();
-    }, [refetch])
+    }, [clubId, refetch])
   );
 
   const shell = (body: ReactNode) => (
@@ -43,29 +47,16 @@ export default function ClubLiveTab() {
     </SafeAreaView>
   );
 
-  if (isLoading || (isFetching && !club && !isError)) {
+  if (screen === "loading") {
     return shell(<Skeleton className="h-40" />);
   }
 
-  if (isError) {
+  if (screen === "error") {
     return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
   }
 
-  if (!club) {
-    return shell(
-      <View className="gap-4">
-        <EmptyState
-          title="Aucun club géré"
-          subtitle="Crée un club, ou fais-toi nommer manager."
-        />
-        <Button
-          className="min-h-[48px]"
-          onPress={() => router.push("/create-club")}
-        >
-          Créer un club
-        </Button>
-      </View>
-    );
+  if (screen === "empty" || !club) {
+    return shell(<ManagedClubEmpty />);
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;

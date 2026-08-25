@@ -1,20 +1,21 @@
 import { type ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, ErrorState } from "@/components/ui/Screen";
-import { Button } from "@/components/ui/Button";
+import { ErrorState } from "@/components/ui/Screen";
 import { ApplicationsPanel } from "@/components/club/ApplicationsPanel";
 import { ClubInvitationsPanel } from "@/components/club/ClubInvitationsPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
+import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
+import { managedClubScreenState } from "@/lib/clubRead";
 
 /**
  * Recrutement — postuler arrive du LIVE joueur ; ici : accepter / refuser / inviter.
  */
 export default function RecrutementTab() {
-  const { data: club, isLoading, isError, refetch } = useManagedClub();
+  const { data: club, isLoading, isError, refetch, isFetching, clubId } = useManagedClub();
+  const screen = managedClubScreenState({ clubId, club, isLoading, isFetching, isError });
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -24,26 +25,16 @@ export default function RecrutementTab() {
     </SafeAreaView>
   );
 
-  if (isLoading) {
+  if (screen === "loading") {
     return shell(<Skeleton className="h-40" />);
   }
 
-  if (isError) {
+  if (screen === "error") {
     return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
   }
 
-  if (!club) {
-    return shell(
-      <View className="gap-4">
-        <EmptyState
-          title="Aucun club géré"
-          subtitle="Crée un club, ou fais-toi nommer manager."
-        />
-        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
-          Créer un club
-        </Button>
-      </View>
-    );
+  if (screen === "empty" || !club) {
+    return shell(<ManagedClubEmpty />);
   }
 
   return shell(
