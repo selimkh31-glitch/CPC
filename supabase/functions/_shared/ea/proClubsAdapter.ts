@@ -10,52 +10,33 @@ import type {
   EAPlayerStats,
   EAPlayoffData,
 } from "./types.ts";
-import { aggregatePlayerStats, normalizeClub, normalizeMatch } from "./normalize.ts";
+import { aggregatePlayerStats, normalizeMatch, normalizeSearchResults } from "./normalize.ts";
 
 const DEFAULT_PLATFORM = "common-gen5";
 
+function asRawArray(raw: unknown): unknown[] {
+  return Array.isArray(raw) ? raw : [];
+}
+
 /**
  * Implémentation concrète d'EAProvider pour les endpoints communautaires
- * proclubs.ea.com (mission section 5-6). NON officielle EA — voir en-tête de
- * provider.ts et de _shared/ea.ts.
+ * proclubs.ea.com. NON officielle EA — voir provider.ts et _shared/ea.ts.
  *
- * Réutilise le client défensif existant (`eaGet`, retries/timeout/headers de
- * _shared/ea.ts) plutôt que de le redupliquer. `ea-sync` et `link-ea-club`
- * continuent d'appeler directement `_shared/ea.ts` (inchangé, zéro
- * régression) — cet adapter est le point d'entrée pour toute NOUVELLE Edge
- * Function qui a besoin de données EA normalisées.
- *
- * Seules 3 méthodes ont une implémentation réelle : searchClub et
- * getClubMatches réutilisent 1:1 les requêtes déjà en production dans
- * _shared/ea.ts (URLs/retries/timeout inchangés). getPlayerStats agrège les
- * résultats de getClubMatches via aggregatePlayerStats (normalize.ts),
- * unitairement testée (scripts/test-ea-normalize.ts) — mais AUCUNE des 3
- * n'a été exécutée contre un vrai payload EA depuis cette classe (seules
- * les requêtes réseau elles-mêmes, via ea-sync/link-ea-club, sont
- * éprouvées en prod ; le chemin de normalisation qui les enveloppe ici est
- * neuf). Les 6 autres méthodes lèvent NotImplementedError — voir
- * provider.ts et la règle 44 de la mission ("ne jamais faire du fake").
+ * Réutilise le client défensif (`eaGet`) : un seul fetch, pas de duplication.
+ * `link-ea-club` et `ea-sync` passent par cet adapter (searchClub /
+ * getClubMatches), puis normalize → DB. Stubs : NotImplementedError, jamais
+ * d'appel /clubs/info, overallStats, members, career, playoffs.
  */
 export class ProClubsEAProvider implements EAProvider {
   readonly name = "proclubs-community" as const;
 
-  async searchClub(clubName: string, platform: string = DEFAULT_PLATFORM): Promise<EAClub | null> {
+  async searchClub(clubName: string, platform: string = DEFAULT_PLATFORM): Promise<EAClub[] | null> {
     if (!FEATURE_EA_STATS) return null;
     try {
-      const raw = await eaGet<any>(
+      const raw = await eaGet<unknown>(
         `/allTimeLeaderboard/search?platform=${encodeURIComponent(platform)}&clubName=${encodeURIComponent(clubName)}`
       );
-      const list = Array.isArray(raw) ? raw : (raw?.clubs ?? []);
-      const first = list[0];
-      const club = normalizeClub(first, this.name, platform);
-      // Fallback : certains payloads de recherche n'incluent pas `name`
-      // (seulement l'id) — on retombe sur le terme cherché plutôt que de
-      // perdre le résultat, uniquement si un id exploitable existe.
-      if (!club && first && typeof first === "object") {
-        const withFallbackName = { ...first, name: (first as any).name ?? clubName };
-        return normalizeClub(withFallbackName, this.name, platform);
-      }
-      return club;
+      return normalizeSearchResults(raw, this.name, platform, clubName);
     } catch (err) {
       console.warn("[ea-provider] searchClub a échoué, fallback null:", err);
       return null;
@@ -74,18 +55,17 @@ export class ProClubsEAProvider implements EAProvider {
     if (!FEATURE_EA_STATS) return null;
     try {
       const [league, friendly] = await Promise.all([
-        eaGet<any[]>(
+        eaGet<unknown>(
           `/clubs/matches?platform=${encodeURIComponent(platform)}&clubIds=${encodeURIComponent(clubId)}&matchType=leagueMatch&maxResultCount=10`
         ),
-        eaGet<any[]>(
+        eaGet<unknown>(
           `/clubs/matches?platform=${encodeURIComponent(platform)}&clubIds=${encodeURIComponent(clubId)}&matchType=friendlyMatch&maxResultCount=10`
         ),
       ]);
-      const rawMatches = [...(league ?? []), ...(friendly ?? [])];
-      const matches = rawMatches
+      const rawMatches = [...asRawArray(league), ...asRawArray(friendly)];
+      return rawMatches
         .map((m) => normalizeMatch(m, clubId, this.name, platform))
         .filter((m): m is EAMatch => m !== null);
-      return matches;
     } catch (err) {
       console.warn(`[ea-provider] getClubMatches(${clubId}) a échoué, fallback null:`, err);
       return null;

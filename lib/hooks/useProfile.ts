@@ -84,12 +84,26 @@ export function useUpdateOwnProfile() {
   });
 }
 
+export type EaClubCandidate = { clubId: string; name: string };
+
+export type SearchEaClubResult = { candidates: EaClubCandidate[]; unavailable: boolean };
+
+export function useSearchEaClub() {
+  return useMutation({
+    mutationFn: (eaClubName: string) =>
+      callEdgeFunction<SearchEaClubResult>("link-ea-club", { action: "search", eaClubName }),
+  });
+}
+
 export function useLinkEaClub() {
   const queryClient = useQueryClient();
+  const { refreshProfile } = useAuth();
   return useMutation({
-    mutationFn: (eaClubName: string) => callEdgeFunction<{ synced: boolean }>("link-ea-club", { eaClubName }),
-    onSuccess: (_data, _vars, _ctx) => {
+    mutationFn: (input: { eaClubId: string; eaClubName: string }) =>
+      callEdgeFunction<{ synced: boolean }>("link-ea-club", { action: "link", ...input }),
+    onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });

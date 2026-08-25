@@ -50,6 +50,48 @@ export function normalizeClub(raw: unknown, provider: EAProviderName, externalPl
   };
 }
 
+/**
+ * Liste complète des clubs d'un payload de recherche — jamais `list[0]`
+ * silencieux. Accepte un tableau racine ou `{ clubs: [...] }`. Entrées
+ * inexploitables (pas d'id) ignorées, pas d'exception. `fallbackName` ne
+ * s'applique qu'aux lignes qui ont un id mais pas de nom (terme cherché).
+ */
+export function normalizeSearchResults(
+  raw: unknown,
+  provider: EAProviderName,
+  externalPlatform: string | null,
+  fallbackName?: string
+): EAClub[] {
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === "object") {
+    const clubs = (raw as Record<string, unknown>).clubs;
+    if (Array.isArray(clubs)) list = clubs;
+  }
+
+  const out: EAClub[] = [];
+  const seen = new Set<string>();
+  for (const item of list) {
+    let club = normalizeClub(item, provider, externalPlatform);
+    if (!club && fallbackName && item && typeof item === "object" && !Array.isArray(item)) {
+      const r = item as Record<string, unknown>;
+      club = normalizeClub({ ...r, name: r.name ?? r.clubName ?? fallbackName }, provider, externalPlatform);
+    }
+    if (!club || seen.has(club.externalId)) continue;
+    seen.add(club.externalId);
+    out.push(club);
+  }
+  return out;
+}
+
+/** Re-search confirm : l'id doit figurer dans les résultats du nom cherché. */
+export function confirmClubInSearch(candidates: EAClub[], eaClubId: string): EAClub | null {
+  const id = eaClubId.trim();
+  if (!id) return null;
+  return candidates.find((c) => c.externalId === id) ?? null;
+}
+
 export function normalizeClubStats(
   raw: unknown,
   externalId: string,
@@ -115,7 +157,7 @@ export function normalizeMatch(
     externalId: clubExternalId,
     externalPlatform,
     syncedAt: new Date().toISOString(),
-    matchId: toStr(r.matchId),
+    matchId: toIdStr(r.matchId),
     matchType,
     timestamp: toStr(r.timestamp),
     players,

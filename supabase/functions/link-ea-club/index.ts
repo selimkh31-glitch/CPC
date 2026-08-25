@@ -1,12 +1,20 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
-import { FEATURE_EA_STATS, resolveEaClubId, fetchVerifiedClubStats } from "../_shared/ea.ts";
+import { FEATURE_EA_STATS } from "../_shared/ea.ts";
+import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
+import { confirmClubInSearch } from "../_shared/ea/normalize.ts";
+import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
-import { requireString, ValidationError } from "../_shared/validate.ts";
+import { requireEnum, requireString, ValidationError } from "../_shared/validate.ts";
+
+const LINK_ACTIONS = ["search", "link"] as const;
 
 /**
- * Lie le compte joueur à un club EA par nom (section 4). Best-effort et
- * non-bloquant : si l'API EA est down, on répond quand même avec `synced:false`.
+ * Lie le compte joueur à un club EA (JWT). Deux actions, jamais de first-hit :
+ *  - search : { eaClubName } → candidats { clubId, name }, aucun write.
+ *  - link   : { eaClubId, eaClubName } → re-search, l'id doit matcher, puis
+ *             update de la ligne CALLER seulement (USERNAME_EQUALITY).
+ * Best-effort : EA down → liste vide / synced:false, cache précédent conservé.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -15,36 +23,90 @@ Deno.serve(async (req) => {
   const user = await getCallingUser(req);
   if (!user) return jsonResponse({ error: "Non authentifié" }, 401);
 
-  let eaClubName: string;
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json();
-    eaClubName = requireString(body.eaClubName, "eaClubName", { min: 2, max: 60 });
+    body = await req.json();
+  } catch {
+    return jsonResponse({ error: "Corps de requête invalide." }, 400);
+  }
+
+  let action: (typeof LINK_ACTIONS)[number];
+  try {
+    action = requireEnum(body.action, "action", LINK_ACTIONS);
   } catch (err) {
     if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
     return jsonResponse({ error: "Corps de requête invalide." }, 400);
+  }
+
+  if (action === "search") {
+    let eaClubName: string;
+    try {
+      eaClubName = requireString(body.eaClubName, "eaClubName", { min: 2, max: 60 });
+    } catch (err) {
+      if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
+      return jsonResponse({ error: "Corps de requête invalide." }, 400);
+    }
+
+    const clubs = await eaProvider.searchClub(eaClubName);
+    if (clubs === null) {
+      return jsonResponse({ candidates: [], unavailable: true });
+    }
+    return jsonResponse({
+      candidates: clubs.map((c) => ({ clubId: c.externalId, name: c.name })),
+      unavailable: false,
+    });
+  }
+
+  let eaClubName: string;
+  let eaClubId: string;
+  try {
+    eaClubName = requireString(body.eaClubName, "eaClubName", { min: 2, max: 60 });
+    eaClubId = requireString(body.eaClubId, "eaClubId", { min: 1, max: 64 });
+  } catch (err) {
+    if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
+    return jsonResponse({ error: "Corps de requête invalide." }, 400);
+  }
+
+  const clubs = await eaProvider.searchClub(eaClubName);
+  if (clubs === null) {
+    return jsonResponse(
+      { error: "Club EA introuvable (ou endpoints EA momentanément indisponibles). Réessaie plus tard." },
+      502
+    );
+  }
+
+  const confirmed = confirmClubInSearch(clubs, eaClubId);
+  if (!confirmed) {
+    return jsonResponse({ error: "Club EA inconnu pour ce nom. Choisis un club dans la liste." }, 400);
   }
 
   const admin = getAdminClient();
   const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
   if (!profile) return jsonResponse({ error: "Profil introuvable" }, 404);
 
-  const eaClubId = await resolveEaClubId(eaClubName);
-  if (!eaClubId) {
-    return jsonResponse(
-      { error: "Club EA introuvable (ou API EA momentanément indisponible). Réessaie plus tard." },
-      502
-    );
+  await admin
+    .from("users")
+    .update({ ea_club_linked: confirmed.externalId, ea_identity_kind: "USERNAME_EQUALITY" })
+    .eq("id", user.id);
+
+  const matches = await eaProvider.getClubMatches(confirmed.externalId);
+  if (matches === null) {
+    return jsonResponse({ eaClubId: confirmed.externalId, synced: false, stats: null });
   }
 
-  await admin.from("users").update({ ea_club_linked: eaClubId, ea_identity_kind: "USERNAME_EQUALITY" }).eq("id", user.id);
-
-  const statsByName = await fetchVerifiedClubStats(eaClubId);
-  const mine = statsByName?.[profile.username.trim().toLowerCase()] ?? null;
+  const mine = buildVerifiedStatsForPlayer(
+    matches,
+    profile.username,
+    profile.verified_stats,
+    eaProvider.name,
+    confirmed.externalId,
+    confirmed.externalPlatform
+  );
 
   if (mine) {
     const { data: reviews } = await admin.from("reviews").select("*").eq("target_user_id", user.id);
     const reliabilityScore = computeReliabilityScore({
-      reviews: (reviews ?? []).map((r: any) => ({
+      reviews: (reviews ?? []).map((r: { rating_skill: number; rating_behavior: number; showed_up: boolean }) => ({
         ratingSkill: r.rating_skill,
         ratingBehavior: r.rating_behavior,
         showedUp: r.showed_up,
@@ -55,5 +117,5 @@ Deno.serve(async (req) => {
     await admin.from("users").update({ verified_stats: mine, reliability_score: reliabilityScore }).eq("id", user.id);
   }
 
-  return jsonResponse({ eaClubId, synced: Boolean(mine), stats: mine });
+  return jsonResponse({ eaClubId: confirmed.externalId, synced: Boolean(mine), stats: mine });
 });
