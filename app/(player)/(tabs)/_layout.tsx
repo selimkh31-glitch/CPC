@@ -15,7 +15,8 @@ const TAB_BAR_STYLE = {
 
 /**
  * Mode Joueur — 3 onglets : LIVE | Activité | Profil.
- * clubs / leagues restent des fichiers (deep links) mais hors tab bar (`href: null`).
+ * clubs reste un fichier (deep link) hors tab bar (`href: null`).
+ * leagues : `href: null` + Redirect vers le stack partagé `app/leagues.tsx`.
  */
 export default function TabsLayout() {
   const { session } = useAuth();

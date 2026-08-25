@@ -1,13 +1,14 @@
 /**
- * Ligues (`/leagues`) — écran hors tab bar (`href: null`).
+ * Ligues (`/leagues`) — stack partagé `app/leagues.tsx`, hors tab bar (`href: null`).
  *
  * Deux surfaces distinctes :
- * 1) Classement saison (`season_stats`) — HONNÊTEMENT VIDE. Writers réels
- *    (aucun n'agrège `match_results`) : `prisma/seed.ts`, `ea-sync`,
- *    `season-ranking`. `mvp_count` n'est jamais incrémenté hors seed.
+ * 1) Classement clubs CPC (`lib/rankings.ts`) — surface principale, depuis
+ *    `match_results` avec `opponent_club_id` seulement. Pas `season_stats`.
+ *    Pas une ligue EA.
+ * 2) Classement saison (`season_stats`) — HONNÊTEMENT VIDE, secondaire.
+ *    Writers réels (aucun n'agrège `match_results`) : `prisma/seed.ts`,
+ *    `ea-sync`, `season-ranking`. `mvp_count` n'est jamais incrémenté hors seed.
  *    `canShowLiveLeagueRanking()` reste false.
- * 2) Classement clubs CPC (`lib/rankings.ts`) — depuis `match_results` avec
- *    `opponent_club_id` seulement. Pas `season_stats`. Pas une ligue EA.
  *
  * Le classement compétition vit sur `/competitions`, uniquement depuis des
  * résultats liés.
@@ -20,10 +21,10 @@ export const LEAGUE_COPY = {
   emptyHint: "Pas de points, divisions, buteurs ou MVP inventés. Les stats saison (seed / sync EA) ne remplissent pas ce tableau.",
 } as const;
 
-/** Tab bar joueur : Ligues reste hors onglets (deep link `/leagues` seulement). */
+/** Tab bar joueur : Ligues reste hors onglets (`href: null`, Redirect vers le stack). */
 export const LEAGUES_TAB_HREF: null = null;
 
-/** Stack `/leagues` — Profil / Effectif y arrivent via `LeaguesLink`. Pas un 4e onglet. */
+/** Stack partagé `/leagues` (`app/leagues.tsx`) — Profil / Effectif via `LeaguesLink`. Pas un 4e onglet. */
 export const LEAGUES_STACK_HREF = "/leagues" as const;
 
 /** Cible unique de `LeaguesLink` (`router.push`). Tab `href` reste `null`. */

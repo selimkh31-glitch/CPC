@@ -19,6 +19,7 @@ import { AppModeProvider, useAppMode } from "@/lib/providers/AppModeProvider";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { useNotifications } from "@/lib/hooks/useNotifications";
+import { RANKING_COPY } from "@/lib/rankings";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -225,9 +226,14 @@ function RootNavigator() {
           name="report/[userId]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
         />
-        {/* Compétitions virtuelles FC 27 Pro Clubs — stack, pas un onglet.
-            Ligues (`(player)/(tabs)/leagues`) reste href: null.
+        {/* Ligues + Compétitions + Tournois — stack partagé, pas un onglet.
+            `/leagues` = app/leagues.tsx (Mode Club n'a pas (player)).
+            Tab joueur `leagues` reste href: null (Redirect / deep link).
             Détail `/competitions/[id]` (deep link notifs), pas de tab dédié. */}
+        <Stack.Screen
+          name="leagues"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: RANKING_COPY.clubTitle }}
+        />
         <Stack.Screen
           name="competitions/index"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Compétitions" }}
