@@ -45,6 +45,8 @@ export interface VerifiedStats {
   lastSyncedAt?: string;
   /** Matchs EA déjà agrégés — skip incrémental, pas une identité joueur. */
   importedMatchIds?: string[];
+  /** Titre Pro Clubs du cache joueur (fc27 pour le produit). */
+  eaTitle?: string;
 }
 
 export interface UserRow {

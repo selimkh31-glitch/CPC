@@ -105,8 +105,8 @@ supabase/functions/
   apply/                    POST — candidature 1 clic (gating 3/jour Free, modération, push)
   respond-application/      POST — accepter/refuser (owner/manager), crée le club_member, push
   submit-review/            POST — review + recalcul reliability_score/streak/badges
-  link-ea-club/             POST — lie un club EA, sync best-effort des stats
-  ea-sync/                  GET  — cron quotidien, sync stats EA de tous les clubs liés
+  link-ea-club/             POST — search / link (caller only) / history (fc27 club·joueur·match)
+  ea-sync/                  GET  — cron quotidien, ingest unofficial /api/fc des clubs liés
   season-ranking/           GET  — cron, recalcule divisions + badges de saison
   smart-match/               GET  — matching LIVE déterministe (poste + plateforme owner + expiry + besoin)
   expire-live-sessions/      GET  — janitor LIVE (CRON_SECRET) ; alternative SQL pg_cron en 0023
@@ -127,7 +127,7 @@ Déploiement :
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase functions deploy apply respond-application submit-review link-ea-club ea-sync season-ranking smart-match expire-live-sessions scout-report moderate revenuecat-webhook create-competition register-competition-club create-tournament schedule-tournament-round
-npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=...
+npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... CRON_SECRET=... AI_API_KEY=... REVENUECAT_WEBHOOK_SECRET=... EA_HTTP_HOP_URL=... EA_HTTP_HOP_SECRET=... EA_FC_TITLE=fc26 EA_FC_BASE_URL=https://proclubs.ea.com/api/fc
 ```
 
 `lib/reliability.ts` et `lib/ovr.ts` (calcul de fiabilité et d'OVR) sont **partagés** entre l'app mobile et les Edge Functions via import relatif direct (`../../../lib/reliability.ts`) — une seule source de vérité, aucune duplication de logique.
@@ -163,6 +163,9 @@ npm run test:ovr
 npm run test:reliability
 npm run test:player-card
 npm run test:ea-normalize
+npm run test:ea-provider
+npm run test:ea-http
+npm run test:ea-ingest
 npm run test:m2-player-search
 ```
 
@@ -232,6 +235,26 @@ En local, déclenche-les manuellement :
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR_PROJECT.supabase.co/functions/v1/ea-sync
 ```
+
+## Import EA FC Pro Clubs (`/api/fc`, unofficial)
+
+L'app mobile n'appelle jamais `proclubs.ea.com`. RN → Edge (`link-ea-club` / `ea-sync`) → hop Node 20 CPC (`EA_HTTP_HOP_URL`) → `EA_FC_BASE_URL` (défaut `https://proclubs.ea.com/api/fc`). Deno/Edge ne fetch pas EA (403 Akamai HTML). Le hop n'est pas un site produit ; secret `EA_HTTP_HOP_SECRET`. Pas de proxy ClubsZone. Pas de `/api/fifa`.
+
+Titres : chaque ligne d'import a `ea_title` (`fc26`, `fc27`, …). Ledger **produit CPC = `fc27`**, vide au jour 1 — **jamais de mix fc26**. Le JSON live `/api/fc` (août 2026) est l'ancien titre : `EA_FC_TITLE=fc26` par défaut.
+
+Calendrier GTM (Clubs Pro only, DATA/INGEST — pas le marketing, pas de redesign d'écrans) :
+
+- **25 Sep 2026** (The Grounds / lancement FC 27) : CPC prêt pour les testeurs — lier un club et ingérer dans le ledger fc27 vide. Poser `EA_FC_TITLE=fc27` (et `EA_FC_BASE_URL` si l'origine change). Pas de bascule auto à la date.
+- **14 jours** de collecte silencieuse.
+- **~9 Oct 2026** : ouverture publique avec deux semaines d'historique fc27.
+
+Lecture : `link-ea-club` action `history` (et `link`) renvoie des payloads `club` / `members` / `matches` / `player` honnêtes (listes vides OK tant que le live n'est pas fc27). Lignes joueur d'un match = `{ name, goals, assists, rating }`, jamais la clé persona. L'UX PR bind ces formes plus tard. Pas de proxy ClubsZone. Node fetch EA seulement.
+
+```bash
+EA_HTTP_HOP_SECRET=... npx tsx scripts/ea-http-hop.ts
+```
+
+Migration `0030_ea_proclubs_import.sql` : tables `ea_imported_clubs` / `ea_imported_members` / `ea_imported_matches` (import non vérifié, unique par titre + club + plateforme). Ne pas appliquer en prod depuis l'agent.
 
 ## Brancher RevenueCat
 

@@ -2,15 +2,16 @@ import { jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient } from "../_shared/supabase.ts";
 import { FEATURE_EA_STATS } from "../_shared/ea.ts";
 import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
+import { ingestEaClubFromProvider } from "../_shared/ea/ingest.ts";
+import { getLiveEaTitle, PRODUCT_EA_TITLE, writesToProductLedger } from "../_shared/ea/title.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
 
 /**
- * Job planifié quotidien — cron Supabase (pg_cron -> pg_net). Récupère les
- * stats EA des clubs liés via ProClubsEAProvider.getClubMatches (max 10+10
- * league+friendly) et met en cache dans Supabase. Skip incrémental des
- * matchId déjà dans verified_stats.importedMatchIds. L'app mobile ne lit
- * JAMAIS proclubs directement. Protégé par CRON_SECRET.
+ * Job planifié quotidien — cron Supabase (pg_cron -> pg_net). Ingest
+ * unofficial /api/fc sous EA_FC_TITLE. Skip matchId déjà en table pour CE titre.
+ * verified_stats / season_stats seulement si live === fc27 (pas de mix titre).
+ * L'app mobile ne lit JAMAIS proclubs.ea.com. Protégé par CRON_SECRET.
  */
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET");
@@ -29,15 +30,19 @@ Deno.serve(async (req) => {
 
   const { data: activeSeason } = await admin.from("seasons").select("*").eq("is_active", true).maybeSingle();
 
+  const liveTitle = getLiveEaTitle();
+  const writeProduct = writesToProductLedger(liveTitle);
   let updated = 0;
   let failed = 0;
 
   for (const [eaClubId, users] of byClub) {
-    const matches = await eaProvider.getClubMatches(eaClubId);
+    const { matches } = await ingestEaClubFromProvider(admin, eaProvider, eaClubId, "common-gen5", liveTitle);
     if (!matches) {
       failed += users.length;
       continue; // fallback silencieux : on garde les anciennes valeurs en cache
     }
+
+    if (!writeProduct) continue;
 
     for (const u of users) {
       const mine = buildVerifiedStatsForPlayer(
@@ -46,7 +51,9 @@ Deno.serve(async (req) => {
         u.verified_stats,
         eaProvider.name,
         eaClubId,
-        "common-gen5"
+        "common-gen5",
+        new Date().toISOString(),
+        liveTitle
       );
       if (!mine) continue;
 
@@ -83,5 +90,12 @@ Deno.serve(async (req) => {
     }
   }
 
-  return jsonResponse({ updated, failed, clubsProcessed: byClub.size });
+  return jsonResponse({
+    updated,
+    failed,
+    clubsProcessed: byClub.size,
+    liveTitle,
+    productTitle: PRODUCT_EA_TITLE,
+    productLedger: writeProduct,
+  });
 });

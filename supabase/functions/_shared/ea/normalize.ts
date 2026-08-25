@@ -1,4 +1,14 @@
-import type { EAClub, EAClubStats, EAMatch, EAMatchType, EAPlayerMatchStats, EAPlayerStats, EAProviderName } from "./types.ts";
+import type {
+  EAClub,
+  EAClubStats,
+  EAMatch,
+  EAMatchType,
+  EAPlayer,
+  EAPlayerCareerStats,
+  EAPlayerMatchStats,
+  EAPlayerStats,
+  EAProviderName,
+} from "./types.ts";
 
 /**
  * EA RAW -> ADAPTER -> NORMALIZED CPC TYPES (mission section 7).
@@ -40,14 +50,58 @@ export function normalizeClub(raw: unknown, provider: EAProviderName, externalPl
   const externalId = toIdStr(r.clubId) ?? toIdStr(r.id);
   const name = toStr(r.name) ?? toStr(r.clubName);
   if (!externalId || !name) return null;
+  const kit =
+    r.customKit && typeof r.customKit === "object" && !Array.isArray(r.customKit)
+      ? (r.customKit as Record<string, unknown>)
+      : null;
   return {
     provider,
     externalId,
     externalPlatform,
     syncedAt: new Date().toISOString(),
     name,
-    crestId: toStr(r.crestId) ?? toStr(r.crestAssetId),
+    crestId: toStr(r.crestId) ?? toStr(r.crestAssetId) ?? (kit ? toStr(kit.crestAssetId) : null),
   };
+}
+
+/** /clubs/info est un objet indexé par clubId. */
+export function pickClubInfoRecord(raw: unknown, clubId: string): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  if (r[clubId] != null) return r[clubId];
+  for (const [key, value] of Object.entries(r)) {
+    if (key === clubId || String(key) === String(clubId)) return value;
+  }
+  return null;
+}
+
+/** /clubs/overallStats : tableau, ou objet indexé, ou un seul objet. */
+export function pickClubStatsRecord(raw: unknown, clubId: string): unknown {
+  if (Array.isArray(raw)) {
+    return (
+      raw.find((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+        const id = toIdStr((item as Record<string, unknown>).clubId) ?? toIdStr((item as Record<string, unknown>).id);
+        return id === clubId;
+      }) ?? null
+    );
+  }
+  if (raw && typeof raw === "object") {
+    const keyed = pickClubInfoRecord(raw, clubId);
+    if (keyed) return keyed;
+    const r = raw as Record<string, unknown>;
+    if (toIdStr(r.clubId) === clubId || toIdStr(r.id) === clubId) return raw;
+  }
+  return null;
+}
+
+function asObjectList(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const members = (raw as Record<string, unknown>).members;
+    if (Array.isArray(members)) return members;
+  }
+  return [];
 }
 
 /**
@@ -98,7 +152,7 @@ export function normalizeClubStats(
   provider: EAProviderName,
   externalPlatform: string | null
 ): EAClubStats {
-  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const r = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
   return {
     provider,
     externalId,
@@ -108,7 +162,94 @@ export function normalizeClubStats(
     losses: toNum(r.losses),
     draws: toNum(r.ties) ?? toNum(r.draws),
     titlesWon: toNum(r.titlesWon),
+    gamesPlayed: toNum(r.gamesPlayed),
   };
+}
+
+export function normalizeMember(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayer | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const name = toStr(r.name) ?? toStr(r.playername);
+  if (!name) return null;
+  return {
+    provider,
+    externalId: clubExternalId,
+    externalPlatform,
+    syncedAt: new Date().toISOString(),
+    name,
+    proPosition: toStr(r.proPos) ?? toStr(r.favoritePosition) ?? toStr(r.proPosition),
+    gamesPlayed: toNum(r.gamesPlayed),
+    goals: toNum(r.goals),
+    assists: toNum(r.assists),
+    ratingAve: toNum(r.ratingAve),
+    proName: toStr(r.proName),
+  };
+}
+
+export function normalizeMemberList(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayer[] {
+  const out: EAPlayer[] = [];
+  const seen = new Set<string>();
+  for (const item of asObjectList(raw)) {
+    const member = normalizeMember(item, clubExternalId, provider, externalPlatform);
+    if (!member) continue;
+    const key = member.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(member);
+  }
+  return out;
+}
+
+export function normalizeCareerMember(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayerCareerStats | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const name = toStr(r.name) ?? toStr(r.playername) ?? toStr(r.proName);
+  if (!name) return null;
+  return {
+    provider,
+    externalId: name,
+    externalPlatform,
+    syncedAt: new Date().toISOString(),
+    proName: toStr(r.proName) ?? name,
+    proOverall: toNum(r.proOverall),
+    gamesPlayed: toNum(r.gamesPlayed),
+    goals: toNum(r.goals),
+    assists: toNum(r.assists),
+    ratingAve: toNum(r.ratingAve),
+    proPosition: toStr(r.proPos) ?? toStr(r.favoritePosition) ?? toStr(r.proPosition),
+  };
+}
+
+export function normalizeCareerList(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayerCareerStats[] {
+  const out: EAPlayerCareerStats[] = [];
+  const seen = new Set<string>();
+  for (const item of asObjectList(raw)) {
+    const row = normalizeCareerMember(item, clubExternalId, provider, externalPlatform);
+    if (!row || seen.has(row.externalId.toLowerCase())) continue;
+    seen.add(row.externalId.toLowerCase());
+    out.push(row);
+  }
+  return out;
 }
 
 export function normalizePlayerMatchStats(raw: unknown): EAPlayerMatchStats {

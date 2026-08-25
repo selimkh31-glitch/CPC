@@ -11,17 +11,22 @@
 import {
   aggregatePlayerStats,
   confirmClubInSearch,
+  normalizeCareerList,
   normalizeClub,
   normalizeClubStats,
   normalizeMatch,
+  normalizeMemberList,
   normalizePlayerMatchStats,
   normalizeSearchResults,
+  pickClubInfoRecord,
+  pickClubStatsRecord,
 } from "../supabase/functions/_shared/ea/normalize";
 import {
   buildVerifiedStatsForPlayer,
   collectMatchIds,
   filterNewMatches,
   mergeVerifiedStats,
+  previousStatsForTitle,
   readImportedMatchIds,
 } from "../supabase/functions/_shared/ea/verified";
 
@@ -152,6 +157,77 @@ test("stats de club — payload vide -> tous les champs null, jamais d'exception
   const stats = normalizeClubStats({}, "12345", "proclubs-community", null);
   assert.deepEqual(stats.wins, null, "wins null");
   assert.deepEqual(stats.titlesWon, null, "titlesWon null");
+  assert.deepEqual(stats.gamesPlayed, null, "gamesPlayed null");
+});
+
+test("club info — crestAssetId sous customKit", () => {
+  const club = normalizeClub(
+    { clubId: "2582784", name: "United", customKit: { crestAssetId: "19" } },
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.deepEqual(club?.crestId, "19", "crest from customKit");
+});
+
+test("pickClubInfoRecord — objet indexé par clubId", () => {
+  const raw = { "2582784": { clubId: 2582784, name: "United" }, "9": { name: "Autre" } };
+  const picked = pickClubInfoRecord(raw, "2582784");
+  assert.deepEqual((picked as { name: string }).name, "United", "info keyed");
+  assert.deepEqual(pickClubInfoRecord({}, "2582784"), null, "vide");
+});
+
+test("pickClubStatsRecord — tableau overallStats, club absent -> null", () => {
+  const raw = [{ clubId: "1", wins: "10", losses: "2", ties: "1", gamesPlayed: "13" }];
+  const hit = pickClubStatsRecord(raw, "1") as { wins: string };
+  assert.deepEqual(hit.wins, "10", "found");
+  assert.deepEqual(pickClubStatsRecord(raw, "99"), null, "absent");
+  assert.deepEqual(pickClubStatsRecord([], "1"), null, "liste vide");
+});
+
+test("members/stats — { members: [] } -> liste vide, pas de joueur inventé", () => {
+  assert.deepEqual(normalizeMemberList({ members: [] }, "clubA", "proclubs-community", null), [], "vide objet");
+  assert.deepEqual(normalizeMemberList([], "clubA", "proclubs-community", null), [], "vide array");
+  assert.deepEqual(normalizeMemberList({}, "clubA", "proclubs-community", null), [], "objet sans members");
+  assert.deepEqual(normalizeMemberList(null, "clubA", "proclubs-community", null), [], "null");
+});
+
+test("members/stats — name + proPos, ignore entrée sans nom, déduplique", () => {
+  const list = normalizeMemberList(
+    {
+      members: [
+        { name: "Selim", proPos: "ST", gamesPlayed: "12", goals: "4", assists: "1", ratingAve: "7.2", proName: "S" },
+        { goals: 9 },
+        { name: "selim", proPos: "CAM" },
+      ],
+    },
+    "clubA",
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.deepEqual(list.map((m) => m.name), ["Selim"], "un seul Selim");
+  assert.deepEqual(list[0]?.proPosition, "ST", "proPos");
+  assert.deepEqual(list[0]?.gamesPlayed, 12, "gamesPlayed");
+});
+
+test("members/career/stats — liste + filtre identite playername, pas de persona login", () => {
+  const list = normalizeCareerList(
+    {
+      members: [
+        { name: "Selim", gamesPlayed: "40", goals: "20", assists: "8", ratingAve: "7.1", proOverall: "82", proPos: "ST" },
+        { playername: "Alex", gamesPlayed: "3" },
+      ],
+    },
+    "clubA",
+    "proclubs-community",
+    null
+  );
+  assert.deepEqual(list.map((c) => c.externalId), ["Selim", "Alex"], "playername comme identite");
+  assert.deepEqual(list[0]?.gamesPlayed, 40, "career games");
+  assert.deepEqual(list[0]?.proOverall, 82, "proOverall du JSON");
+});
+
+test("members/career/stats — payload vide -> []", () => {
+  assert.deepEqual(normalizeCareerList({ members: [] }, "clubA", "proclubs-community", null), [], "vide");
 });
 
 // --- normalizePlayerMatchStats ------------------------------------------------
@@ -355,6 +431,25 @@ test("buildVerifiedStatsForPlayer — tout déjà importé -> null (garde le cac
     "common-gen5"
   );
   assert.deepEqual(stats, null, "rien de nouveau");
+});
+
+test("verified_stats — blob fc26 / sans titre non fusionné dans fc27", () => {
+  const m1 = matchWithId("m1", { p1: { name: "Selim", goals: 2 } });
+  const fromOld = buildVerifiedStatsForPlayer(
+    [m1],
+    "Selim",
+    { importedMatchIds: ["m1"], goals: 99, matchesPlayed: 10, eaTitle: "fc26" },
+    "proclubs-community",
+    "clubA",
+    "common-gen5",
+    "2026-09-25T00:00:00.000Z",
+    "fc27"
+  );
+  assert.ok(fromOld, "nouvelle fenêtre fc27");
+  assert.deepEqual(fromOld?.goals, 2, "pas les 99 de fc26");
+  assert.deepEqual(fromOld?.eaTitle, "fc27", "titre produit");
+  assert.deepEqual(previousStatsForTitle({ eaTitle: "fc26", goals: 1 }, "fc27"), null, "mix rejeté");
+  assert.deepEqual(previousStatsForTitle({ goals: 1, importedMatchIds: ["m1"] }, "fc27"), null, "sans titre rejeté");
 });
 
 test("mergeVerifiedStats / collectMatchIds — ids nouveaux uniquement", () => {
