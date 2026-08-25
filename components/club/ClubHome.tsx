@@ -1,23 +1,24 @@
 import { Alert, ScrollView, Text, View } from "react-native";
-import { Globe2, Users } from "lucide-react-native";
-import { Badge } from "@/components/ui/Badge";
+import { Users } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
 import { PlayerCard } from "@/components/player/PlayerCard";
+import { ClubCard } from "@/components/club/ClubCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { MyDepartureStatusCard } from "@/components/club/MyDepartureStatusCard";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useApply } from "@/lib/hooks/useApply";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { benchMembers, formatNeededPositionsLine } from "@/lib/sessionState";
 import { buildPlayerCardData } from "@/lib/playerCard";
+import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
 /**
@@ -68,8 +69,12 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   // nouvelle table/requête, réutilise club_members + slot_assignments.
   const bench = benchMembers(club.members, assignments);
   const neededLine = activeSession ? formatNeededPositionsLine(activeSession.needed_positions) : null;
-  const owner = club.members?.find((m) => m.role === "OWNER");
   const managers = (club.members ?? []).filter((m) => m.role === "MANAGER");
+  const cardData = buildClubCardDataFromHydratedClub(club, {
+    members: club.members,
+    sessions: club.sessions,
+    nowMs: now,
+  });
 
   // Foundation #1 — ClubHome est une vue joueur pure : un slot vide n'ouvre
   // plus jamais le recrutement ici (canManage n'existe plus dans ce
@@ -112,24 +117,13 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
-      {/* 1. Header club */}
-      <View>
-        <Text className="font-display text-2xl text-fg">{club.name}</Text>
-        <View className="mt-1 flex-row flex-wrap items-center gap-2">
-          <Badge tone={club.level === "COMPETITIVE" ? "accent" : "neutral"}>{CLUB_LEVEL_LABELS[club.level]}</Badge>
-          <View className="flex-row items-center gap-1">
-            <Globe2 size={12} color="#666c74" />
-            <Text className="text-xs text-fg-subtle">{club.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")}</Text>
-          </View>
-        </View>
-        {club.description && <Text className="mt-2 text-sm text-fg-muted">{club.description}</Text>}
-        {owner?.user?.username && (
-          <Text numberOfLines={1} className="mt-2 text-xs text-fg-subtle">
-            Owner : {owner.user.username}
-            {managers.length > 0 ? ` · Manager : ${managers.map((m) => m.user?.username).join(", ")}` : ""}
-          </Text>
-        )}
-      </View>
+      {/* 1. Header club — ClubCard FULL, données honnêtes */}
+      <ClubCard data={cardData} variant="full" interactive={false} />
+      {managers.length > 0 ? (
+        <Text numberOfLines={2} className="text-xs text-fg-subtle">
+          Manager : {managers.map((m) => m.user?.username).filter(Boolean).join(", ")}
+        </Text>
+      ) : null}
 
       {/* 2. État du club — sections à plat, enfants directs du ScrollView
           (même profondeur qu'avant l'extraction de ClubHome : VoiceLinkBlock

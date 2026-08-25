@@ -1,15 +1,13 @@
-import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { FlatList, RefreshControl, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Users } from "lucide-react-native";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { ClubCard } from "@/components/club/ClubCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
-import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS } from "@/lib/constants";
 import { useClubsList } from "@/lib/hooks/useClubs";
 import { isLiveActive } from "@/lib/live";
 import { clubPublicHref } from "@/lib/clubProfile";
+import { buildClubCardData } from "@/lib/clubCard";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 
 /** Annuaire complet — extrait de l'ancien onglet Clubs (Mode Joueur). */
@@ -46,32 +44,16 @@ export function ClubsDirectory({ hideTitle = false }: { hideTitle?: boolean }) {
         )
       }
       renderItem={({ item: club }) => {
-        const isLive = club.sessions?.some((s) => isLiveActive(s, now));
+        const liveSession = club.sessions?.find((s) => isLiveActive(s, now));
         return (
-          <Pressable
+          <ClubCard
+            data={buildClubCardData(club, {
+              live: Boolean(liveSession),
+              liveExpiresAt: liveSession?.expires_at ?? null,
+            })}
+            variant="compact"
             onPress={() => router.push(clubPublicHref(club.id))}
-            accessibilityRole="button"
-            accessibilityLabel={`Voir ${club.name}`}
-            className="active:opacity-90"
-          >
-            <Card>
-              <View className="flex-row items-center justify-between">
-                <Text className="font-display text-lg text-fg">{club.name}</Text>
-                {isLive && <PulseDot />}
-              </View>
-              <Badge tone={club.level === "COMPETITIVE" ? "accent" : "neutral"} className="mt-1.5">
-                {CLUB_LEVEL_LABELS[club.level]}
-              </Badge>
-              {club.description && (
-                <Text numberOfLines={2} className="mt-2 text-sm text-fg-muted">
-                  {club.description}
-                </Text>
-              )}
-              <Text className="mt-2 text-xs text-fg-subtle">
-                {club.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")}
-              </Text>
-            </Card>
-          </Pressable>
+          />
         );
       }}
       ItemSeparatorComponent={() => <View className="h-3" />}

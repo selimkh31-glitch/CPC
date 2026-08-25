@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import { Text, View } from "react-native";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
+import { ClubCard } from "@/components/club/ClubCard";
 import { POSITION_LABELS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
+import { buildClubCardData } from "@/lib/clubCard";
 import { useMyApplications, useWithdrawApplication, useMyApplicationStatusUpdates } from "@/lib/hooks/useApplications";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
@@ -67,39 +68,41 @@ export function MyApplicationsList() {
   return (
     <View className="gap-3">
       {applications.map((app) => (
-        <Card key={app.id}>
-          <View className="flex-row items-center justify-between gap-2">
-            <Text numberOfLines={1} className="shrink font-display text-lg text-fg">
-              {app.club?.name ?? "Club"}
-            </Text>
-            <Badge tone={STATUS_TONES[app.status]}>{STATUS_LABELS[app.status]}</Badge>
-          </View>
-          <Text className="mt-1 text-xs text-fg-muted">
-            {POSITION_LABELS[app.position]} · {timeAgo(app.created_at)}
-          </Text>
-          {app.message && (
-            <Text numberOfLines={2} className="mt-2 text-sm text-fg-muted">
-              &quot;{app.message}&quot;
-            </Text>
-          )}
-          {app.status === "PENDING" && (
-            <Button
-              variant="secondary"
-              className="mt-3"
-              loading={withdraw.isPending && withdraw.variables === app.id}
-              disabled={withdraw.isPending}
-              onPress={() => {
-                if (withdraw.isPending) return;
-                withdraw.mutate(app.id, {
-                  onSuccess: () => toast.info("Candidature retirée."),
-                  onError: (err: any) => toast.error(err.message ?? "Erreur"),
-                });
-              }}
-            >
-              Retirer ma candidature
-            </Button>
-          )}
-        </Card>
+        <ClubCard
+          key={app.id}
+          data={buildClubCardData(app.club ?? { id: app.club_id, name: "Club" })}
+          variant="mini"
+          rightSlot={<Badge tone={STATUS_TONES[app.status]}>{STATUS_LABELS[app.status]}</Badge>}
+          footer={
+            <View className="mt-1">
+              <Text className="text-xs text-fg-muted">
+                {POSITION_LABELS[app.position]} · {timeAgo(app.created_at)}
+              </Text>
+              {app.message ? (
+                <Text numberOfLines={2} className="mt-1 text-sm text-fg-muted">
+                  &quot;{app.message}&quot;
+                </Text>
+              ) : null}
+              {app.status === "PENDING" ? (
+                <Button
+                  variant="secondary"
+                  className="mt-3"
+                  loading={withdraw.isPending && withdraw.variables === app.id}
+                  disabled={withdraw.isPending}
+                  onPress={() => {
+                    if (withdraw.isPending) return;
+                    withdraw.mutate(app.id, {
+                      onSuccess: () => toast.info("Candidature retirée."),
+                      onError: (err: any) => toast.error(err.message ?? "Erreur"),
+                    });
+                  }}
+                >
+                  Retirer ma candidature
+                </Button>
+              ) : null}
+            </View>
+          }
+        />
       ))}
     </View>
   );

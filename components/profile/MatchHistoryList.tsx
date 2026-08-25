@@ -1,16 +1,21 @@
 import { Text, View } from "react-native";
+import { router } from "expo-router";
 import { ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { OutcomeBadge } from "@/components/ui/OutcomeBadge";
+import { ClubCard } from "@/components/club/ClubCard";
 import {
   MATCH_HISTORY_COPY,
   type MatchHistoryItem,
 } from "@/lib/matchHistory";
+import { buildClubCardData } from "@/lib/clubCard";
+import { clubRankingRowHref } from "@/lib/rankings";
 import { cn } from "@/lib/utils";
 
 /**
  * Liste courte (date, club, score si réel, issue). Loading / vide / erreur.
  * Vide = copy honnête, jamais un faux 0-0.
+ * Nom adverse : ClubCard MINI seulement si c'est un club hydraté.
  */
 export function MatchHistoryList({
   items,
@@ -90,6 +95,12 @@ export function MatchHistoryList({
 }
 
 function MatchHistoryRow({ item, embedded }: { item: MatchHistoryItem; embedded: boolean }) {
+  const opponentName = item.opponentClubName;
+  const opponentId = item.opponentClubId;
+  const opponentHref =
+    opponentId && opponentName ? clubRankingRowHref(opponentId, opponentName) : null;
+  const meta = [item.dateLabel, item.scoreLine].filter(Boolean).join(" · ");
+
   return (
     <View
       className={cn(
@@ -98,14 +109,20 @@ function MatchHistoryRow({ item, embedded }: { item: MatchHistoryItem; embedded:
       )}
     >
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-sm font-semibold text-fg">
-          {item.clubName}
-        </Text>
-        {item.dateLabel || item.scoreLine ? (
-          <Text className="text-[11px] text-fg-subtle">
-            {[item.dateLabel, item.scoreLine].filter(Boolean).join(" · ")}
+        {opponentId && opponentName ? (
+          <ClubCard
+            data={buildClubCardData({ id: opponentId, name: opponentName })}
+            variant="mini"
+            interactive={Boolean(opponentHref)}
+            onPress={opponentHref ? () => router.push(opponentHref) : undefined}
+            className="border-0 bg-transparent px-0 py-0"
+          />
+        ) : (
+          <Text numberOfLines={1} className="text-sm font-semibold text-fg">
+            {item.clubName}
           </Text>
-        ) : null}
+        )}
+        {meta ? <Text className="text-[11px] text-fg-subtle">{meta}</Text> : null}
       </View>
       <OutcomeBadge outcome={item.outcome} />
     </View>

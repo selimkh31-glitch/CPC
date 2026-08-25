@@ -1,10 +1,11 @@
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { CLUB_LEVEL_LABELS } from "@/lib/constants";
+import { ClubCard } from "@/components/club/ClubCard";
+import { buildClubCardData } from "@/lib/clubCard";
 import type { ClubRole, ClubRow } from "@/lib/types";
 
 /**
@@ -68,21 +69,17 @@ export function MyClubsList({
   return (
     <View className="gap-2">
       {memberships.map(({ club, role }) => (
-        <Pressable key={club.id} onPress={() => goToClub(club.id, role)} className="active:opacity-90">
-          <Card>
-            <View className="flex-row items-center justify-between">
-              <View className="shrink flex-1">
-                <Text numberOfLines={1} className="font-display text-base text-fg">
-                  {club.name}
-                </Text>
-                <Text className="text-xs text-fg-subtle">{CLUB_LEVEL_LABELS[club.level]}</Text>
-              </View>
-              <Badge tone={role === "OWNER" ? "pro" : role === "MANAGER" ? "accent" : "neutral"}>
-                {role === "OWNER" ? "Owner" : role === "MANAGER" ? "Manager" : "Membre"}
-              </Badge>
-            </View>
-          </Card>
-        </Pressable>
+        <ClubCard
+          key={club.id}
+          data={buildClubCardData(club)}
+          variant="mini"
+          onPress={() => goToClub(club.id, role)}
+          rightSlot={
+            <Badge tone={role === "OWNER" ? "pro" : role === "MANAGER" ? "accent" : "neutral"}>
+              {role === "OWNER" ? "Owner" : role === "MANAGER" ? "Manager" : "Membre"}
+            </Badge>
+          }
+        />
       ))}
     </View>
   );

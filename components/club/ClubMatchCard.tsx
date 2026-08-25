@@ -1,11 +1,11 @@
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router } from "expo-router";
-import { Card } from "@/components/ui/Card";
+import { ClubCard } from "@/components/club/ClubCard";
 import { Badge } from "@/components/ui/Badge";
-import { PulseDot } from "@/components/ui/PulseDot";
-import { POSITION_LABELS, CLUB_LEVEL_LABELS, LANGUAGE_LABELS, type PositionCode } from "@/lib/constants";
+import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { isLiveActive } from "@/lib/live";
 import { clubPublicHref } from "@/lib/clubProfile";
+import { buildClubCardData } from "@/lib/clubCard";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import type { ClubMatch } from "@/lib/hooks/useClubSearch";
 
@@ -16,38 +16,30 @@ import type { ClubMatch } from "@/lib/hooks/useClubSearch";
 export function ClubMatchCard({ match }: { match: ClubMatch }) {
   const now = useLiveClock();
   const { club, formationId, openSlots } = match;
-  const isLive = club.sessions?.some((s) => isLiveActive(s, now)) ?? false;
+  const liveSession = club.sessions?.find((s) => isLiveActive(s, now));
+  const data = buildClubCardData(club, {
+    ownerUsername: club.owner?.username ?? null,
+    live: Boolean(liveSession),
+    liveExpiresAt: liveSession?.expires_at ?? null,
+  });
 
   return (
-    <Pressable
+    <ClubCard
+      data={data}
+      variant="compact"
       onPress={() => router.push(clubPublicHref(club.id))}
-      accessibilityRole="button"
-      accessibilityLabel={`Voir ${club.name}`}
-      className="active:opacity-90"
-    >
-      <Card>
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            {isLive && <PulseDot />}
-            <Text className="font-display text-lg text-fg">{club.name}</Text>
+      footer={
+        <View className="mt-2 gap-1.5">
+          <Text className="text-xs text-fg-subtle">{formationId}</Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {openSlots.map((slot) => (
+              <Badge key={slot.slotId} tone="pro">
+                {`${POSITION_LABELS[slot.position as PositionCode] ?? slot.position} disponible`}
+              </Badge>
+            ))}
           </View>
-          <Badge tone={club.level === "COMPETITIVE" ? "accent" : "neutral"}>{CLUB_LEVEL_LABELS[club.level]}</Badge>
         </View>
-        <Text className="mt-1 text-xs text-fg-subtle">
-          {formationId}
-          {club.owner?.username ? ` · Owner : ${club.owner.username}` : ""}
-        </Text>
-        {club.languages?.length > 0 && (
-          <Text className="mt-0.5 text-xs text-fg-subtle">{club.languages.map((l) => LANGUAGE_LABELS[l] ?? l).join(", ")}</Text>
-        )}
-        <View className="mt-2 flex-row flex-wrap gap-1.5">
-          {openSlots.map((slot) => (
-            <Badge key={slot.slotId} tone="pro">
-              {`${POSITION_LABELS[slot.position as PositionCode] ?? slot.position} disponible`}
-            </Badge>
-          ))}
-        </View>
-      </Card>
-    </Pressable>
+      }
+    />
   );
 }

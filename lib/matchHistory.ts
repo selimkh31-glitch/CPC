@@ -72,6 +72,7 @@ export interface MatchHistoryResultInput {
   opponent_score: unknown;
   outcome: unknown;
   created_at: string;
+  opponent_club_id?: string | null;
 }
 
 export interface MatchHistoryItem {
@@ -79,6 +80,10 @@ export interface MatchHistoryItem {
   createdAt: string;
   dateLabel: string | null;
   clubName: string;
+  clubId: string;
+  /** Club adverse si `opponent_club_id` + nom déjà hydratés. Jamais inventé. */
+  opponentClubId: string | null;
+  opponentClubName: string | null;
   /** `null` si our_score / opponent_score absents — jamais un faux 0-0. */
   scoreLine: string | null;
   outcome: MatchOutcome;
@@ -117,14 +122,24 @@ function nameFromMap(
 
 function toHistoryItem(
   row: MatchHistoryResultInput,
-  clubName: string
+  clubName: string,
+  names?: Map<string, string> | Record<string, string>
 ): MatchHistoryItem | null {
   if (!row.id || !isPersistedMatchOutcome(row.outcome) || !row.created_at) return null;
+  const opponentId =
+    typeof row.opponent_club_id === "string" && row.opponent_club_id.trim() && row.opponent_club_id !== row.club_id
+      ? row.opponent_club_id.trim()
+      : null;
+  const opponentRaw = opponentId && names ? (names instanceof Map ? names.get(opponentId) : names[opponentId]) : undefined;
+  const opponentClubName = opponentRaw?.trim() ? opponentRaw.trim() : null;
   return {
     id: row.id,
     createdAt: row.created_at,
     dateLabel: formatMatchHistoryDate(row.created_at),
     clubName,
+    clubId: row.club_id,
+    opponentClubId: opponentId,
+    opponentClubName,
     scoreLine: formatMatchScore(row.our_score, row.opponent_score),
     outcome: row.outcome,
   };
@@ -156,7 +171,7 @@ export function buildPlayerMatchHistory(input: {
   const items: MatchHistoryItem[] = [];
   for (const row of input.results) {
     if (!presentCheckins.has(row.match_checkin_id)) continue;
-    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, "Club Pro Clubs"));
+    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, "Club Pro Clubs"), input.clubNames);
     if (item) items.push(item);
   }
   return sortAndLimit(items, input.limit ?? MATCH_HISTORY_LIMIT);
@@ -192,7 +207,7 @@ export function buildClubMatchHistory(input: {
   const items: MatchHistoryItem[] = [];
   for (const row of input.results) {
     if (row.club_id !== input.clubId) continue;
-    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, fallback));
+    const item = toHistoryItem(row, nameFromMap(row.club_id, input.clubNames, fallback), input.clubNames);
     if (item) items.push(item);
   }
   return sortAndLimit(items, input.limit ?? MATCH_HISTORY_LIMIT);
