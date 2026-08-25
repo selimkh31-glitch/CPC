@@ -90,7 +90,7 @@ Alternative : coller le fichier dans le SQL Editor du projet distant. **Windows 
 
 **0026 est obligatoire en prod** dès que le code #9+ tourne. **0027 est obligatoire** dès que le code de finalisation avec club adverse / compétition tourne. Sans 0027 : `finalize-match` envoie `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas. **0028** (conversation club) : appliquer après 0016–0017 (tables + RLS chat déjà là). L’agent n’a pas `DATABASE_URL` ici — **humain / CoS doit appliquer**.
 
-Pas de migration dédiée pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
+Pas de migration dédiée pour `MESSAGE_RECEIVED` ni `MATCH_FINALIZED` : `notifications.type` est du texte libre (0025, CHECK `char_length(type) > 0` seulement — pas d’enum PG). **Pas de 0029.**  
 PR **#5** : aucune migration (UX / filtres UI seulement).
 
 ---
@@ -130,13 +130,14 @@ npx supabase functions deploy \
 | `request-departure` / `respond-departure` / `release-member` | true | Départ / libération (onglet Club) |
 | `invite-to-club` / `invite-to-slot` | true | Invitations |
 | `launch-match-checkin` | true | Session LIVE → check-in (`match_checkins`) |
-| `finalize-match` | true | Check-in → `match_results` (score / outcome serveur / club adverse / compétition optionnelle) — **redéployer après 0027** |
+| `finalize-match` | true | Check-in → `match_results` (score / outcome serveur / club adverse / compétition optionnelle) + notif in-app `MATCH_FINALIZED` après RPC — **redéployer après 0027 et pour cette notif** |
 | `expire-live-sessions` | **`verify_jwt = false`** (auth `CRON_SECRET`) | Janitor LIVE ; pg_cron SQL 0023 est l’alternative |
 | `create-competition` / `register-competition-club` | true | Fondation #9 |
 | `notify-message-received` | true | Notif in-app DM (#10) |
 | `start-club-conversation` | true | Get-or-create conversation CLUB (0028) |
 
 Sans `notify-message-received` : le message s’insère quand même (INSERT client + RLS) ; **pas** de ligne `notifications` `MESSAGE_RECEIVED`.  
+Sans **redéploiement `finalize-match`** (cette notif) : le résultat s’écrit quand même ; **pas** de ligne `notifications` `MATCH_FINALIZED`. Échec notify ≠ rollback du `match_results` (comme le DM).  
 Sans `create-competition` / `register-competition-club` : pas de création / inscription compétition.  
 Sans `launch-match-checkin` / `finalize-match` : la feuille `/match` affiche le check-in, mais lancer / enregistrer un résultat échoue (Edge absente).  
 Sans **0027 + redéploiement `finalize-match`** : le club adverse / la compétition ne sont pas persistés ; le classement compétition reste vide (honnête).  
@@ -264,10 +265,11 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 - OWNER/MANAGER : inscrire un club géré sur une OPEN. Doublon → **409**, pas une 2ᵉ ligne.
 - Classement **seulement** s’il existe au moins un `match_results` avec `competition_id` **et** `opponent_club_id`. Sinon copy honnête, **pas** de rows 0-0-0, **pas** de `season_stats`.
 
-### Notifications (#10 + #11)
+### Notifications (#10 + #11 + MATCH_FINALIZED)
 
 - Compte A envoie un **vrai** DM DIRECT à B → B reçoit une notif in-app « Nouveau message » / « {pseudo} t'a écrit. » Tap → la conversation. Pas de notif pour GROUP/CLUB. Échec notify ≠ rollback du message.
 - Activité / `/notifications` : **Tout marquer lu** (44 pt) → badge Activité à **0**. Déjà-lues inchangées.
+- **Résultat réel** (`finalize-match` après RPC) : notif `MATCH_FINALIZED` « Résultat de match » / « {club} 3 — 1 {adverse}. » aux membres des deux clubs **sauf le recorder**. Tap → `/match` (Mode Club) ou `/competitions` si `competition_id`. Realtime = canal `notifications` existant. Échec notify ≠ rollback du résultat.
 
 ### Édition profil (#12)
 
