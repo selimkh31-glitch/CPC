@@ -2,7 +2,7 @@
 
 **Produit :** ClubPro Connect = matchmaking **EA SPORTS FC 27 Pro Clubs** uniquement. Joueur = profil virtuel Pro Clubs. Club = équipe virtuelle Pro Clubs. Pas de football IRL, pas de stats EA inventées, pas d’Expo Go.
 
-**Date QA :** 24 août 2026  
+**Date QA :** 25 août 2026 (P0 stabilize) — realtime audit 24 août.  
 **Tip de la pile :** `cursor/qa-autonomous-stack-5884` (PR **#14**) — contient **PR #5** (LIVE UX compacte) **et** PR **#6–#13**.  
 **Base d’intégration :** `social-ea-foundations-phase-2` (contient déjà PR **#2** merged — P0/P1 LIVE + safety/notifications — et PR **#3** merged — retab IA).  
 **Ce document :** ordre de merge, SQL prod, Edge à déployer, checklist iPhone, **prêt EAS iOS/Android** (config réelle, pas de build lancé). L’agent n’applique **pas** les migrations et ne merge **pas** les PR GitHub vers la base.
@@ -97,9 +97,13 @@ npx supabase functions deploy \
   respond-application \
   respond-invitation \
   respond-transition-invitation \
+  request-departure \
   respond-departure \
+  release-member \
   invite-to-club \
   invite-to-slot \
+  launch-match-checkin \
+  finalize-match \
   expire-live-sessions \
   create-competition \
   register-competition-club \
@@ -110,43 +114,65 @@ npx supabase functions deploy \
 |---|---|---|
 | `block-user` / `unblock-user` / `report-user` | `verify_jwt = true` | Safety 0025 |
 | `apply` | true | Candidature LIVE |
-| `respond-application` / `respond-invitation` / `respond-transition-invitation` / `respond-departure` | true (si déclaré) | Réponses recrutement / départ |
+| `respond-application` / `respond-invitation` / `respond-transition-invitation` | true | Réponses recrutement / transition |
+| `request-departure` / `respond-departure` / `release-member` | true | Départ / libération (onglet Club) |
 | `invite-to-club` / `invite-to-slot` | true | Invitations |
+| `launch-match-checkin` | true | Session LIVE → check-in (`match_checkins`) |
+| `finalize-match` | true | Check-in → `match_results` (score / outcome serveur) |
 | `expire-live-sessions` | **`verify_jwt = false`** (auth `CRON_SECRET`) | Janitor LIVE ; pg_cron SQL 0023 est l’alternative |
 | `create-competition` / `register-competition-club` | true | Fondation #9 |
 | `notify-message-received` | true | Notif in-app DM (#10) |
 
 Sans `notify-message-received` : le message s’insère quand même (INSERT client + RLS) ; **pas** de ligne `notifications` `MESSAGE_RECEIVED`.  
 Sans `create-competition` / `register-competition-club` : pas de création / inscription compétition.  
+Sans `launch-match-checkin` / `finalize-match` : la feuille `/match` affiche le check-in, mais lancer / enregistrer un résultat échoue (Edge absente). **Ça n’alimente pas les compétitions** : `match_results` n’a toujours pas `competition_id` (voir §6.3).  
 `expire-live-sessions` : si pg_cron 0023 est actif, le SQL janitor tourne déjà ; l’Edge reste l’invoke HTTP documenté.
 
-Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `create-group`, `link-ea-club`, …) : les redéployer si le distant n’a pas la version de cette pile.
+Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `create-group`, `set-group-member-role`, `link-ea-club`, …) : les redéployer si le distant n’a pas la version de cette pile. Toutes les fonctions invocables par l’app sont maintenant déclarées dans `supabase/config.toml` (`verify_jwt = true`, sauf crons / webhook).
 
 ---
 
-## 6. QA cloud (24 août 2026) — tip #14 (PR #5 IN)
+## 6. QA cloud — tip #14 (PR #5 IN)
 
-`test:live-filters` **présent** (PR #5 dans le tip). Relance après merge `70364c0`.
+### 6.1 P0 stabilize (25 août 2026)
+
+Relance **complète** sur `cursor/qa-autonomous-stack-5884` (`61f34a3` + commits P0). Aucun échec. Moteurs LIVE / matching / apply / invite **non retouchés**. Ligues ranking **non restauré**. Passer Pro **toujours désactivé**. Onglets inchangés : Joueur LIVE \| Activité \| Profil · Club LIVE \| Recrutement \| Club.
 
 | Commande | Résultat |
 |---|---|
 | `npm run typecheck` | **PASS** |
 | `npm run test:live` | **PASS** (14) |
-| `npm run test:live-filters` | **PASS** (6) |
 | `npm run test:live-match` | **PASS** (15) |
-| `npm run test:recruitment` | PASS historique (5) |
-| `npm run test:safety` | PASS historique (8) |
+| `npm run test:live-filters` | **PASS** (6) |
+| `npm run test:recruitment` | **PASS** (5) |
+| `npm run test:safety` | **PASS** (9) |
+| `npm run test:session-state` | **PASS** (10) |
+| `npm run test:club-profile` | **PASS** (10) |
+| `npm run test:leagues` | **PASS** (5) |
+| `npm run test:competitions` | **PASS** (9) |
+| `npm run test:social` | **PASS** (5) |
+| `npm run test:notification-read` | **PASS** (3) |
+| `npm run test:profile-identity` | **PASS** (7) |
+| `npm run test:club-identity` | **PASS** (7) |
 | `npm run test:player-card` | **PASS** (9) |
-| `npm run test:club-profile` | PASS historique (8) |
-| `npm run test:session-state` | **PASS** (9) |
-| `npm run test:social` | PASS historique (5) |
-| `npm run test:competitions` | PASS historique (9) |
-| `npm run test:ovr` | PASS historique (9) |
-| `npm run test:profile-identity` | PASS historique (7) |
-| `npm run test:notification-read` | PASS historique (3) |
-| `npm run test:club-identity` | PASS historique (7) |
+| `npm run test:ovr` | **PASS** (9) |
+| `npm run test:reliability` | **PASS** (8) |
+| `npm run test:ea-normalize` | **PASS** (19) |
+| `npm run test:m2-player-search` | **PASS** (8) |
 
-### P0 Realtime (post-merges #5–#13) — 24 août 2026
+Audit tip vs `social-ea-foundations-phase-2` (`c0f88ea`, merge-base = tip fondations) : **20 commits** ahead, **0** behind. Pas de merge GitHub vers la base.
+
+Travail incomplet **réel** (pas des faux positifs) :
+
+| Item | Verdict |
+|---|---|
+| TODO/FIXME code | Aucun TODO produit dans `app/` / `lib/` / `components/`. Placeholders EAS Apple dans `eas.json` (humain). |
+| Imports cassés | **0** (scan `@/` + relatifs). |
+| Routes « mortes » | `/dashboard` = shim Mode Club ; `/find-club` = ClubMatchmaking ; `/match-sheet` = ClubHome lecture ; `/player-search` = invite-to-slot. Deep links, pas des CTA d’onglets. |
+| CTA onglets verrouillés | Déjà câblées (PR CTA) ou désactivées FR (`proPurchaseCta`, slot vide sans handler). Relance : pas de nouvelle CTA morte. |
+| Edge deploy docs | **Trou réel** avant P0 : `launch-match-checkin` / `finalize-match` / départs absents de la liste §5 et de `config.toml`. **Corrigé** (déclaration JWT + liste). L’agent **ne déploie pas**. |
+
+### 6.2 P0 Realtime (post-merges #5–#13) — 24 août 2026
 
 **Verdict : déjà correct.** Pas de second `.channel(topic)` sans Map ref-comptée. Fix `7046a8f` intact. Matching / TTL / RLS / apply inchangés.
 
@@ -159,6 +185,29 @@ Autres Edge déjà dans le README (`smart-match`, `start-direct-conversation`, `
 | `messages-${conversationId}` | `messages` | `useMessages` | `/conversation/[id]` seulement. `useConversations` : **pas** de Realtime |
 
 Crash visé : `supabase.channel(topic)` réutilise l’instance ; un 2ᵉ `.on()` après `.subscribe()` plante. Un canal réel par topic, listeners en Set.
+
+### 6.3 Trous P0 pour l’agent suivant — session → match → résultat
+
+Le moteur **existe** déjà, il n’est **pas** branché sur les compétitions.
+
+```
+LIVE club (is_live + expires_at)
+  → feuille /match (roster réel, invite-to-slot)
+  → launch-match-checkin  → match_checkins + match_participations
+  → finalize-match        → match_results (our_score, opponent_score, outcome, mvp)
+  ✗  competition_id / opponent_club_id ABSENTS (0014, aucun ALTER 0026)
+  ✗  Ligues : canShowLiveLeagueRanking() = false (season_stats ≠ match_results)
+  ✗  Compétitions : create + register only ; pas de standings
+```
+
+Ne **pas** inventer de classement. Ne **pas** ALTER `match_results` dans un hotfix P0 « pour que Ligues affiche quelque chose ». Le lien compétition doit être un schéma réel (FK, club adverse, agrégation) + Edge, pas un mashup `season_stats` / seed / EA.
+
+Autres trous hors moteurs LIVE (volontaires, pas des régressions de ce tip) :
+
+- Conversation type **CLUB** : schéma prêt, **non provisionnée**.
+- Passer Pro : `FEATURE_REVENUECAT` off → CTA désactivée FR. Pas de paiement fictif.
+- 0026 + Edge §5 : à coller / déployer **par un humain** ; sans ça création compétition et notif DM cassées en prod.
+- README « Expo Go » encore présent (démarrage historique) — **ne pas** l’utiliser (Dev Client).
 
 ---
 
@@ -184,7 +233,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 ### Sessions / effectif (#7)
 
 - Recrutement LIVE et « match lancé » (check-in sans `match_results`) peuvent coexister — pas d’enum OPEN/FULL.
-- Feuille `/match` : roster réel, slot vide → recherche → `invite-to-slot`. Check-in via `launch-match-checkin`.
+- Feuille `/match` : roster réel, slot vide → recherche → `invite-to-slot`. Check-in via `launch-match-checkin`, résultat via `finalize-match`. Le résultat **n’est pas** rattaché à une compétition (pas de `competition_id`).
 
 ### Social (#8)
 

@@ -14,7 +14,7 @@ project_id = "clubpro-connect"
 #
 # Par défaut, `supabase functions deploy` exige un JWT Supabase valide au
 # niveau de la gateway, avant même que le code de la fonction ne s'exécute.
-# C'est le comportement voulu pour les 7 fonctions appelées par l'app mobile
+# C'est le comportement voulu pour les fonctions appelées par l'app mobile
 # (elles reçoivent le JWT de session via `supabase.functions.invoke()`).
 #
 # `ea-sync` et `season-ranking` sont des jobs cron (appelés par pg_cron/pg_net
@@ -52,10 +52,28 @@ verify_jwt = true
 [functions.invite-to-club]
 verify_jwt = true
 
+# Session → match → résultat (feuille `/match`). JWT session, comme apply.
+# Absentes du toml = défaut CLI `verify_jwt = true`, mais sans déclaration
+# le fondateur n'a pas la liste complète pour `functions deploy`.
+[functions.launch-match-checkin]
+verify_jwt = true
+
 [functions.finalize-match]
 verify_jwt = true
 
 [functions.respond-invitation]
+verify_jwt = true
+
+[functions.respond-transition-invitation]
+verify_jwt = true
+
+[functions.request-departure]
+verify_jwt = true
+
+[functions.respond-departure]
+verify_jwt = true
+
+[functions.release-member]
 verify_jwt = true
 
 # Social Foundations — Chat (mission section 11), appelée par l'app mobile
