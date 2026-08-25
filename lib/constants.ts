@@ -120,7 +120,7 @@ export function pricingScreenCopy(revenueCatEnabled: boolean): PricingScreenCopy
   const laterFeatures = [...PRO_LATER_FEATURES];
   if (!revenueCatEnabled) {
     return {
-      intro: "CPC est gratuit pour le moment. Pro n'est pas encore en vente.",
+      intro: "CPC est gratuit pour le moment. Pro n'est pas encore en vente. LIVE, profil, messages, postuler et inviter restent ouverts à tous.",
       priceLabel: null,
       ctaLabel: "Pro pas encore en vente",
       liveFeatures: [],
