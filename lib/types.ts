@@ -273,6 +273,9 @@ export interface ConversationRow {
   /** Embed optionnel — membres de la conversation, utilisé pour dériver
    *  "l'autre" utilisateur d'une conversation DIRECT côté client. */
   members?: ConversationMemberRow[];
+  /** Embed optionnel — `groups(id,name)` pour le titre d'une conversation GROUP.
+   *  Jamais inventé : nom vide / whitespace → fallback « Groupe ». */
+  group?: Pick<GroupRow, "id" | "name"> | null;
 }
 
 export interface ConversationMemberRow {
