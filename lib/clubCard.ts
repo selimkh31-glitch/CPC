@@ -43,6 +43,7 @@ export const CLUB_CARD_COPY = {
   seeking: (line: string) => `Cherche ${line}`,
   eaLinked: "Club EA lié",
   eaLinkedHint: "Identité EA — pas des stats de club",
+  eaUnlinked: "Club EA pas lié — pas de stats EA inventées.",
   membersOne: "1 membre",
   membersMany: (n: number) => `${n} membres`,
   recordLabel: "Bilan CPC",

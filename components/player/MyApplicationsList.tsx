@@ -65,7 +65,12 @@ export function MyApplicationsList() {
   }
 
   if (!applications || applications.length === 0) {
-    return <EmptyState title="Tu n'as encore postulé à aucune session." />;
+    return (
+      <EmptyState
+        title="Tu n'as encore postulé nulle part."
+        subtitle="Passe par LIVE pour trouver un club et postuler."
+      />
+    );
   }
 
   return (

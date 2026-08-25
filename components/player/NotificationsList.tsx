@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Bell } from "lucide-react-native";
+import { Bell, ChevronRight } from "lucide-react-native";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
@@ -86,8 +86,8 @@ export function NotificationsList() {
   if (!data || data.length === 0) {
     return (
       <EmptyState
-        title="Aucune notification pour l'instant."
-        subtitle="Candidatures, invitations, messages et réponses apparaîtront ici."
+        title="Rien pour l'instant."
+        subtitle="Candidatures, invitations, messages et résultats arriveront ici."
       />
     );
   }
@@ -115,9 +115,11 @@ export function NotificationsList() {
         <Pressable
           key={item.id}
           onPress={() => open(item)}
-          className={`rounded-2xl border p-3 active:opacity-80 ${
+          className={`min-h-[44px] rounded-2xl border p-3 active:opacity-80 ${
             item.read_at ? "border-border bg-bg-card" : "border-accent/30 bg-accent/10"
           }`}
+          accessibilityRole="button"
+          accessibilityLabel={notificationTitle(item.type, item.title)}
         >
           <View className="flex-row items-start gap-2">
             <Bell size={16} color={item.read_at ? "#9aa0a8" : "#39ff8a"} />
@@ -126,6 +128,7 @@ export function NotificationsList() {
               <Text className="mt-0.5 text-sm text-fg-muted">{item.body}</Text>
               <Text className="mt-1 text-xs text-fg-subtle">{timeAgo(item.created_at)}</Text>
             </View>
+            <ChevronRight size={16} color="#666c74" />
           </View>
         </Pressable>
       ))}

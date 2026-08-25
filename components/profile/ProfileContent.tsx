@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
 import { router } from "expo-router";
 import { Ban, Flag, Pencil, Star } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Sheet } from "@/components/ui/Sheet";
 import { ClubProCard } from "@/components/profile/ClubProCard";
 import { LinkEaClubForm } from "@/components/profile/LinkEaClubForm";
 import { ScoutReportPanel } from "@/components/profile/ScoutReportPanel";
@@ -13,6 +15,7 @@ import { usePlayerMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useCurrentClubForUser } from "@/lib/hooks/useCurrentClubs";
 import { useBlockedUserIds, useBlockUser, useMyBlocks, useUnblockUser } from "@/lib/hooks/useSafety";
 import { shouldHideContactCta } from "@/lib/safety";
+import { PLAYER_CARD_COPY } from "@/lib/playerCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -35,6 +38,7 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
   const unblockUser = useUnblockUser();
   const iBlockedThem = Boolean(myBlocks?.some((row) => row.blocked_id === userId));
   const blockedEitherWay = shouldHideContactCta(userId, blockedIds);
+  const [eaSheetOpen, setEaSheetOpen] = useState(false);
 
   if (isError) {
     return (
@@ -66,14 +70,21 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
         matchHistoryLoading={matchHistoryLoading}
         matchHistoryError={matchHistoryError}
         onRetryMatchHistory={refetchMatchHistory}
+        onLinkEaClub={isOwn && user && !user.ea_club_linked ? () => setEaSheetOpen(true) : undefined}
       />
+
+      {isOwn && user && (
+        <Sheet visible={eaSheetOpen} onClose={() => setEaSheetOpen(false)} title={PLAYER_CARD_COPY.linkClub}>
+          <LinkEaClubForm embedded onLinked={() => setEaSheetOpen(false)} />
+        </Sheet>
+      )}
 
       {isOwn && user && (
         <View className="w-full">
           <Button
-            variant="secondary"
+            variant="ghost"
             className="min-h-[44px] w-full"
-            icon={<Pencil size={15} color="#f4f5f7" />}
+            icon={<Pencil size={15} color="#9aa0a8" />}
             onPress={() => router.push("/edit-profile")}
           >
             Modifier mon identité Pro Clubs
@@ -118,7 +129,6 @@ export function ProfileContent({ userId, isOwn }: { userId: string; isOwn: boole
         </View>
       )}
 
-      {isOwn && user && !user.ea_club_linked && <LinkEaClubForm />}
       {isOwn && user && <ScoutReportPanel isPro={user.plan === "PRO"} />}
 
       <Card className="w-full">

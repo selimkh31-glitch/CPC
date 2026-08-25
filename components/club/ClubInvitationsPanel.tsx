@@ -52,7 +52,7 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
           onRetry={refetch}
         />
       ) : !invitations || invitations.length === 0 ? (
-        <Text className="text-sm text-fg-muted">Tu n&apos;as envoyé aucune invitation.</Text>
+        <Text className="text-sm text-fg-muted">Aucune invitation envoyée. Cherche un joueur ci-dessus.</Text>
       ) : (
         <View className="gap-2">
           {invitations.map((inv) => {

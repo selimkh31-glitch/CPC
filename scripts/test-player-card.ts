@@ -12,6 +12,7 @@ import {
   playerNeedFitLabel,
   resolvePlayerCardDensity,
   resolvePlayerCardTemplate,
+  visibleEaStatBlocks,
   visibleCpcBadges,
 } from "../lib/playerCard";
 import { computeOvr, rarityForOvr, OVR_CPC_LABEL } from "../lib/ovr";
@@ -216,6 +217,29 @@ test("LIVE context flag + note, sans inventer un statut", () => {
   const on = buildPlayerCardData(baseUser(), { live: true, liveNote: "Dispo 21h" });
   assert.equal(on.live, true, "live");
   assert.equal(on.liveNote, "Dispo 21h", "note");
+});
+
+test("copy EA vide : Lier mon club, pas de chiffres inventés", () => {
+  assert.equal(PLAYER_CARD_COPY.linkClub, "Lier mon club", "cta");
+  assert.equal(PLAYER_CARD_COPY.eaUnlinked.includes("invent"), false, "unlinked no inventer");
+  assert.equal(PLAYER_CARD_COPY.eaLinkedPending.includes("pas encore"), true, "pending");
+  const unlinked = buildPlayerCardData(baseUser({ ea_club_linked: null }));
+  assert.equal(unlinked.eaClubLinked, false, "unlinked");
+  assert.deepEqual(visibleEaStatBlocks(unlinked.eaStats), [], "no blocks");
+});
+
+test("visibleEaStatBlocks — seulement chiffres stockés, jamais SHO/PAS/TAC vides", () => {
+  assert.deepEqual(visibleEaStatBlocks(null), [], "null");
+  assert.deepEqual(visibleEaStatBlocks({}), [], "empty");
+  assert.deepEqual(visibleEaStatBlocks({ avgRating: 0 }), [], "note 0 omise");
+  const blocks = visibleEaStatBlocks({ goals: 3, assists: 1, matchesPlayed: 5, avgRating: 7.4 });
+  assert.equal(blocks.length, 4, "four real");
+  assert.equal(blocks[0]?.label, PLAYER_CARD_COPY.eaGoals, "goals");
+  assert.equal(blocks[3]?.value, "7.4", "rating 1 decimal");
+  const labels = blocks.map((b) => b.label).join(" ");
+  assert.equal(labels.includes("SHO"), false, "no SHO");
+  assert.equal(labels.includes("PAS"), false, "no PAS");
+  assert.equal(labels.includes("TAC"), false, "no TAC");
 });
 
 console.log(`\n${passed} test(s) passés.`);

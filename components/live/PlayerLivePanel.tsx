@@ -65,7 +65,7 @@ export function PlayerLivePanel() {
   };
 
   return (
-    <Card className={cn("mb-3 p-3.5", live && "border-accent/40 bg-accent/10")}>
+    <Card className={cn("mb-3 p-5", live && "border-accent/40 bg-accent/10")}>
       {isLoading ? (
         <Skeleton className="h-16" />
       ) : isError ? (
@@ -74,7 +74,7 @@ export function PlayerLivePanel() {
         <>
           <View className="mb-1 flex-row items-start gap-2">
             <PulseDot />
-            <Text className="flex-1 font-display text-lg text-fg">Tu es LIVE</Text>
+            <Text className="flex-1 font-display text-xl text-fg">Tu es LIVE</Text>
             <LiveCountdown expiresAt={mySession?.expires_at ?? null} />
           </View>
           <Text className="text-sm text-fg-muted">Les clubs peuvent te trouver.</Text>
@@ -82,7 +82,7 @@ export function PlayerLivePanel() {
             {positionLabel} · {platformLabel}
           </Text>
           <View className="mt-3 flex-row gap-2">
-            <Button size="sm" variant="secondary" onPress={openSheet} className="flex-1">
+            <Button size="sm" variant="ghost" onPress={openSheet} className="flex-1">
               Modifier
             </Button>
             <Button size="sm" variant="danger" loading={goOffline.isPending} onPress={stop} className="flex-1">
@@ -94,11 +94,11 @@ export function PlayerLivePanel() {
         <>
           <View className="mb-1 flex-row items-start gap-2">
             <Radio size={16} color="#9aa0a8" />
-            <Text className="flex-1 font-display text-lg text-fg">Tu cherches un club maintenant ?</Text>
+            <Text className="flex-1 font-display text-xl text-fg">Tu cherches un match ?</Text>
           </View>
-          <Text className="mb-3 text-sm text-fg-muted">Passe LIVE et laisse les clubs te trouver.</Text>
-          <Button loading={goLive.isPending} onPress={openSheet}>
-            PASSER LIVE
+          <Text className="mb-4 text-sm text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
+          <Button size="lg" loading={goLive.isPending} onPress={openSheet}>
+            Passer LIVE
           </Button>
           <Pressable
             onPress={() => setShowDetails((v) => !v)}
@@ -172,7 +172,7 @@ export function PlayerLivePanel() {
         ) : null}
 
         <Button loading={goLive.isPending} onPress={start}>
-          {live ? "Mettre à jour" : "PASSER LIVE"}
+          {live ? "Mettre à jour" : "Passer LIVE"}
         </Button>
       </Sheet>
     </Card>

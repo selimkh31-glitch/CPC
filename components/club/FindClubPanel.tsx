@@ -33,7 +33,7 @@ type FindMode = "live" | "matchmaking" | "directory";
  * Discovery (annuaire) et Matchmaking (slots / moteur déterministe) restent distincts
  * du feed LIVE. Aucun club inventé, aucun % de compatibilité.
  */
-export function FindClubPanel() {
+export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => void }) {
   const { profile } = useAuth();
   const { data: items, isLoading, isError, refetch, isRefetching } = useLiveSessions();
   const now = useLiveClock();
@@ -185,6 +185,7 @@ export function FindClubPanel() {
                 relaxed={relaxed}
                 canWiden={canWiden}
                 onWiden={widen}
+                onCreateSession={onCreateSession}
                 profilePosition={profile?.main_position ? POSITION_LABELS[profile.main_position] : null}
                 profilePlatform={profile?.platform ? PLATFORM_LABELS[profile.platform] : null}
               />
@@ -217,6 +218,7 @@ function LiveEmptyState({
   relaxed,
   canWiden,
   onWiden,
+  onCreateSession,
   profilePosition,
   profilePlatform,
 }: {
@@ -229,6 +231,7 @@ function LiveEmptyState({
   relaxed: boolean;
   canWiden: boolean;
   onWiden: () => void;
+  onCreateSession?: () => void;
   profilePosition: string | null;
   profilePlatform: string | null;
 }) {
@@ -255,6 +258,11 @@ function LiveEmptyState({
         <Text className="mt-2 text-center text-sm text-fg-muted">
           Passe LIVE pour que les clubs te trouvent dès qu&apos;ils recrutent.
         </Text>
+        {onCreateSession ? (
+          <View className="mt-4 w-full">
+            <Button onPress={onCreateSession}>Passer LIVE</Button>
+          </View>
+        ) : null}
       </View>
     );
   }

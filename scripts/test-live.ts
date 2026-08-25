@@ -10,6 +10,8 @@ import {
   findActiveLiveSession,
   formatLiveRemaining,
   isLiveActive,
+  liveFeedEmptyCopy,
+  LIVE_UX_COPY,
   parseLiveDurationMs,
   remainingLiveMs,
 } from "../lib/live";
@@ -109,6 +111,15 @@ test("formatLiveRemaining — exactement 2 h", () => {
 
 test("formatLiveRemaining — expiré", () => {
   assert.equal(formatLiveRemaining("2026-08-24T11:00:00.000Z", NOW), "Expiré", "expired label");
+});
+
+test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
+  assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 0 }), LIVE_UX_COPY.emptyNoClubs, "no clubs");
+  assert.equal(liveFeedEmptyCopy({ selfLive: true, liveClubCount: 0 }), LIVE_UX_COPY.emptySelfLive, "self live");
+  assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 2 }), LIVE_UX_COPY.emptyNoPlayers, "players");
+  assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "cta");
+  assert.equal(LIVE_UX_COPY.findClub, "Chercher un club", "find");
+  assert.equal(LIVE_UX_COPY.emptyNoClubs.includes("invent"), false, "no fake");
 });
 
 console.log(`\n${passed} tests live OK`);

@@ -2,22 +2,24 @@ import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { ChevronLeft } from "lucide-react-native";
 import { LivePlayerCard } from "@/components/live/LivePlayerCard";
 import { PlayerLivePanel } from "@/components/live/PlayerLivePanel";
 import { FindClubPanel } from "@/components/club/FindClubPanel";
 import { ErrorState } from "@/components/ui/Screen";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
-import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
+import { useLivePlayers, useMyPlayerSession } from "@/lib/hooks/usePlayerLive";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { isLiveActive } from "@/lib/live";
+import { isLiveActive, liveFeedEmptyCopy, LIVE_UX_COPY } from "@/lib/live";
 import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 
 type LivePane = "feed" | "find";
 
 /**
- * Accueil Mode Joueur : LIVE (dispo maintenant) + Trouver un club.
- * Recrutement EA SPORTS FC 27 Pro Clubs uniquement.
+ * LIVE Mode Joueur — surface de jeu.
+ * Un CTA primaire : Passer LIVE. Chercher un club = secondaire.
+ * Matching / TTL / candidatures inchangés.
  */
 export default function LiveScreen() {
   const { session } = useAuth();
@@ -28,6 +30,7 @@ export default function LiveScreen() {
     refetch: refetchPlayers,
     isRefetching: playersRefetching,
   } = useLivePlayers();
+  const { data: mySession } = useMyPlayerSession(session?.user.id ?? null);
   const [pane, setPane] = useState<LivePane>("feed");
   const now = useLiveClock();
 
@@ -41,6 +44,7 @@ export default function LiveScreen() {
     return (livePlayers ?? []).filter((row) => isLiveActive(row, now) && row.user && row.user_id !== selfId);
   }, [livePlayers, session?.user.id, now]);
   const { data: clubsByUser } = useCurrentClubsByUserIds(otherLivePlayers.map((row) => row.user_id));
+  const selfLive = isLiveActive(mySession, now);
 
   const refreshing = isRefetching || playersRefetching;
   const onRefresh = () => {
@@ -53,14 +57,24 @@ export default function LiveScreen() {
     setPane(next);
   };
 
+  const showFeedEmpty = !playersError && otherLivePlayers.length === 0;
+
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       {pane === "find" ? (
         <View className="flex-1">
           <View className="px-4 pt-2">
-            <LivePaneHeader pane={pane} onPane={switchPane} />
+            <Pressable
+              onPress={() => switchPane("feed")}
+              className="min-h-[44px] flex-row items-center gap-1 self-start py-1"
+              accessibilityRole="button"
+              accessibilityLabel={`Retour ${LIVE_UX_COPY.backToLive}`}
+            >
+              <ChevronLeft size={18} color="#9aa0a8" />
+              <Text className="text-sm font-bold text-fg-muted">{LIVE_UX_COPY.backToLive}</Text>
+            </Pressable>
           </View>
-          <FindClubPanel />
+          <FindClubPanel onCreateSession={() => switchPane("feed")} />
         </View>
       ) : (
         <ScrollView
@@ -69,21 +83,23 @@ export default function LiveScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#39ff8a" />}
           keyboardShouldPersistTaps="handled"
         >
-          <LivePaneHeader pane={pane} onPane={switchPane} />
+          <Text className="mb-1 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
+          <Text className="mb-4 text-sm text-fg-muted">{LIVE_UX_COPY.playerHeadline}</Text>
           <PlayerLivePanel />
 
           <Pressable
             onPress={() => switchPane("find")}
-          className="mb-4 min-h-[44px] flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5"
+            className="mb-4 min-h-[44px] flex-row items-center justify-between rounded-xl px-1 py-2.5 active:opacity-80"
             accessibilityRole="button"
-            accessibilityLabel="Voir les clubs LIVE"
+            accessibilityLabel={LIVE_UX_COPY.findClub}
           >
-            <Text className="text-sm text-fg-muted">
-              {liveClubCount > 0
-                ? `${liveClubCount} club${liveClubCount > 1 ? "s" : ""} LIVE maintenant`
-                : "Aucun club LIVE pour l'instant"}
-            </Text>
-            <Text className="text-xs font-bold text-fg">Trouver →</Text>
+            <View className="min-w-0 flex-1 pr-3">
+              <Text className="text-sm font-semibold text-fg">{LIVE_UX_COPY.findClub}</Text>
+              <Text className="text-xs text-fg-muted">
+                {liveClubCount > 0 ? LIVE_UX_COPY.liveClubsNow(liveClubCount) : LIVE_UX_COPY.noLiveClubs}
+              </Text>
+            </View>
+            <Text className="text-xs font-bold text-fg-subtle">→</Text>
           </Pressable>
 
           {playersError ? (
@@ -92,7 +108,9 @@ export default function LiveScreen() {
             </View>
           ) : otherLivePlayers.length > 0 ? (
             <View>
-              <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-subtle">Autres joueurs LIVE</Text>
+              <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-subtle">
+                {LIVE_UX_COPY.otherPlayers}
+              </Text>
               <View className="gap-2.5">
                 {otherLivePlayers.map((item) => (
                   <LivePlayerCard
@@ -104,37 +122,15 @@ export default function LiveScreen() {
                 ))}
               </View>
             </View>
+          ) : showFeedEmpty ? (
+            <View className="rounded-2xl border border-dashed border-border px-4 py-6">
+              <Text className="text-center text-sm text-fg-muted">
+                {liveFeedEmptyCopy({ selfLive, liveClubCount })}
+              </Text>
+            </View>
           ) : null}
         </ScrollView>
       )}
     </SafeAreaView>
-  );
-}
-
-function LivePaneHeader({ pane, onPane }: { pane: LivePane; onPane: (pane: LivePane) => void }) {
-  return (
-    <View className="mb-3">
-      <Text className="mb-2 font-display text-2xl text-fg">Tu veux jouer maintenant ?</Text>
-      <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">
-        <Pressable
-          onPress={() => onPane("feed")}
-          className={`min-h-[44px] flex-1 justify-center rounded-xl px-3 py-2.5 ${pane === "feed" ? "bg-accent" : ""}`}
-          accessibilityRole="button"
-          accessibilityState={{ selected: pane === "feed" }}
-        >
-          <Text className={`text-center text-sm font-bold ${pane === "feed" ? "text-bg" : "text-fg-muted"}`}>LIVE</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onPane("find")}
-          className={`min-h-[44px] flex-1 justify-center rounded-xl px-3 py-2.5 ${pane === "find" ? "bg-accent" : ""}`}
-          accessibilityRole="button"
-          accessibilityState={{ selected: pane === "find" }}
-        >
-          <Text className={`text-center text-sm font-bold ${pane === "find" ? "text-bg" : "text-fg-muted"}`}>
-            Trouver un club
-          </Text>
-        </Pressable>
-      </View>
-    </View>
   );
 }

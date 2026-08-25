@@ -65,3 +65,30 @@ export function formatLiveRemaining(expiresAt: string | null, nowMs: number): st
   if (minutes === 0) return `${hours} h`;
   return `${hours} h ${minutes} min`;
 }
+
+/**
+ * Copy LIVE (tu, courte). Pas de sessions inventées, pas de matching changé.
+ * Empty LIVE = chercher un match / créer une session, jamais un vide muet.
+ */
+export const LIVE_UX_COPY = {
+  title: "LIVE",
+  playerHeadline: "Tu veux jouer maintenant ?",
+  clubHeadline: "Tu recrutes maintenant ?",
+  goLive: "Passer LIVE",
+  findClub: "Chercher un club",
+  backToLive: "LIVE",
+  emptyNoClubs: "Aucun club LIVE. Passe LIVE pour qu'on te trouve, ou cherche un club.",
+  emptySelfLive: "Tu es LIVE. Aucun club ne recrute pour l'instant.",
+  emptyNoPlayers: "Aucun autre joueur LIVE pour l'instant.",
+  liveClubsNow: (n: number) => `${n} club${n > 1 ? "s" : ""} LIVE maintenant`,
+  noLiveClubs: "Aucun club LIVE pour l'instant",
+  otherPlayers: "Autres joueurs LIVE",
+  clubEmptyPlayersLive: "Aucun joueur LIVE compatible (poste + plateforme).",
+  clubEmptyPlayersOffline: "Passe LIVE pour voir les joueurs dispo.",
+} as const;
+
+export function liveFeedEmptyCopy(input: { selfLive: boolean; liveClubCount: number }): string {
+  if (input.selfLive && input.liveClubCount === 0) return LIVE_UX_COPY.emptySelfLive;
+  if (input.liveClubCount === 0) return LIVE_UX_COPY.emptyNoClubs;
+  return LIVE_UX_COPY.emptyNoPlayers;
+}

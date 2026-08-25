@@ -87,6 +87,13 @@ export const PLAYER_CARD_COPY = {
   matchesMany: (n: number) => `${n} matchs CPC`,
   eaUsernameHint: "Pseudo EA (rapprochement par nom — pas un id joueur)",
   fc27: "EA SPORTS FC 27 Pro Clubs",
+  linkClub: "Lier mon club",
+  eaUnlinked: "Club EA pas lié. Tes chiffres CPC restent là — lier accélère la collecte FC 27.",
+  eaLinkedPending: "Club EA lié — stats pas encore arrivées.",
+  eaGoals: "Buts EA",
+  eaAssists: "Passes EA",
+  eaMatches: "Matchs EA",
+  eaRating: "Note EA",
 } as const;
 
 export function formatCpcMatchCount(played: number | null | undefined): string | null {
@@ -230,4 +237,29 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
 export function formatPositionsLine(main: PositionCode, secondary: PositionCode[] = []): string {
   const positions = [main, ...secondary].filter((p, i, arr) => arr.indexOf(p) === i);
   return positions.map((p) => `${p} · ${POSITION_LABELS[p]}`).join("  ·  ");
+}
+
+/**
+ * Blocs EA à afficher — seulement les chiffres déjà stockés.
+ * Pas de SHO/PAS/TAC : ces % ne sont pas dans `verified_stats`.
+ * Pas de courbe : une note unique n'est pas un historique.
+ */
+export function visibleEaStatBlocks(
+  stats: VerifiedStats | null | undefined
+): { label: string; value: string | number }[] {
+  if (!stats) return [];
+  const out: { label: string; value: string | number }[] = [];
+  if (typeof stats.goals === "number" && Number.isFinite(stats.goals)) {
+    out.push({ label: PLAYER_CARD_COPY.eaGoals, value: stats.goals });
+  }
+  if (typeof stats.assists === "number" && Number.isFinite(stats.assists)) {
+    out.push({ label: PLAYER_CARD_COPY.eaAssists, value: stats.assists });
+  }
+  if (typeof stats.matchesPlayed === "number" && Number.isFinite(stats.matchesPlayed)) {
+    out.push({ label: PLAYER_CARD_COPY.eaMatches, value: stats.matchesPlayed });
+  }
+  if (typeof stats.avgRating === "number" && Number.isFinite(stats.avgRating) && stats.avgRating > 0) {
+    out.push({ label: PLAYER_CARD_COPY.eaRating, value: stats.avgRating.toFixed(1) });
+  }
+  return out;
 }

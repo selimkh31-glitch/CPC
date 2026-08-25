@@ -181,6 +181,8 @@ test("eaClubId = identité liée, jamais des stats EA", () => {
   assert.equal("eaStats" in linked, false, "pas de stats");
   assert.equal("goals" in linked, false, "pas de buts");
   assert.equal(CLUB_CARD_COPY.eaLinkedHint.includes("pas des stats"), true, "copy");
+  assert.equal(CLUB_CARD_COPY.eaUnlinked.includes("inventées"), true, "unlinked honest");
+  assert.equal(CLUB_CARD_COPY.eaUnlinked.includes("Lier"), false, "pas de CTA mort club");
 });
 
 test("memberCount omis si non fourni ; 0 chargé reste 0 (effectif réel vide)", () => {
@@ -329,6 +331,25 @@ test("listes fondateur : candidatures / invitations n'inventent pas Club / Club 
   assert.true(invs.includes("buildClubCardData"), "invs ClubCard");
   assert.false(invs.includes('name: "Club"'), "invs no Club fallback");
   assert.false(invs.includes('"Club Pro Clubs"'), "invs no placeholder");
+});
+
+test("spine UX — Recrutement invite ; Club pas un 2e LIVE ; Card a Lier mon club", () => {
+  const rec = readFileSync(`${process.cwd()}/app/(club)/(tabs)/candidatures.tsx`, "utf8");
+  const club = readFileSync(`${process.cwd()}/app/(club)/(tabs)/effectif.tsx`, "utf8");
+  const liveClub = readFileSync(`${process.cwd()}/app/(club)/(tabs)/index.tsx`, "utf8");
+  const livePlayer = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
+  const profile = readFileSync(`${process.cwd()}/components/profile/ProfileContent.tsx`, "utf8");
+  const card = readFileSync(`${process.cwd()}/components/player/PlayerCard.tsx`, "utf8");
+  assert.true(rec.includes("InviteToClubPanel"), "invite on recrutement");
+  assert.true(rec.includes("ApplicationsPanel"), "accept");
+  assert.false(club.includes("InviteToClubPanel"), "invite not on club tab");
+  assert.false(club.includes("ClubSessionStatus"), "club not 2nd LIVE");
+  assert.true(club.includes("MatchHistoryList"), "club stats");
+  assert.true(liveClub.includes("LiveSessionPanel"), "club live panel");
+  assert.false(liveClub.includes("ClubSessionStatus"), "no duplicate status");
+  assert.true(livePlayer.includes("liveFeedEmptyCopy"), "empty live");
+  assert.true(profile.includes("onLinkEaClub"), "EA CTA wired");
+  assert.true(card.includes("PLAYER_CARD_COPY.linkClub"), "cta on card");
 });
 
 console.log(`\n${passed} test(s) passés.`);

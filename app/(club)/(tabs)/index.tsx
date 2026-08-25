@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/Button";
 import { LiveSessionPanel } from "@/components/club/LiveSessionPanel";
 import { LivePlayersRecruitPanel } from "@/components/club/LivePlayersRecruitPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
-import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -16,10 +15,11 @@ import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
+import { LIVE_UX_COPY } from "@/lib/live";
 
 /**
- * LIVE Mode Club — recrutement LIVE (is_live + TTL) distinct du match lancé.
- * Carte compacte PR #5 + mapping session PR #7. La feuille reste un push `/match`.
+ * LIVE Mode Club — un CTA primaire : Passer LIVE.
+ * Feuille de match = secondaire. Matching / TTL inchangés.
  */
 export default function ClubLiveTab() {
   const { session } = useAuth();
@@ -28,12 +28,7 @@ export default function ClubLiveTab() {
   const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
-  const {
-    data: activeCheckin,
-    isLoading: checkinLoading,
-    isError: checkinError,
-    refetch: refetchCheckin,
-  } = useActiveMatchCheckin(club?.id ?? null);
+  const { data: activeCheckin } = useActiveMatchCheckin(club?.id ?? null);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,23 +84,21 @@ export default function ClubLiveTab() {
   return shell(
     <>
       <View>
-        <Text className="font-display text-2xl text-fg">Tu veux recruter maintenant ?</Text>
-        <Text className="mt-0.5 font-display text-lg text-fg">{club.name}</Text>
-        <Text className="text-xs text-fg-muted">Recrutement roster EA SPORTS FC 27 Pro Clubs — pas un coup d&apos;envoi.</Text>
+        <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
+        <Text className="mt-0.5 text-sm text-fg-muted">
+          {club.name} — {LIVE_UX_COPY.clubHeadline}
+        </Text>
       </View>
 
-      <ClubSessionStatus
-        snapshot={snapshot}
-        checkinLoading={checkinLoading}
-        checkinError={checkinError}
-        onRetryCheckin={() => refetchCheckin()}
-        matchSheetCta={{
-          label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
-          onPress: () => router.push("/match"),
-        }}
-      />
-
       <LiveSessionPanel clubId={club.id} activeSession={liveSession} canManage={canManage} />
+
+      <Button
+        variant={snapshot.match.active ? "secondary" : "ghost"}
+        onPress={() => router.push("/match")}
+        className="min-h-[44px]"
+      >
+        {snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match"}
+      </Button>
 
       {canManage && (
         <LivePlayersRecruitPanel

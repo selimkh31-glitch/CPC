@@ -8,27 +8,27 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Button } from "@/components/ui/Button";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
-import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
 import { ModeSwitch } from "@/components/club/ModeSwitch";
 import { ClubCard } from "@/components/club/ClubCard";
-import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { LeaguesLink } from "@/components/leagues/LeaguesLink";
+import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
+import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
-import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
+import { canMutateClub } from "@/lib/sessionState";
 
 /**
- * Club — identité, effectif réel, réglages. Feuille de match en push `/match` (secondaire).
+ * Club — identité + stats réelles. Recrutement LIVE et invitations sont ailleurs.
+ * Lien EA club : affiché si `ea_club_id` existe (ingest) — pas de bouton mort.
  */
 export default function ClubTab() {
   const { session } = useAuth();
@@ -38,11 +38,11 @@ export default function ClubTab() {
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
   const {
-    data: activeCheckin,
-    isLoading: checkinLoading,
-    isError: checkinError,
-    refetch: refetchCheckin,
-  } = useActiveMatchCheckin(club?.id ?? null);
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = useClubMatchHistory(club?.id ?? null, club?.name);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,16 +86,12 @@ export default function ClubTab() {
         <Button variant="ghost" onPress={() => setMode("PLAYER")}>
           Retour mode Joueur
         </Button>
-        <CompetitionsLink />
-        <TournamentsLink />
-        <LeaguesLink />
       </View>
     );
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = canMutateClub(myMembership?.role);
-  const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
   const isOwner = canEditClubIdentity(club.owner_id, session?.user.id);
 
   return shell(
@@ -112,9 +108,9 @@ export default function ClubTab() {
           <View className="gap-3">
             {isOwner ? (
               <Button
-                variant="secondary"
+                variant="ghost"
                 className="min-h-[44px] w-full"
-                icon={<Pencil size={15} color="#f4f5f7" />}
+                icon={<Pencil size={15} color="#9aa0a8" />}
                 accessibilityLabel="Modifier l'identité du club"
                 onPress={() => router.push("/edit-club")}
               >
@@ -126,20 +122,13 @@ export default function ClubTab() {
         }
       />
 
-      <ClubSessionStatus
-        snapshot={snapshot}
-        checkinLoading={checkinLoading}
-        checkinError={checkinError}
-        onRetryCheckin={() => refetchCheckin()}
-        matchSheetCta={{
-          label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
-          onPress: () => router.push("/match"),
-        }}
+      <MatchHistoryList
+        items={matchHistory}
+        loading={matchHistoryLoading}
+        error={matchHistoryError}
+        onRetry={refetchMatchHistory}
       />
-      <SocialShortcuts />
-      <CompetitionsLink />
-      <TournamentsLink />
-      <LeaguesLink />
+
       <MembersPanel
         clubId={club.id}
         clubName={club.name}
@@ -148,7 +137,13 @@ export default function ClubTab() {
         members={club.members ?? []}
       />
       {canManage && <DeparturesPanel clubId={club.id} members={club.members ?? []} />}
-      {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
+
+      <View className="gap-2">
+        <SocialShortcuts />
+        <CompetitionsLink />
+        <TournamentsLink />
+        <LeaguesLink />
+      </View>
     </>
   );
 }

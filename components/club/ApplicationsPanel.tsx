@@ -54,7 +54,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
       ) : isError ? (
         <ErrorState message="Impossible de charger les candidatures." onRetry={refetch} />
       ) : pending.length === 0 ? (
-        <Text className="text-sm text-fg-muted">Aucune candidature en attente.</Text>
+        <Text className="text-sm text-fg-muted">Personne n&apos;a postulé pour l&apos;instant.</Text>
       ) : (
         <View className="gap-2">
           {pending.map((app) => {
@@ -69,11 +69,10 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                 <View className="flex-row gap-1.5">
                   <Button
                     size="sm"
-                    variant="secondary"
                     loading={actingId === app.id && actingStatus === "ACCEPTED"}
                     disabled={Boolean(actingId)}
                     onPress={() => act(app.id, "ACCEPTED")}
-                    icon={<Check size={16} color="#39ff8a" />}
+                    icon={<Check size={16} color="#08090b" />}
                     className="min-h-[44px] flex-1 px-2.5"
                     accessibilityLabel="Accepter"
                   >
@@ -81,11 +80,11 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                   </Button>
                   <Button
                     size="sm"
-                    variant="secondary"
+                    variant="ghost"
                     loading={actingId === app.id && actingStatus === "DECLINED"}
                     disabled={Boolean(actingId)}
                     onPress={() => act(app.id, "DECLINED")}
-                    icon={<X size={16} color="#ff4d4f" />}
+                    icon={<X size={16} color="#9aa0a8" />}
                     className="min-h-[44px] flex-1 px-2.5"
                     accessibilityLabel="Refuser"
                   >

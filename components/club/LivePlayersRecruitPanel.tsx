@@ -8,7 +8,7 @@ import { useLivePlayers } from "@/lib/hooks/usePlayerLive";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
 import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 import { toast } from "@/lib/toast";
-import { isLiveActive } from "@/lib/live";
+import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { isPlayerCompatibleWithClubNeed } from "@/lib/liveMatch";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import type { ClubMemberRow } from "@/lib/types";
@@ -92,7 +92,7 @@ export function LivePlayersRecruitPanel({
         <ErrorState message="Impossible de charger les joueurs LIVE." onRetry={refetch} />
       ) : candidates.length === 0 ? (
         <Text className="text-sm text-fg-muted">
-          {clubIsLive ? "Aucun joueur LIVE compatible (poste + plateforme)." : "Passe le club en LIVE pour voir les joueurs compatibles."}
+          {clubIsLive ? LIVE_UX_COPY.clubEmptyPlayersLive : LIVE_UX_COPY.clubEmptyPlayersOffline}
         </Text>
       ) : (
         <View className="gap-3">

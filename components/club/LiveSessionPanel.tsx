@@ -80,12 +80,12 @@ export function LiveSessionPanel({ clubId, activeSession, canManage = true }: Li
   const neededLabel = formatNeededPositionsLine(activeSession?.needed_positions ?? positions);
 
   return (
-    <Card className={cn("p-3.5", live && "border-accent/40 bg-accent/10")}>
+    <Card className={cn("p-5", live && "border-accent/40 bg-accent/10")}>
       {live ? (
         <>
           <View className="mb-1 flex-row items-start gap-2">
             <PulseDot />
-            <Text className="flex-1 font-display text-lg text-fg">Le club est LIVE</Text>
+            <Text className="flex-1 font-display text-xl text-fg">Le club est LIVE</Text>
             <LiveCountdown expiresAt={activeSession?.expires_at ?? null} />
           </View>
           <Text className="text-sm text-fg-muted">Les joueurs peuvent te trouver.</Text>
@@ -100,7 +100,7 @@ export function LiveSessionPanel({ clubId, activeSession, canManage = true }: Li
           </Text>
           {canManage ? (
             <View className="mt-3 flex-row gap-2">
-              <Button size="sm" variant="secondary" onPress={() => setSheetOpen(true)} className="flex-1">
+              <Button size="sm" variant="ghost" onPress={() => setSheetOpen(true)} className="flex-1">
                 Modifier
               </Button>
               <Button size="sm" variant="danger" loading={toggleSession.isPending} onPress={goOffline} className="flex-1">
@@ -115,13 +115,13 @@ export function LiveSessionPanel({ clubId, activeSession, canManage = true }: Li
         <>
           <View className="mb-1 flex-row items-start gap-2">
             <Radio size={16} color="#9aa0a8" />
-            <Text className="flex-1 font-display text-lg text-fg">Tu recrutes maintenant ?</Text>
+            <Text className="flex-1 font-display text-xl text-fg">Tu recrutes maintenant ?</Text>
           </View>
-          <Text className="mb-3 text-sm text-fg-muted">Passe LIVE et laisse les joueurs te trouver.</Text>
+          <Text className="mb-4 text-sm text-fg-muted">Passe LIVE. Les joueurs te voient tout de suite.</Text>
           {canManage ? (
             <>
-              <Button loading={createSession.isPending} onPress={() => setSheetOpen(true)}>
-                PASSER LIVE
+              <Button size="lg" loading={createSession.isPending} onPress={() => setSheetOpen(true)}>
+                Passer LIVE
               </Button>
               <Pressable
                 onPress={() => setShowDetails((v) => !v)}
@@ -208,7 +208,7 @@ export function LiveSessionPanel({ clubId, activeSession, canManage = true }: Li
         ) : null}
 
         <Button loading={createSession.isPending} onPress={goLive}>
-          {live ? "Mettre à jour" : "PASSER LIVE"}
+          {live ? "Mettre à jour" : "Passer LIVE"}
         </Button>
       </Sheet>
     </Card>

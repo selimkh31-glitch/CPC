@@ -267,7 +267,9 @@ function FullBody({
           </View>
           <Text className="mt-0.5 text-[10px] text-fg-muted">{CLUB_CARD_COPY.eaLinkedHint}</Text>
         </View>
-      ) : null}
+      ) : (
+        <Text className="mt-4 text-xs text-fg-subtle">{CLUB_CARD_COPY.eaUnlinked}</Text>
+      )}
     </LinearGradient>
   );
 

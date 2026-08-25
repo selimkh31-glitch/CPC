@@ -63,7 +63,12 @@ export function MyInvitationsList() {
   }
 
   if (!invitations || invitations.length === 0) {
-    return <EmptyState title="Tu n'as reçu aucune invitation pour l'instant." />;
+    return (
+      <EmptyState
+        title="Aucune invitation pour l'instant."
+        subtitle="Quand un club t'invite, ça arrive ici."
+      />
+    );
   }
 
   const act = (invitationId: string, status: "ACCEPTED" | "DECLINED", isTransition: boolean) => {

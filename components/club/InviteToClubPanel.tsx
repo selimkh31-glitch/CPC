@@ -22,7 +22,7 @@ import type { ClubMemberRow, InvitationStatus } from "@/lib/types";
  *
  * L'état de chaque bouton est déterminé AVANT le tap, à partir de
  * `useClubInvitations` (même queryKey que "Invitations envoyées",
- * ClubInvitationsPanel.tsx — déjà chargée pour cet écran, aucune requête
+ * ClubInvitationsPanel.tsx — déjà chargée pour Recrutement, aucune requête
  * supplémentaire) : jamais de fetch au clic. `clubStatusByUserId` ne retient
  * que les invitations CLUB (`slot_id === null`) — la requête trie déjà
  * `created_at desc`, donc la première occurrence par joueur est la plus
