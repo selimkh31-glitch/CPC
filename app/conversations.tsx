@@ -11,9 +11,8 @@ import { timeAgo } from "@/lib/utils";
 import type { ConversationRow } from "@/lib/types";
 
 /**
- * Liste des conversations (DIRECT + GROUP existants). Pas d'onglet dédié —
- * stack `/conversations` depuis Profil / Club. Realtime = useMessages sur le fil,
- * pas de polling ici.
+ * Liste des conversations (DIRECT + GROUP + CLUB une fois provisionnée).
+ * Pas d'onglet dédié — stack `/conversations` depuis Profil / Club.
  */
 export default function ConversationsScreen() {
   const { profile } = useAuth();
@@ -31,7 +30,7 @@ export default function ConversationsScreen() {
       ) : !conversations || conversations.length === 0 ? (
         <EmptyState
           title="Aucune conversation pour l'instant."
-          subtitle="Ouvre le profil d'un joueur Pro Clubs pour lui écrire. Les groupes ont leur propre chat une fois rejoints."
+            subtitle="Ouvre le profil d'un joueur Pro Clubs pour lui écrire. Groupes et conversation du club : une fois ouverts, ils apparaissent ici."
         />
       ) : (
         <FlatList

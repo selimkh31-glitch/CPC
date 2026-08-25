@@ -85,11 +85,12 @@ Alternative : coller le fichier dans le SQL Editor du projet distant. **Windows 
 | `0024_apply_live_match_rls.sql` | PR #2 | CHECK LIVE + trigger apply + RLS manager |
 | `0025_safety_notifications.sql` | PR #2 | `user_blocks` / `user_reports` / `notifications` + RPC |
 | **`0026_competitions_foundation.sql`** | **PR #9** | **`competitions` + `competition_clubs` (unique paire).** |
-| **`0027_match_result_competition_link.sql`** | **PR #14 (ce slice)** | **`match_results.opponent_club_id` + `competition_id` (nullable FKs). CHECK adverse ≠ club. Trigger : si compétition, les deux clubs sont dans `competition_clubs`. `finalize_match` étendu. Pas de table standings.** |
+| **`0027_match_result_competition_link.sql`** | **PR #14** | **`match_results.opponent_club_id` + `competition_id` (nullable FKs). CHECK adverse ≠ club. Trigger : si compétition, les deux clubs sont dans `competition_clubs`. `finalize_match` étendu. Pas de table standings.** |
+| **`0028_club_conversation.sql`** | **cette branche** | **Get-or-create conversation `CLUB` (RPC `start_club_conversation`) + sync `club_members` → `conversation_members`. Pas de nouvelle table / pas de 2e chat.** |
 
-**0026 est obligatoire en prod** dès que le code #9+ tourne. **0027 est obligatoire** dès que le code de finalisation avec club adverse / compétition tourne. Sans 0027 : `finalize-match` envoie `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas. Appliquer **0026 puis 0027**. L’agent n’a pas `DATABASE_URL` ici — **humain / CoS doit appliquer**.
+**0026 est obligatoire en prod** dès que le code #9+ tourne. **0027 est obligatoire** dès que le code de finalisation avec club adverse / compétition tourne. Sans 0027 : `finalize-match` envoie `p_opponent_club_id` / `p_competition_id` vers une RPC 0014 qui ne les connaît pas. **0028** (conversation club) : appliquer après 0016–0017 (tables + RLS chat déjà là). L’agent n’a pas `DATABASE_URL` ici — **humain / CoS doit appliquer**.
 
-Pas de migration 0028 pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
+Pas de migration dédiée pour `MESSAGE_RECEIVED` : `notifications.type` est du texte libre (0025).  
 PR **#5** : aucune migration (UX / filtres UI seulement).
 
 ---
@@ -117,7 +118,8 @@ npx supabase functions deploy \
   expire-live-sessions \
   create-competition \
   register-competition-club \
-  notify-message-received
+  notify-message-received \
+  start-club-conversation
 ```
 
 | Fonction | JWT gateway | Pourquoi |
@@ -132,6 +134,7 @@ npx supabase functions deploy \
 | `expire-live-sessions` | **`verify_jwt = false`** (auth `CRON_SECRET`) | Janitor LIVE ; pg_cron SQL 0023 est l’alternative |
 | `create-competition` / `register-competition-club` | true | Fondation #9 |
 | `notify-message-received` | true | Notif in-app DM (#10) |
+| `start-club-conversation` | true | Get-or-create conversation CLUB (0028) |
 
 Sans `notify-message-received` : le message s’insère quand même (INSERT client + RLS) ; **pas** de ligne `notifications` `MESSAGE_RECEIVED`.  
 Sans `create-competition` / `register-competition-club` : pas de création / inscription compétition.  
@@ -253,7 +256,7 @@ Compte réel (onboarding terminé) + second compte pour DM / block / apply.
 
 - Depuis un profil : vrai DM (`start-direct-conversation`) → `/conversation/[id]`. Realtime, pas de pull-to-refresh obligatoire.
 - Joueur bloqué : pas de DM, copy « Tu ne peux pas envoyer de message à ce joueur (blocage). »
-- Groupes : liste + détail. Pas de 4e onglet. Conversation type **CLUB** toujours non provisionnée.
+- Groupes : liste + détail. Pas de 4e onglet. Conversation type **CLUB** : bouton **Conversation du club** (44 pt) sur l’onglet Club, get-or-create `start-club-conversation` → `/conversation/[id]`. Exige **0028** + Edge déployée.
 
 ### Compétitions (#9 + 0027) — exige 0026 + 0027 + Edge `finalize-match` redéployée
 

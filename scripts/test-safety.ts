@@ -77,7 +77,7 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.false(isNotificationType("RANDOM"), "unknown type");
 });
 
-test("inAppNotificationHref — APPLICATION_RECEIVED en Mode Club va à Recrutement", () => {
+test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter/refuser)", () => {
   assert.equal(
     inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "CLUB"),
     "/candidatures",
@@ -85,8 +85,8 @@ test("inAppNotificationHref — APPLICATION_RECEIVED en Mode Club va à Recrutem
   );
   assert.equal(
     inAppNotificationHref("APPLICATION_RECEIVED", { clubId: "c1" }, "PLAYER"),
-    "/club/c1",
-    "player mode — arbre club non monté"
+    "/candidatures",
+    "player mode — même cible, l'appelant passe en Mode Club"
   );
   assert.equal(
     inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),

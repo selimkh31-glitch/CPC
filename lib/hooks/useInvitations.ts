@@ -265,6 +265,8 @@ export function useRespondInvitation(userId: string | null) {
       queryClient.invalidateQueries({ queryKey: ["my-invitations", userId] });
       // L'acceptation crée un club_members MEMBER (accept_invitation, 0007_match_sheet_rls.sql).
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["club"] });
+      queryClient.invalidateQueries({ queryKey: ["club-invitations"] });
     },
   });
 }

@@ -62,7 +62,9 @@ Deno.serve(async (req) => {
           ? "Ce poste vient d'être pourvu par un autre candidat."
           : acceptError.message.includes("application_not_pending")
             ? "Cette candidature a déjà été traitée."
-            : acceptError.message;
+            : acceptError.message.includes("already_has_active_club")
+              ? "Ce joueur est déjà engagé avec un autre club."
+              : acceptError.message;
       return jsonResponse({ error: message }, 409);
     }
     updated = accepted;

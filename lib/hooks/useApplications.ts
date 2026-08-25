@@ -103,6 +103,9 @@ export function useRespondApplication(clubId: string) {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["applications", clubId] });
+      // accept_application() insère club_members — l'effectif (["club", clubId])
+      // doit refléter le nouveau membre sans attendre un refetch au focus.
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
     },
   });
 }

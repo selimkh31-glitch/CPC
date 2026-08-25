@@ -81,6 +81,10 @@ verify_jwt = true
 [functions.start-direct-conversation]
 verify_jwt = true
 
+# Conversation CLUB (get-or-create, 0028). Même JWT session.
+[functions.start-club-conversation]
+verify_jwt = true
+
 # Social Foundations — Groupes (mission section 12), appelée par l'app mobile
 # avec le JWT de session comme toutes les fonctions ci-dessus.
 [functions.set-group-member-role]

@@ -72,6 +72,14 @@ npx prisma db execute --file supabase/migrations/0027_match_result_competition_l
 
 Puis déployer `create-competition`, `register-competition-club`, et **redéployer** `finalize-match`. 0027 ajoute `opponent_club_id` / `competition_id` sur `match_results` (nullable). Pas de table standings : le classement compétition se calcule seulement depuis des résultats réellement liés.
 
+**Conversation club (0028)** — après 0016–0017 (tables + RLS chat). Get-or-create `start_club_conversation`, pas de nouvelle table.
+
+```bash
+npx prisma db execute --file supabase/migrations/0028_club_conversation.sql --schema prisma/schema.prisma
+```
+
+Puis déployer `start-club-conversation`.
+
 Tous les `id` (sauf `users.id`, toujours l'UID Supabase Auth) utilisent `@default(dbgenerated("gen_random_uuid()"))` — un vrai DEFAULT Postgres — pour que les INSERT faits hors Prisma Client (app mobile via `supabase-js`, Edge Functions) fonctionnent sans fournir `id`.
 
 Sécurité en deux couches :
@@ -99,6 +107,8 @@ supabase/functions/
   revenuecat-webhook/          POST — synchronise users.plan depuis RevenueCat
   create-competition/          POST — crée une compétition virtuelle Pro Clubs (DRAFT|OPEN)
   register-competition-club/   POST — inscrit un club géré (OWNER/MANAGER), unique → 409
+  start-direct-conversation/   POST — get-or-create DM
+  start-club-conversation/     POST — get-or-create conversation CLUB (0028)
 ```
 
 Déploiement :
