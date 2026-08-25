@@ -69,6 +69,7 @@
     "test:club-identity": "tsx scripts/test-club-identity.ts",
     "test:competitions": "tsx scripts/test-competitions.ts",
     "test:leagues": "tsx scripts/test-leagues.ts",
+    "test:match-history": "tsx scripts/test-match-history.ts",
     "lint": "expo lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

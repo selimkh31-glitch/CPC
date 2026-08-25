@@ -172,6 +172,8 @@ export function useFinalizeMatch(clubId: string) {
       queryClient.invalidateQueries({ queryKey: ["active-match-checkin", clubId] });
       queryClient.invalidateQueries({ queryKey: ["competitions"] });
       queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
+      queryClient.invalidateQueries({ queryKey: ["player-match-history"] });
+      queryClient.invalidateQueries({ queryKey: ["club-match-history"] });
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

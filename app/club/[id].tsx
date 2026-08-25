@@ -7,8 +7,10 @@ import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
+import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
+import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
@@ -19,6 +21,12 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: club, isLoading, isError, refetch } = useClub(id);
+  const {
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = useClubMatchHistory(id ?? null, club?.name);
   const { session } = useAuth();
   const { data: blockedIds } = useBlockedUserIds(session?.user.id ?? null);
   const now = useLiveClock();
@@ -63,6 +71,15 @@ export default function ClubDetailScreen() {
           Voir la feuille de match
         </Link>
       </View>
+
+      <Card>
+        <MatchHistoryList
+          items={matchHistory}
+          loading={matchHistoryLoading}
+          error={matchHistoryError}
+          onRetry={refetchMatchHistory}
+        />
+      </Card>
 
       <Card>
         <Text className="mb-2 font-display text-lg text-fg">Session</Text>

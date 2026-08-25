@@ -236,6 +236,18 @@ export interface MatchResultRow {
   competition_id: string | null;
 }
 
+/** Snapshot check-in (launch-match-checkin) — pas le roster actuel. */
+export type MatchParticipationStatus = "PRESENT" | "ABSENT";
+
+export interface MatchParticipationRow {
+  id: string;
+  match_checkin_id: string;
+  user_id: string;
+  club_id: string;
+  slot_id: string | null;
+  status: MatchParticipationStatus;
+}
+
 /** Match Result Engine, Phase F.2 — joueur éligible au MVP, dérivé de
  *  match_participations (status = 'PRESENT') pour un check-in donné, jamais
  *  du roster actuel du club. */
