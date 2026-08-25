@@ -1,5 +1,5 @@
 /**
- * Classement clubs CPC — `/leagues` (2e section), pas un onglet.
+ * Classement clubs CPC — `/leagues` (surface principale du stack partagé), pas un onglet.
  *
  * Source unique : `match_results` avec `opponent_club_id` (finalize_match).
  * Scorer = famille compétitions (`computeStandingsFromLinkedResults`, W=3 D=1 L=0).

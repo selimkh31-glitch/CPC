@@ -2,12 +2,16 @@
  * Tests de LeaguesLink — pousse `/leagues`, pas un 4e onglet.
  * Sans réseau / sans Expo. Lancer : npx tsx scripts/test-leagues-link.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { existsSync, readFileSync } from "fs";
 import {
   LEAGUES_STACK_HREF,
   LEAGUES_TAB_HREF,
   pushLeaguesScreen,
 } from "../lib/leagues";
 import { RANKING_COPY } from "../lib/rankings";
+
+const root = process.cwd();
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -51,6 +55,27 @@ test("libellé FR classement clubs CPC, pas une ligue EA", () => {
 test("Ligues reste hors tab bar (href: null)", () => {
   assert.equal(LEAGUES_TAB_HREF, null, "tab href");
   assert.equal(LEAGUES_STACK_HREF, "/leagues", "stack still /leagues");
+});
+
+test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), pas seulement l'onglet joueur", () => {
+  const stackFile = `${root}/app/leagues.tsx`;
+  assert.true(existsSync(stackFile), "app/leagues.tsx");
+  const layout = readFileSync(`${root}/app/_layout.tsx`, "utf8");
+  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
+  const playerGuard = layout.indexOf('mode === "PLAYER"');
+  const leaguesName = layout.indexOf('name="leagues"');
+  assert.true(sharedGuard >= 0, "shared guard");
+  assert.true(leaguesName > sharedGuard, "registered next to competitions");
+  assert.true(playerGuard >= 0 && leaguesName > playerGuard, "not only player tree");
+  assert.true(layout.includes('name="competitions/index"'), "competitions sibling");
+  assert.true(layout.includes('name="tournaments/index"'), "tournaments sibling");
+  const leaguesBlock = layout.slice(leaguesName, leaguesName + 280);
+  assert.true(leaguesBlock.includes("headerShown: true"), "headerShown");
+  assert.true(
+    leaguesBlock.includes("RANKING_COPY.clubTitle") || leaguesBlock.includes('"Ligues"'),
+    "title"
+  );
+  assert.true(readFileSync(stackFile, "utf8").includes("CpcClubRanking"), "stack has CPC table");
 });
 
 console.log(`\n${passed} tests OK`);

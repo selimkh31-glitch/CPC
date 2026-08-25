@@ -2,6 +2,8 @@
  * Tests de lib/leagues.ts — pas de classement inventé sur `/leagues`.
  * Sans réseau. Lancer : npx tsx scripts/test-leagues.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { existsSync, readFileSync } from "fs";
 import {
   canShowLiveLeagueRanking,
   LEAGUE_COPY,
@@ -10,6 +12,8 @@ import {
   SEASON_STATS_WRITTEN_FROM_MATCH_RESULTS,
 } from "../lib/leagues";
 import { canFillStandingsFromMatchResults } from "../lib/competitions";
+
+const root = process.cwd();
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -87,6 +91,46 @@ test("Ligues reste hors tab bar (href: null)", () => {
 
 test("stack /leagues via LeaguesLink (pas un onglet)", () => {
   assert.equal(LEAGUES_STACK_HREF, "/leagues", "stack href");
+});
+
+test("stack /leagues enregistré dans l'arbre partagé, pas seulement l'onglet joueur", () => {
+  const stackFile = `${root}/app/leagues.tsx`;
+  const layoutFile = `${root}/app/_layout.tsx`;
+  const tabFile = `${root}/app/(player)/(tabs)/leagues.tsx`;
+  const tabsLayoutFile = `${root}/app/(player)/(tabs)/_layout.tsx`;
+  assert.true(existsSync(stackFile), "app/leagues.tsx");
+  assert.true(existsSync(layoutFile), "app/_layout.tsx");
+  assert.true(existsSync(tabFile), "player tab alias");
+
+  const stack = readFileSync(stackFile, "utf8");
+  const rankingPos = stack.indexOf("CpcClubRanking");
+  const emptyPos = stack.indexOf("LEAGUE_COPY.empty");
+  assert.true(rankingPos >= 0, "CpcClubRanking on stack screen");
+  assert.true(emptyPos >= 0, "season empty copy");
+  assert.true(rankingPos < emptyPos, "ranking leads, season empty secondary");
+  assert.true(!stack.includes("<EmptyState"), "no full-screen EmptyState");
+  assert.true(stack.includes("canShowLiveLeagueRanking"), "honest season gate");
+
+  const layout = readFileSync(layoutFile, "utf8");
+  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
+  const leaguesName = layout.indexOf('name="leagues"');
+  const competitionsName = layout.indexOf('name="competitions/index"');
+  assert.true(sharedGuard >= 0, "shared guard");
+  assert.true(leaguesName > sharedGuard, "leagues in shared tree");
+  assert.true(competitionsName > sharedGuard, "competitions in shared tree");
+  const leaguesBlock = layout.slice(leaguesName, leaguesName + 280);
+  assert.true(leaguesBlock.includes("headerShown: true"), "back header");
+  assert.true(
+    leaguesBlock.includes("RANKING_COPY.clubTitle") || leaguesBlock.includes("Ligues"),
+    "header title"
+  );
+
+  const tab = readFileSync(tabFile, "utf8");
+  assert.true(tab.includes("Redirect"), "tab is Redirect alias");
+  assert.true(tab.includes("LEAGUES_STACK_HREF"), "tab redirects to /leagues");
+
+  const tabsLayout = readFileSync(tabsLayoutFile, "utf8");
+  assert.true(tabsLayout.includes("href: LEAGUES_TAB_HREF"), "tab href null");
 });
 
 console.log(`\n${passed} tests OK`);
