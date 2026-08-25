@@ -336,6 +336,11 @@ test("8. Scores invalides (négatif, non-int) → validation serveur", () => {
 test("9. Notify href : competitionId → /competitions/[id] sinon /match ; Club mode ; recorder exclu", () => {
   assert.equal(matchFinalizedHref({ clubId: CLUB_A }, "PLAYER"), "/match", "sans compétition");
   assert.equal(matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP }, "PLAYER"), `/competitions/${COMP}`, "avec compétition");
+  assert.equal(
+    matchFinalizedHref({ clubId: CLUB_A, competitionId: COMP, kind: "TOURNAMENT" }, "PLAYER"),
+    `/tournaments/${COMP}`,
+    "tournoi"
+  );
   const navMatch = matchFinalizedNotificationNav("MATCH_FINALIZED", { clubId: CLUB_A }, "PLAYER");
   assert.equal(navMatch?.href, "/match", "nav match");
   assert.equal(navMatch?.requireClubMode, true, "switch Club");

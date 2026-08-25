@@ -170,9 +170,13 @@ export default function TournamentDetailScreen() {
           roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
           viewerId={session?.user.id ?? null}
-          isLoading={matchesQuery.isLoading}
-          isError={matchesQuery.isError}
-          onRetry={() => matchesQuery.refetch()}
+          isLoading={matchesQuery.isLoading || roundClubsQuery.isLoading || linkedResults.isLoading}
+          isError={matchesQuery.isError || roundClubsQuery.isError || linkedResults.isError}
+          onRetry={() => {
+            matchesQuery.refetch();
+            roundClubsQuery.refetch();
+            linkedResults.refetch();
+          }}
           scheduling={schedule.isPending}
           onSchedule={() => {
             schedule.mutate(
@@ -195,6 +199,13 @@ export default function TournamentDetailScreen() {
           matches={matchesQuery.data}
           roundClubs={roundClubsQuery.data}
           results={linkedResults.data}
+          isLoading={matchesQuery.isLoading || roundClubsQuery.isLoading || linkedResults.isLoading}
+          isError={matchesQuery.isError || roundClubsQuery.isError || linkedResults.isError}
+          onRetry={() => {
+            matchesQuery.refetch();
+            roundClubsQuery.refetch();
+            linkedResults.refetch();
+          }}
         />
       </Card>
     </ScrollView>

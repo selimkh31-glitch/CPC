@@ -8,6 +8,7 @@ import { CLUB_NAME_SEARCH_MIN, useClubNameSearch } from "@/lib/hooks/useClubName
 import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import { COMPETITION_COPY } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
+import { TOURNAMENT_COPY } from "@/lib/tournaments";
 import type { ClubRow, CompetitionRow } from "@/lib/types";
 
 export function OpponentClubPicker({
@@ -130,7 +131,11 @@ export function OptionalCompetitionPicker({
           {competitions.map((competition: CompetitionRow) => (
             <CompetitionChoice
               key={competition.id}
-              label={competition.name}
+              label={
+                competition.kind === "TOURNAMENT"
+                  ? `${competition.name} · ${TOURNAMENT_COPY.kindLabel}`
+                  : competition.name
+              }
               selected={selectedId === competition.id}
               onPress={() => onSelect(competition.id)}
             />

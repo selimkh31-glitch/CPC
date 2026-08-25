@@ -147,6 +147,15 @@ export function competitionIdFromNotificationData(
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
+/** `kind` persisté sur les notifs liées (TOURNAMENT → /tournaments/[id]). */
+export function competitionKindFromNotificationData(
+  data: Record<string, unknown> | null | undefined
+): "COMPETITION" | "TOURNAMENT" | null {
+  const kind = data?.kind;
+  if (kind === "TOURNAMENT" || kind === "COMPETITION") return kind;
+  return null;
+}
+
 /** Autres membres d'une conversation, hors expéditeur (DIRECT = 1, GROUP = N). */
 export function otherConversationParticipantIds(
   memberUserIds: readonly string[],
@@ -235,14 +244,19 @@ export function matchFinalizedNotificationData(input: {
   matchCheckinId: string;
   opponentClubId: string | null;
   competitionId: string | null;
+  kind?: string | null;
 }): Record<string, unknown> {
-  return {
+  const data: Record<string, unknown> = {
     clubId: input.clubId,
     matchResultId: input.matchResultId,
     matchCheckinId: input.matchCheckinId,
     opponentClubId: input.opponentClubId,
     competitionId: input.competitionId,
   };
+  if (input.kind === "TOURNAMENT" || input.kind === "COMPETITION") {
+    data.kind = input.kind;
+  }
+  return data;
 }
 
 export type MatchFinalizedNotificationNav = {
@@ -251,20 +265,36 @@ export type MatchFinalizedNotificationNav = {
   requireClubMode: boolean;
 };
 
+function linkedCompetitionStackHref(
+  competitionId: string,
+  kind: "COMPETITION" | "TOURNAMENT" | null
+): string {
+  if (kind === "TOURNAMENT") return `/tournaments/${competitionId}`;
+  return `/competitions/${competitionId}`;
+}
+
 function isCompetitionStackHref(href: string): boolean {
-  return href === "/competitions" || href.startsWith("/competitions/");
+  return (
+    href === "/competitions" ||
+    href.startsWith("/competitions/") ||
+    href === "/tournaments" ||
+    href.startsWith("/tournaments/")
+  );
 }
 
 /**
- * Deep link MATCH_FINALIZED : `/competitions/[id]` si competition_id réel,
- * sinon `/match` (Mode Club, feuille). Jamais `/notifications`.
+ * Deep link MATCH_FINALIZED : compétition ou tournoi si competition_id réel
+ * (kind TOURNAMENT → `/tournaments/[id]`), sinon `/match` (Mode Club).
+ * Jamais `/notifications`.
  */
 export function matchFinalizedHref(
   data: Record<string, unknown> | null | undefined,
   _mode: "PLAYER" | "CLUB" = "CLUB"
 ): string {
   const competitionId = competitionIdFromNotificationData(data);
-  if (competitionId) return `/competitions/${competitionId}`;
+  if (competitionId) {
+    return linkedCompetitionStackHref(competitionId, competitionKindFromNotificationData(data));
+  }
   return "/match";
 }
 
@@ -327,20 +357,27 @@ export function competitionClubRegisteredNotificationData(input: {
   clubId: string;
   competitionId: string;
   registrationId: string;
+  kind?: string | null;
 }): Record<string, unknown> {
-  return {
+  const data: Record<string, unknown> = {
     clubId: input.clubId,
     competitionId: input.competitionId,
     registrationId: input.registrationId,
   };
+  if (input.kind === "TOURNAMENT" || input.kind === "COMPETITION") {
+    data.kind = input.kind;
+  }
+  return data;
 }
 
-/** Deep link COMPETITION_CLUB_REGISTERED : `/competitions/[id]` si id réel, sinon liste. */
+/** Deep link COMPETITION_CLUB_REGISTERED : tournoi ou compétition si id réel, sinon liste. */
 export function competitionClubRegisteredHref(
   data?: Record<string, unknown> | null
 ): string {
   const competitionId = competitionIdFromNotificationData(data);
-  return competitionId ? `/competitions/${competitionId}` : "/competitions";
+  const kind = competitionKindFromNotificationData(data);
+  if (!competitionId) return kind === "TOURNAMENT" ? "/tournaments" : "/competitions";
+  return linkedCompetitionStackHref(competitionId, kind);
 }
 
 export function notificationHref(type: string, data: Record<string, unknown> | null | undefined): string {

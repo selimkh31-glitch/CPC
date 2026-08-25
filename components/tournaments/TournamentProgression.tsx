@@ -8,6 +8,8 @@ import {
 } from "@/lib/tournaments";
 import type { LinkedMatchResultRow } from "@/lib/hooks/useCompetitionResults";
 import type { CompetitionRow, TournamentMatchRow, TournamentRoundClubRow } from "@/lib/types";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/Screen";
 
 /** Qualifiés / vainqueur = uniquement des résultats PLAYED liés. Pas de 0-0 inventé. */
 export function TournamentProgression({
@@ -15,12 +17,39 @@ export function TournamentProgression({
   matches,
   roundClubs,
   results,
+  isLoading,
+  isError,
+  onRetry,
 }: {
   tournament: CompetitionRow;
   matches: TournamentMatchRow[] | undefined;
   roundClubs: TournamentRoundClubRow[] | undefined;
   results: LinkedMatchResultRow[] | undefined;
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 }) {
+  if (isLoading) {
+    return (
+      <View>
+        <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">
+          {TOURNAMENT_COPY.championTitle}
+        </Text>
+        <Skeleton className="h-12" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View>
+        <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">
+          {TOURNAMENT_COPY.championTitle}
+        </Text>
+        <ErrorState message={TOURNAMENT_COPY.matchesLoadError} onRetry={onRetry} />
+      </View>
+    );
+  }
   const rows = matches ?? [];
   const linked = results ?? [];
   const pool = roundClubs ?? [];

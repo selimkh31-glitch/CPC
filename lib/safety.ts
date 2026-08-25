@@ -16,9 +16,9 @@ export * from "../supabase/functions/_shared/safety";
  * APPLICATION_RECEIVED → Recrutement (`/candidatures`), où ApplicationsPanel
  * accepte/refuse. `/club/[id]` n'a pas ces actions. L'appelant doit passer
  * en Mode Club et sélectionner `data.clubId` (voir recruitmentNotificationNav).
- * MATCH_FINALIZED → `/competitions/[id]` si `competitionId`, sinon `/match`
- * (feuille Mode Club). COMPETITION_CLUB_REGISTERED → `/competitions/[id]`.
- * Pas d'écran mort.
+ * MATCH_FINALIZED → `/tournaments/[id]` si kind TOURNAMENT, sinon
+ * `/competitions/[id]` si `competitionId`, sinon `/match` (feuille Mode Club).
+ * COMPETITION_CLUB_REGISTERED → même stack selon kind. Pas d'écran mort.
  */
 export function inAppNotificationHref(
   type: string,

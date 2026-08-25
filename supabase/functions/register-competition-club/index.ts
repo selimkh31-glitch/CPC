@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
       clubId,
       competitionName: typeof competition.name === "string" ? competition.name : "",
       createdBy: typeof competition.created_by === "string" ? competition.created_by : null,
+      kind: typeof competition.kind === "string" ? competition.kind : null,
     });
   } catch (err) {
     console.warn("[register-competition-club] notify exception:", err);
@@ -122,6 +123,7 @@ async function notifyCompetitionClubRegistered(
     clubId: string;
     competitionName: string;
     createdBy: string | null;
+    kind: string | null;
   }
 ): Promise<void> {
   const registration = asRegistrationRow(input.registration);
@@ -142,6 +144,7 @@ async function notifyCompetitionClubRegistered(
     clubId: input.clubId,
     competitionId: input.competitionId,
     registrationId,
+    kind: input.kind,
   });
 
   const { data: members, error: membersError } = await admin

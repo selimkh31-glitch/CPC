@@ -171,7 +171,13 @@ export function useFinalizeMatch(clubId: string) {
       // qui doit venir de la DB).
       queryClient.invalidateQueries({ queryKey: ["active-match-checkin", clubId] });
       queryClient.invalidateQueries({ queryKey: ["competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["competition"] });
       queryClient.invalidateQueries({ queryKey: ["competition-linked-results"] });
+      queryClient.invalidateQueries({ queryKey: ["club-open-competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament-round-clubs"] });
       queryClient.invalidateQueries({ queryKey: ["player-match-history"] });
       queryClient.invalidateQueries({ queryKey: ["club-match-history"] });
     },
