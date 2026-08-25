@@ -215,6 +215,26 @@ export function useToggleSession(clubId: string) {
   });
 }
 
+/** Met à jour les postes cherchés d'un LIVE déjà allumé, sans recréer la session / le TTL. */
+export function usePatchLiveNeededPositions(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { sessionId: string; neededPositions: string[] }) => {
+      if (!input.neededPositions.length) throw new Error("Sélectionne au moins un poste recherché.");
+      const { error } = await supabase
+        .from("club_sessions")
+        .update({ needed_positions: input.neededPositions })
+        .eq("id", input.sessionId)
+        .eq("club_id", clubId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
+    },
+  });
+}
+
 /**
  * Changement de formation (feuille de match, phase 3). Ne supprime JAMAIS
  * club_members — uniquement les slot_assignments de ce club, puisqu'un

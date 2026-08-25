@@ -129,6 +129,10 @@ test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
   assert.equal(liveFeedEmptyCopy({ selfLive: true, liveClubCount: 0 }), LIVE_UX_COPY.emptySelfLive, "self live");
   assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 2 }), LIVE_UX_COPY.emptyNoPlayers, "players");
   assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "cta");
+  assert.equal(LIVE_UX_COPY.discoveryOn, "En ligne", "discovery on");
+  assert.equal(LIVE_UX_COPY.discoveryHintOn, "Les joueurs te voient", "discovery hint");
+  assert.equal(LIVE_UX_COPY.discoveryHintOff.includes("flag"), false, "no flag in hint");
+  assert.equal(LIVE_UX_COPY.discoveryHintOff.includes("expiry"), false, "no expiry in hint");
   assert.equal(LIVE_UX_COPY.findClub, "Clubs en LIVE", "find");
   assert.equal(LIVE_UX_COPY.liveClubFilters, "Filtres", "filters");
   assert.equal(LIVE_UX_COPY.otherPlayers, "Ils veulent jouer", "others");
@@ -183,15 +187,46 @@ test("clubLiveLayout — ready ne cache pas Passer LIVE ; feuille remplie si mat
   assert.equal(LIVE_UX_COPY.newLive, "Nouveau LIVE", "new live copy");
 });
 
-test("panels LIVE : joueur = playerHeadline, club = clubHeadline / Club en LIVE", () => {
+test("panels LIVE : joueur = playerHeadline, club LIVE = discovery + feuille", () => {
   const player = readFileSync(`${process.cwd()}/components/live/PlayerLivePanel.tsx`, "utf8");
-  const club = readFileSync(`${process.cwd()}/components/club/LiveSessionPanel.tsx`, "utf8");
+  const toggle = readFileSync(`${process.cwd()}/components/club/ClubDiscoveryToggle.tsx`, "utf8");
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  const liveTab = readFileSync(`${process.cwd()}/app/(club)/(tabs)/index.tsx`, "utf8");
+  const matchTab = readFileSync(`${process.cwd()}/app/(club)/(tabs)/match.tsx`, "utf8");
   assert.true(player.includes("LIVE_UX_COPY.playerHeadline"), "player uses playerHeadline");
   assert.false(player.includes("LIVE_UX_COPY.clubHeadline"), "player not clubHeadline");
   assert.false(player.includes("On cherche un match"), "player panel no match hunt");
-  assert.true(club.includes("LIVE_UX_COPY.clubHeadline"), "club off uses clubHeadline");
-  assert.true(club.includes("LIVE_UX_COPY.clubOpenTitle"), "club open title");
-  assert.false(club.includes("LIVE_UX_COPY.playerHeadline"), "club not playerHeadline");
+  assert.true(toggle.includes("LIVE_UX_COPY.discoveryOn"), "club toggle En ligne");
+  assert.true(toggle.includes("LIVE_UX_COPY.discoveryHintOn"), "Les joueurs te voient");
+  assert.false(toggle.includes("LIVE_UX_COPY.playerHeadline"), "club not playerHeadline");
+  assert.true(feuille.includes("ClubDiscoveryToggle"), "feuille has toggle");
+  assert.true(feuille.includes("FormationPitch"), "feuille has pitch");
+  assert.true(feuille.includes("MatchCheckinPanel"), "check-in lower on feuille");
+  assert.false(feuille.includes("LiveSessionPanel"), "no competing LIVE panel");
+  assert.false(feuille.includes("ClubSessionStatus"), "no intern status card");
+  assert.false(feuille.includes("flag + durée"), "no intern flag copy");
+  assert.false(feuille.includes("HORS LIGNE"), "no HORS LIGNE");
+  assert.false(feuille.includes("Pas de match lancé"), "no PAS DE MATCH");
+  assert.false(toggle.includes("LIVE_DURATION_OPTIONS"), "no duration picker");
+  assert.true(liveTab.includes("ClubLiveFeuille"), "LIVE tab is feuille");
+  assert.true(matchTab.includes("ClubLiveFeuille"), "match same surface");
+  assert.false(liveTab.includes("LiveSessionPanel"), "LIVE tab no old panel");
+  assert.false(matchTab.includes("LiveSessionPanel"), "match no old panel");
+});
+
+test("club LIVE chrome : toggle ON = is_live + expires_at ; OFF = is_live false", () => {
+  const toggle = readFileSync(`${process.cwd()}/components/club/ClubDiscoveryToggle.tsx`, "utf8");
+  const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");
+  assert.true(toggle.includes("useCreateSession"), "create session");
+  assert.true(toggle.includes("useToggleSession"), "toggle session");
+  assert.true(toggle.includes("DEFAULT_LIVE_DURATION_MS"), "silent 2h TTL");
+  assert.true(toggle.includes("durationMs: DEFAULT_LIVE_DURATION_MS"), "create uses 2h");
+  assert.true(toggle.includes("neededPositions"), "vacancies from pitch");
+  const turnOff = toggle.slice(toggle.indexOf("const turnOff"), toggle.indexOf("return ("));
+  assert.true(turnOff.includes("isLive: true"), "OFF passes isLive true so goingLive is false");
+  assert.true(create.includes("is_live: true"), "insert is_live");
+  assert.true(create.includes("expires_at: expiresAt"), "insert expires_at");
+  assert.true(create.includes("const goingLive = !input.isLive"), "toggle inverts isLive");
 });
 
 test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", () => {
@@ -205,7 +240,8 @@ test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", (
 test("unmount / blur d'onglet LIVE ne coupe pas is_live", () => {
   const files = [
     "components/live/PlayerLivePanel.tsx",
-    "components/club/LiveSessionPanel.tsx",
+    "components/club/ClubDiscoveryToggle.tsx",
+    "components/club/ClubLiveFeuille.tsx",
     "app/(player)/(tabs)/index.tsx",
     "app/(club)/(tabs)/index.tsx",
     "app/(club)/(tabs)/match.tsx",
@@ -220,10 +256,11 @@ test("unmount / blur d'onglet LIVE ne coupe pas is_live", () => {
   assert.false(/useEffect\(/.test(player), "player panel no effect");
   const stop = player.slice(player.indexOf("const stop"), player.indexOf("const openSheet"));
   assert.true(stop.includes("goOffline.mutate"), "Arrêter still cuts LIVE");
-  const club = readFileSync(`${process.cwd()}/components/club/LiveSessionPanel.tsx`, "utf8");
-  const goOffline = club.slice(club.indexOf("const goOffline"), club.indexOf("const neededLabel"));
-  assert.true(goOffline.includes("toggleSession.mutate"), "Arrêter club still cuts LIVE");
-  assert.false(/cleanup[\s\S]*is_live/.test(club), "club panel no cleanup offline");
+  const toggle = readFileSync(`${process.cwd()}/components/club/ClubDiscoveryToggle.tsx`, "utf8");
+  const turnOff = toggle.slice(toggle.indexOf("const turnOff"), toggle.indexOf("return ("));
+  assert.true(turnOff.includes("toggleSession.mutate"), "OFF toggle still cuts LIVE");
+  assert.false(/return \(\) =>[\s\S]*is_live/.test(toggle), "club toggle no cleanup offline");
+  assert.false(/cleanup[\s\S]*is_live/.test(toggle), "club toggle no cleanup offline comment-write");
   const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");
   assert.true(create.includes("update({ is_live: true }).in(\"id\", previousIds)"), "restore club LIVE if insert fails");
   const playerHook = readFileSync(`${process.cwd()}/lib/hooks/usePlayerLive.ts`, "utf8");

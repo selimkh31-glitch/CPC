@@ -116,10 +116,9 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
   assert.false(empty.includes("Impossible de charger ce club."), "empty is not error copy");
 
   const screens = [
-    "app/(club)/(tabs)/index.tsx",
+    "components/club/ClubLiveFeuille.tsx",
     "app/(club)/(tabs)/candidatures.tsx",
     "app/(club)/(tabs)/effectif.tsx",
-    "app/(club)/(tabs)/match.tsx",
   ];
   for (const rel of screens) {
     const src = read(rel);
@@ -129,23 +128,19 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
     assert.true(emptyIf >= 0, `${rel} if (!club)`);
     assert.true(errorIf >= 0, `${rel} if (isError)`);
     assert.true(emptyIf < errorIf, `${rel} empty BEFORE isError`);
-    if (rel !== "app/(club)/(tabs)/match.tsx") {
-      assert.true(src.includes('message="Impossible de charger ce club."'), `${rel} real error still exists`);
-    }
+    assert.true(src.includes('message="Impossible de charger ce club."'), `${rel} real error still exists`);
   }
 
   const live = read("app/(club)/(tabs)/index.tsx");
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const match = read("app/(club)/(tabs)/match.tsx");
-  assert.false(/if \(isError\) \{\s*return shell/.test(live), "LIVE isError does not unmount panel");
-  assert.true(live.includes("LiveSessionPanel"), "LIVE panel");
-  for (const [rel, src] of [
-    ["LIVE", live],
-    ["Club", clubTab],
-    ["match", match],
-  ] as const) {
-    assert.true(src.includes("if (!club) return"), `${rel} skip refetch without club`);
-  }
+  const feuille = read("components/club/ClubLiveFeuille.tsx");
+  assert.true(live.includes("ClubLiveFeuille"), "LIVE is feuille");
+  assert.true(match.includes("ClubLiveFeuille"), "match same surface");
+  assert.false(live.includes("LiveSessionPanel"), "LIVE no competing panel");
+  assert.false(/if \(isError\) \{\s*return shell/.test(feuille), "LIVE isError does not unmount panel");
+  assert.true(feuille.includes("if (!club) return"), "LIVE skip refetch without club");
+  assert.true(clubTab.includes("if (!club) return"), "Club skip refetch without club");
 
   const rec = read("app/(club)/(tabs)/candidatures.tsx");
   assert.true(rec.includes("<ManagedClubEmpty"), "recrutement create empty");

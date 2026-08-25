@@ -19,6 +19,7 @@ import {
   rosterFillLabel,
   startingUserIds,
   canPressEmptyFormationSlot,
+  neededPositionsFromEmptySlots,
   type LiveSessionFields,
 } from "../lib/sessionState";
 import type { ClubMemberRow, MatchCheckinRow, SlotAssignmentRow } from "../lib/types";
@@ -186,12 +187,28 @@ test("canPressEmptyFormationSlot — pas de CTA morte sans handler", () => {
   assert.equal(canPressEmptyFormationSlot(false, false), false, "ni l'un ni l'autre");
 });
 
-test("feuille : plus de chrome Banc dans match.tsx / ClubHome", () => {
-  const match = readFileSync(`${process.cwd()}/app/(club)/(tabs)/match.tsx`, "utf8");
+test("neededPositionsFromEmptySlots — postes vides du terrain, doublons conservés", () => {
+  assert.deepEqual(neededPositionsFromEmptySlots(null, []), [], "pas de formation");
+  const empty433 = neededPositionsFromEmptySlots("4-3-3", []);
+  assert.equal(empty433.length, 11, "11 vacants");
+  assert.equal(empty433.filter((p) => p === "CB").length, 2, "deux CB");
+  const filled: SlotAssignmentRow[] = [
+    { id: "a1", club_id: "c1", slot_id: "GK", user_id: "u1", assigned_at: "t" },
+    { id: "a2", club_id: "c1", slot_id: "ST", user_id: "u2", assigned_at: "t" },
+  ];
+  const needed = neededPositionsFromEmptySlots("4-3-3", filled);
+  assert.equal(needed.includes("GK"), false, "GK pris");
+  assert.equal(needed.includes("ST"), false, "ST pris");
+  assert.equal(needed.filter((p) => p === "CB").length, 2, "CB toujours doublon");
+  assert.equal(needed.length, 9, "9 vacants");
+});
+
+test("feuille : plus de chrome Banc dans ClubLiveFeuille / ClubHome", () => {
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
   const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
-  assert.equal(match.includes(">Banc<"), false, "match no Banc");
+  assert.equal(feuille.includes(">Banc<"), false, "feuille no Banc");
   assert.equal(home.includes(">Banc<"), false, "home no Banc");
-  assert.equal(match.includes("benchMembers"), false, "match no bench UI helper");
+  assert.equal(feuille.includes("benchMembers"), false, "feuille no bench UI helper");
   assert.equal(home.includes("benchMembers"), false, "home no bench UI helper");
 });
 

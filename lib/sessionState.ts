@@ -10,6 +10,7 @@
  * Effectif = `club_members` + `slot_assignments`. Jamais une 2e table roster.
  */
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { FORMATIONS, type FormationId } from "@/lib/formations";
 import { findActiveLiveSession, type LiveSessionLike } from "@/lib/live";
 import type { ClubMemberRow, ClubRole, MatchCheckinRow, SlotAssignmentRow } from "@/lib/types";
 
@@ -128,6 +129,21 @@ export function filledSlotCount(assignments: SlotAssignmentRow[] | null | undefi
 
 export function rosterFillLabel(filled: number, total = MATCH_SHEET_SLOT_TOTAL): string {
   return `${filled}/${total} titulaires`;
+}
+
+/**
+ * Postes vraiment vacants sur la feuille — `needed_positions` du LIVE,
+ * pas un second picker. Doublons conservés (deux CB vides = deux CB).
+ */
+export function neededPositionsFromEmptySlots(
+  formationId: FormationId | null | undefined,
+  assignments: SlotAssignmentRow[] | null | undefined
+): PositionCode[] {
+  if (!formationId) return [];
+  const formation = FORMATIONS[formationId];
+  if (!formation) return [];
+  const filled = new Set((assignments ?? []).map((row) => row.slot_id));
+  return formation.filter((slot) => !filled.has(slot.slotId)).map((slot) => slot.position);
 }
 
 /**

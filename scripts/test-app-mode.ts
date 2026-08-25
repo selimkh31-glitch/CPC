@@ -122,6 +122,7 @@ test("LIVE / Recrutement / Match / /clubs / tab bars : pas de bascule", () => {
     "app/(club)/(tabs)/index.tsx",
     "app/(club)/(tabs)/candidatures.tsx",
     "app/(club)/(tabs)/match.tsx",
+    "components/club/ClubLiveFeuille.tsx",
     "app/(player)/(tabs)/index.tsx",
     "app/(player)/(tabs)/activity.tsx",
     "app/(player)/(tabs)/clubs.tsx",
