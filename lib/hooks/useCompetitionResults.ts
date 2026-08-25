@@ -41,15 +41,38 @@ export function useClubOpenCompetitions(clubId: string | null, opponentClubId?: 
 }
 
 const LINKED_RESULT_SELECT =
-  "id, club_id, opponent_club_id, competition_id, our_score, opponent_score, outcome";
+  "id, club_id, opponent_club_id, competition_id, our_score, opponent_score, outcome, created_at";
 
 export type LinkedMatchResultRow = Pick<
   MatchResultRow,
-  "id" | "club_id" | "opponent_club_id" | "competition_id" | "our_score" | "opponent_score" | "outcome"
+  "id" | "club_id" | "opponent_club_id" | "competition_id" | "our_score" | "opponent_score" | "outcome" | "created_at"
 > & {
   club?: { id: string; name: string } | null;
   opponent_club?: { id: string; name: string } | null;
 };
+
+async function fetchClubNames(clubIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(clubIds.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabase.from("clubs").select("id, name").in("id", unique);
+  if (error) throw error;
+  return new Map((data ?? []).map((row: { id: string; name: string }) => [row.id, row.name]));
+}
+
+function withClubNames(rows: LinkedMatchResultRow[], names: Map<string, string>): LinkedMatchResultRow[] {
+  return rows.map((row) => {
+    const clubName = names.get(row.club_id);
+    const opponentName = row.opponent_club_id ? names.get(row.opponent_club_id) : undefined;
+    return {
+      ...row,
+      club: clubName ? { id: row.club_id, name: clubName } : row.club ?? null,
+      opponent_club:
+        row.opponent_club_id && opponentName
+          ? { id: row.opponent_club_id, name: opponentName }
+          : row.opponent_club ?? null,
+    };
+  });
+}
 
 /**
  * Résultats réellement liés à une des compétitions visibles.
@@ -66,9 +89,14 @@ export function useCompetitionLinkedResults(competitionIds: string[]) {
         .from("match_results")
         .select(LINKED_RESULT_SELECT)
         .in("competition_id", ids)
-        .not("opponent_club_id", "is", null);
+        .not("opponent_club_id", "is", null)
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as LinkedMatchResultRow[];
+      const rows = (data ?? []) as LinkedMatchResultRow[];
+      const names = await fetchClubNames(
+        rows.flatMap((row) => (row.opponent_club_id ? [row.club_id, row.opponent_club_id] : [row.club_id]))
+      );
+      return withClubNames(rows, names);
     },
   });
 }

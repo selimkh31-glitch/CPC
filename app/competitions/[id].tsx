@@ -5,6 +5,7 @@ import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { CompetitionLinkedMatches } from "@/components/competitions/CompetitionLinkedMatches";
 import { CompetitionParticipants } from "@/components/competitions/CompetitionParticipants";
 import { CompetitionRegisterCta } from "@/components/competitions/CompetitionRegisterCta";
 import { CompetitionStandings } from "@/components/competitions/CompetitionStandings";
@@ -45,6 +46,7 @@ export default function CompetitionDetailScreen() {
   const selectedClub = clubs.find((c) => c.id === clubId) ?? null;
   const linkedIds = useMemo(() => (competitionId ? [competitionId] : []), [competitionId]);
   const linkedResults = useCompetitionLinkedResults(linkedIds);
+  const managedClubIds = useMemo(() => (managedClubs ?? []).map((club) => club.id), [managedClubs]);
 
   if (isLoading) {
     return (
@@ -160,6 +162,17 @@ export default function CompetitionDetailScreen() {
             }}
           />
         </View>
+      </Card>
+
+      <Card className="mb-4">
+        <CompetitionLinkedMatches
+          competition={competition}
+          results={linkedResults.data}
+          isLoading={linkedResults.isLoading}
+          isError={linkedResults.isError}
+          onRetry={() => linkedResults.refetch()}
+          managedClubIds={managedClubIds}
+        />
       </Card>
 
       <Card>

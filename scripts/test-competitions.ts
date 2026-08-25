@@ -17,10 +17,15 @@ import {
   COMPETITION_NAME_MAX,
   COMPETITION_POINTS,
   COMPETITION_STATUS_LABELS,
+  competitionLinkedMatchNav,
+  formatLinkedMatchScore,
   hasLinkedCompetitionResults,
   inverseMatchOutcome,
   isCompetitionCreateStatus,
   isCompetitionStatus,
+  isCompetitionLinkedMatchRow,
+  listCompetitionLinkedMatches,
+  linkedMatchStatus,
   matchResultLinkSqlIssues,
   MATCH_RESULT_COLUMNS,
   normalizeCompetitionName,
@@ -303,6 +308,12 @@ test("copy FR virtuel Pro Clubs, jamais IRL / pas de % inventé", () => {
   assert.true(COMPETITION_COPY.standingsEmpty.includes("match lié"), "standings empty");
   assert.true(COMPETITION_COPY.standingsEmptyHint.includes("Aucun point inventé"), "no invent points");
   assert.false(COMPETITION_COPY.standingsEmpty.includes("%"), "no percent standings");
+  assert.equal(COMPETITION_COPY.linkedMatchesEmpty, "Pas encore de match lié", "linked empty");
+  assert.equal(COMPETITION_COPY.linkedMatchRecorded, "Enregistré", "recorded");
+  assert.equal(COMPETITION_COPY.linkedMatchIncomplete, "Pas encore de score", "incomplete");
+  assert.false(COMPETITION_COPY.linkedMatchesEmpty.includes("0-0"), "no fake 0-0 empty");
+  assert.false(COMPETITION_COPY.linkedMatchIncomplete.includes("0-0"), "no fake 0-0 incomplete");
+  assert.false(COMPETITION_COPY.linkedMatchIncomplete.includes("0 — 0"), "no 0 — 0 incomplete");
   assert.true(COMPETITION_COPY.draftCannotRegister.includes("brouillon"), "draft copy");
   assert.true(COMPETITION_COPY.draftCreateHint.includes("ne peuvent pas s'inscrire"), "draft create hint");
   assert.false(COMPETITION_COPY.draftCannotRegister.includes("%"), "no percent draft");
@@ -320,6 +331,113 @@ test("détail /competitions/[id] ; liste si id absent", () => {
   assert.equal(competitionDetailHref(""), "/competitions", "empty");
   assert.equal(competitionDetailHref(null), "/competitions", "null");
   assert.equal(competitionDetailHref(undefined), "/competitions", "undef");
+});
+
+test("liste matchs liés : même rows que le classement ; scores manquants ≠ 0-0", () => {
+  assert.true(isCompetitionLinkedMatchRow({ club_id: "a", opponent_club_id: "b", competition_id: "c1" }, "c1"), "linked");
+  assert.false(
+    isCompetitionLinkedMatchRow({ club_id: "a", opponent_club_id: null, competition_id: "c1" }, "c1"),
+    "no opponent"
+  );
+  assert.false(
+    isCompetitionLinkedMatchRow({ club_id: "a", opponent_club_id: "b", competition_id: "other" }, "c1"),
+    "wrong competition"
+  );
+  assert.equal(formatLinkedMatchScore(2, 1), "2 — 1", "score");
+  assert.equal(formatLinkedMatchScore(0, 0), "0 — 0", "real draw");
+  assert.equal(formatLinkedMatchScore(null, 0), null, "missing our");
+  assert.equal(formatLinkedMatchScore(1, undefined), null, "missing opp");
+  assert.equal(formatLinkedMatchScore("1", 0), null, "string not number");
+  assert.equal(linkedMatchStatus(3, 1), "recorded", "recorded");
+  assert.equal(linkedMatchStatus(null, null), "incomplete", "incomplete");
+
+  const rows = [
+    {
+      id: "m2",
+      club_id: "alpha",
+      opponent_club_id: "beta",
+      competition_id: "c1",
+      outcome: "WIN",
+      our_score: 2,
+      opponent_score: 1,
+      created_at: "2026-08-20T12:00:00.000Z",
+      club: { id: "alpha", name: "Alpha FC" },
+      opponent_club: { id: "beta", name: "Beta FC" },
+    },
+    {
+      id: "m1",
+      club_id: "alpha",
+      opponent_club_id: "gamma",
+      competition_id: "c1",
+      outcome: "DRAW",
+      our_score: 0,
+      opponent_score: 0,
+      created_at: "2026-08-21T12:00:00.000Z",
+    },
+    {
+      id: "m-incomplete",
+      club_id: "beta",
+      opponent_club_id: "gamma",
+      competition_id: "c1",
+      outcome: "WIN",
+      our_score: null,
+      opponent_score: 2,
+      created_at: "2026-08-19T12:00:00.000Z",
+    },
+    {
+      id: "m-unlinked",
+      club_id: "alpha",
+      opponent_club_id: null,
+      competition_id: "c1",
+      outcome: "WIN",
+      our_score: 9,
+      opponent_score: 0,
+      created_at: "2026-08-22T12:00:00.000Z",
+    },
+    {
+      id: "m-other",
+      club_id: "alpha",
+      opponent_club_id: "beta",
+      competition_id: "c-other",
+      outcome: "WIN",
+      our_score: 4,
+      opponent_score: 0,
+      created_at: "2026-08-22T12:00:00.000Z",
+    },
+  ];
+  const listed = listCompetitionLinkedMatches(rows, "c1", { gamma: "Gamma FC" });
+  assert.equal(listed.length, 3, "linked only");
+  assert.equal(listed[0].id, "m1", "newest first");
+  assert.equal(listed[0].scoreLine, "0 — 0", "persisted draw");
+  assert.equal(listed[0].status, "recorded", "draw recorded");
+  assert.equal(listed[0].statusLabel, "Enregistré", "draw label");
+  assert.equal(listed[1].clubsLine, "Alpha FC — Beta FC", "names");
+  assert.equal(listed[1].scoreLine, "2 — 1", "win score");
+  assert.equal(listed[2].id, "m-incomplete", "incomplete kept");
+  assert.equal(listed[2].status, "incomplete", "incomplete status");
+  assert.equal(listed[2].statusLabel, "Pas encore de score", "incomplete label");
+  assert.equal(listed[2].scoreLine, null, "no fake score");
+  assert.equal(listed[2].outcome, null, "no outcome without scores");
+  assert.equal(listed[2].opponentClubName, "Gamma FC", "name map");
+  assert.true(hasLinkedCompetitionResults(rows.filter((r) => r.id === "m2" || r.id === "m1") as never, "c1"), "standings same source");
+  assert.equal(listCompetitionLinkedMatches([], "c1").length, 0, "empty list");
+});
+
+test("tap match lié : /match si OWNER/MANAGER du club enregistreur, sinon /club/[id]", () => {
+  const asManager = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-a", "club-x"] });
+  assert.equal(asManager?.href, "/match", "manager sheet");
+  assert.equal(asManager?.selectClubId, "club-a", "select recording club");
+  assert.equal(asManager?.requireClubMode, true, "club mode");
+  const asViewer = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-other"] });
+  assert.equal(asViewer?.href, "/club/club-a", "recording club public");
+  assert.equal(asViewer?.selectClubId, null, "no club select");
+  assert.equal(asViewer?.requireClubMode, false, "stay in current mode");
+  const asOpponentManager = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: ["club-b"] });
+  assert.equal(asOpponentManager?.href, "/club/club-a", "opponent manager is not the recording sheet");
+  const none = competitionLinkedMatchNav({ recordingClubId: "club-a", managedClubIds: [] });
+  assert.equal(none?.href, "/club/club-a", "no managed");
+  assert.equal(competitionLinkedMatchNav({ recordingClubId: "  ", managedClubIds: ["club-a"] }), null, "empty id");
+  assert.false((asViewer?.href ?? "").includes("match-sheet"), "not match-sheet");
 });
 
 test("CTA inscription honnête : DRAFT copy, pas de bouton mort ; OPEN + club géré", () => {

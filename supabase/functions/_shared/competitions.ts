@@ -56,6 +56,13 @@ export const COMPETITION_COPY = {
   standingsEmptyHint:
     "Le classement se calcule uniquement depuis des résultats Pro Clubs avec un club adverse CPC et cette compétition. Aucun point inventé.",
   standingsLoadError: "Impossible de charger les résultats liés.",
+  linkedMatchesTitle: "Matchs liés",
+  linkedMatchesEmpty: "Pas encore de match lié",
+  linkedMatchesEmptyHint:
+    "Seuls les résultats Pro Clubs enregistrés avec un club adverse CPC et cette compétition apparaissent ici.",
+  linkedMatchesLoadError: "Impossible de charger les matchs liés.",
+  linkedMatchRecorded: "Enregistré",
+  linkedMatchIncomplete: "Pas encore de score",
   opponentLabel: "Club adverse",
   opponentSearchPlaceholder: "Rechercher un club Pro Clubs",
   opponentHint: "Tape au moins 2 lettres. Clubs CPC existants uniquement — pas un nom libre.",
@@ -240,17 +247,28 @@ export interface LinkedMatchResultInput {
   opponent_score: number;
 }
 
-export function isLinkedCompetitionResult(
-  row: LinkedMatchResultInput,
+/** Ligne réellement liée à CETTE compétition (club + adverse). Outcome non requis — liste. */
+export function isCompetitionLinkedMatchRow(
+  row: {
+    club_id: string;
+    opponent_club_id: string | null;
+    competition_id: string | null;
+  },
   competitionId: string
 ): boolean {
   return (
     row.competition_id === competitionId &&
     typeof row.opponent_club_id === "string" &&
     row.opponent_club_id.length > 0 &&
-    row.opponent_club_id !== row.club_id &&
-    isMatchResultOutcome(row.outcome)
+    row.opponent_club_id !== row.club_id
   );
+}
+
+export function isLinkedCompetitionResult(
+  row: LinkedMatchResultInput,
+  competitionId: string
+): boolean {
+  return isCompetitionLinkedMatchRow(row, competitionId) && isMatchResultOutcome(row.outcome);
 }
 
 /** Au moins une ligne match_results liée à CETTE compétition (club + adverse). */
@@ -336,6 +354,132 @@ export function computeCompetitionStandings(
     if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
     return a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0;
   });
+}
+
+export type LinkedMatchStatus = "recorded" | "incomplete";
+
+/**
+ * Score affiché seulement si les deux entiers sont réellement présents.
+ * Un 0-0 n'apparaît que si les deux scores persistés valent 0 — jamais un faux 0-0.
+ */
+export function formatLinkedMatchScore(ourScore: unknown, opponentScore: unknown): string | null {
+  if (typeof ourScore !== "number" || typeof opponentScore !== "number") return null;
+  if (!Number.isFinite(ourScore) || !Number.isFinite(opponentScore)) return null;
+  return `${ourScore} — ${opponentScore}`;
+}
+
+export function linkedMatchStatus(ourScore: unknown, opponentScore: unknown): LinkedMatchStatus {
+  return formatLinkedMatchScore(ourScore, opponentScore) ? "recorded" : "incomplete";
+}
+
+export function linkedMatchStatusLabel(status: LinkedMatchStatus): string {
+  return status === "recorded" ? COMPETITION_COPY.linkedMatchRecorded : COMPETITION_COPY.linkedMatchIncomplete;
+}
+
+export interface LinkedMatchListInput {
+  id: string;
+  club_id: string;
+  opponent_club_id: string | null;
+  competition_id: string | null;
+  outcome?: unknown;
+  our_score?: unknown;
+  opponent_score?: unknown;
+  created_at?: string | null;
+  club?: { id?: string; name?: string | null } | null;
+  opponent_club?: { id?: string; name?: string | null } | null;
+}
+
+export interface CompetitionLinkedMatchItem {
+  id: string;
+  clubId: string;
+  opponentClubId: string;
+  clubName: string;
+  opponentClubName: string;
+  clubsLine: string;
+  status: LinkedMatchStatus;
+  statusLabel: string;
+  scoreLine: string | null;
+  outcome: MatchResultOutcome | null;
+  createdAt: string | null;
+}
+
+function nameFromLinkedMatch(
+  clubId: string,
+  names: Map<string, string> | Record<string, string> | undefined,
+  embeddedName?: string | null
+): string {
+  const fromEmbed = embeddedName?.trim();
+  if (fromEmbed) return fromEmbed;
+  if (names) {
+    const raw = names instanceof Map ? names.get(clubId) : names[clubId];
+    const trimmed = raw?.trim();
+    if (trimmed) return trimmed;
+  }
+  return "Club Pro Clubs";
+}
+
+/**
+ * Matchs réellement liés à CETTE compétition (competition_id + opponent_club_id).
+ * Même source que le classement. Score manquant → « Pas encore de score », jamais 0-0 inventé.
+ */
+export function listCompetitionLinkedMatches(
+  rows: readonly LinkedMatchListInput[],
+  competitionId: string,
+  names?: Map<string, string> | Record<string, string>
+): CompetitionLinkedMatchItem[] {
+  const items: CompetitionLinkedMatchItem[] = [];
+  for (const row of rows) {
+    if (!row.id || !isCompetitionLinkedMatchRow(row, competitionId)) continue;
+    const opponentClubId = row.opponent_club_id as string;
+    const scoreLine = formatLinkedMatchScore(row.our_score, row.opponent_score);
+    const status = scoreLine ? "recorded" : "incomplete";
+    const clubName = nameFromLinkedMatch(row.club_id, names, row.club?.name);
+    const opponentClubName = nameFromLinkedMatch(opponentClubId, names, row.opponent_club?.name);
+    items.push({
+      id: row.id,
+      clubId: row.club_id,
+      opponentClubId,
+      clubName,
+      opponentClubName,
+      clubsLine: `${clubName} — ${opponentClubName}`,
+      status,
+      statusLabel: linkedMatchStatusLabel(status),
+      scoreLine,
+      outcome: status === "recorded" && isMatchResultOutcome(row.outcome) ? row.outcome : null,
+      createdAt: typeof row.created_at === "string" && row.created_at.length > 0 ? row.created_at : null,
+    });
+  }
+  return items.sort((a, b) => {
+    if (a.createdAt && b.createdAt && a.createdAt !== b.createdAt) {
+      return b.createdAt.localeCompare(a.createdAt);
+    }
+    if (a.createdAt && !b.createdAt) return -1;
+    if (!a.createdAt && b.createdAt) return 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+}
+
+export type CompetitionLinkedMatchNav = {
+  href: string;
+  selectClubId: string | null;
+  requireClubMode: boolean;
+};
+
+/**
+ * Tap : `/match` si le viewer est OWNER/MANAGER du club enregistreur
+ * (`club_id` — `/match` est la feuille du club géré). Sinon profil public
+ * `/club/[id]` du club enregistreur — jamais un row mort, jamais `/match-sheet`.
+ */
+export function competitionLinkedMatchNav(input: {
+  recordingClubId: string;
+  managedClubIds: readonly string[];
+}): CompetitionLinkedMatchNav | null {
+  const recordingClubId = input.recordingClubId.trim();
+  if (!recordingClubId) return null;
+  if (input.managedClubIds.includes(recordingClubId)) {
+    return { href: "/match", selectClubId: recordingClubId, requireClubMode: true };
+  }
+  return { href: `/club/${recordingClubId}`, selectClubId: null, requireClubMode: false };
 }
 
 const REQUIRED_SQL_FRAGMENTS = [
