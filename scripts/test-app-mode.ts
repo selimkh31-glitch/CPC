@@ -113,6 +113,7 @@ test("club layout : sans club on garde les tabs, pas de rebond Joueur", () => {
   const clubLayout = read("app/(club)/_layout.tsx");
   assert.true(clubLayout.includes("managedClubs.length === 0"), "zero clubs branch");
   assert.true(clubLayout.includes("return <Slot />"), "tabs still mount");
+  assert.true(clubLayout.includes("setSelectedManagedClubId(null)"), "clear stale id");
   assert.false(clubLayout.includes("setMode"), "no mode bounce");
 });
 

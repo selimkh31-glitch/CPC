@@ -58,7 +58,13 @@ export default function ClubTab() {
   }
 
   if (isError) {
-    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
+    return shell(
+      <View className="gap-4">
+        <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
+        <ModeLifeToggle target="PLAYER" />
+        <DevTestAccountSwitcher />
+      </View>
+    );
   }
 
   if (!club) {

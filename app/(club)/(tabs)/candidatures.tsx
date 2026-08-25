@@ -1,8 +1,10 @@
 import { type ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
+import { Button } from "@/components/ui/Button";
 import { ApplicationsPanel } from "@/components/club/ApplicationsPanel";
 import { ClubInvitationsPanel } from "@/components/club/ClubInvitationsPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
@@ -37,6 +39,9 @@ export default function RecrutementTab() {
           title="Aucun club géré"
           subtitle="Crée un club, ou fais-toi nommer manager."
         />
+        <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
+          Créer un club
+        </Button>
       </View>
     );
   }

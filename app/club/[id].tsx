@@ -4,7 +4,7 @@ import { Users } from "lucide-react-native";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/Screen";
+import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { ApplyForm } from "@/components/club/ApplyForm";
 import { ClubCard } from "@/components/club/ClubCard";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
@@ -50,12 +50,20 @@ export default function ClubDetailScreen() {
     );
   }
 
-  if (isLoading || !club) {
+  if (isLoading) {
     return (
       <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, gap: 12 }}>
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-40" />
         <Skeleton className="h-40" />
+      </ScrollView>
+    );
+  }
+
+  if (!club) {
+    return (
+      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+        <EmptyState title="Ce club n'est plus là." subtitle="Il a été retiré, ou tu n'y as plus accès." />
       </ScrollView>
     );
   }

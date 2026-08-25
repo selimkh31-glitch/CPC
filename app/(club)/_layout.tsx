@@ -20,17 +20,20 @@ export default function ClubModeLayout() {
   const { data: memberships, isLoading, isError } = useMyMemberships(session?.user.id ?? null);
   const { selectedManagedClubId, setSelectedManagedClubId } = useAppMode();
 
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
+  const managedClubs = memberships?.filter((m) => (m.role === "OWNER" || m.role === "MANAGER") && m.club?.id) ?? [];
   const validSelection = Boolean(selectedManagedClubId) && managedClubs.some((m) => m.club.id === selectedManagedClubId);
 
   useEffect(() => {
     if (isLoading) return;
-    if (managedClubs.length === 0) return;
+    if (managedClubs.length === 0) {
+      if (selectedManagedClubId) setSelectedManagedClubId(null);
+      return;
+    }
     if (!validSelection && managedClubs.length === 1) {
       setSelectedManagedClubId(managedClubs[0].club.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, managedClubs.length, validSelection]);
+  }, [isLoading, managedClubs.length, validSelection, selectedManagedClubId]);
 
   if (isLoading) {
     return (

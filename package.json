@@ -69,6 +69,7 @@
     "test:notification-read": "tsx scripts/test-notification-read.ts",
     "test:profile-identity": "tsx scripts/test-profile-identity.ts",
     "test:club-identity": "tsx scripts/test-club-identity.ts",
+    "test:club-gone": "tsx scripts/test-club-gone.ts",
     "test:competitions": "tsx scripts/test-competitions.ts",
     "test:tournaments": "tsx scripts/test-tournaments.ts",
     "test:leagues": "tsx scripts/test-leagues.ts",

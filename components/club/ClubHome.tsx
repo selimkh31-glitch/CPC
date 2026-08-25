@@ -51,10 +51,18 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
     );
   }
 
-  if (isLoading || !club) {
+  if (isLoading) {
     return (
       <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, gap: 12 }}>
         <Skeleton className="h-[420px]" />
+      </ScrollView>
+    );
+  }
+
+  if (!club) {
+    return (
+      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+        <EmptyState title="Ce club n'est plus là." subtitle="Il a été retiré, ou tu n'y as plus accès." />
       </ScrollView>
     );
   }

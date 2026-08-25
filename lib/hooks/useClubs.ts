@@ -6,6 +6,7 @@ import { validateClubIdentity } from "@/lib/clubIdentity";
 import { filterClubsHiddenByBlock } from "@/lib/safety";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
+import { clubReadOrNull } from "@/lib/clubRead";
 
 export function useClubsList() {
   return useQuery({
@@ -40,9 +41,10 @@ export function useClub(clubId: string | null) {
           `*, members:club_members(*, user:users(${USER_PUBLIC_COLUMNS})), sessions:club_sessions(*), slotAssignments:slot_assignments(*, user:users(${USER_PUBLIC_COLUMNS}))`
         )
         .eq("id", clubId!)
-        .single();
-      if (error) throw error;
-      return data as ClubRow & { members: ClubMemberRow[]; sessions: ClubSessionRow[]; slotAssignments: SlotAssignmentRow[] };
+        .maybeSingle();
+      return clubReadOrNull({ data, error }) as
+        | (ClubRow & { members: ClubMemberRow[]; sessions: ClubSessionRow[]; slotAssignments: SlotAssignmentRow[] })
+        | null;
     },
   });
 }
