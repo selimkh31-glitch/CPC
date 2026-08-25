@@ -408,6 +408,23 @@ export function scheduledTournamentCompetitionId(input: {
   return [...matched][0] ?? null;
 }
 
+/**
+ * Auto-sélection finalize : n'agit que quand les paires SCHEDULED sont
+ * réellement lues. Un échec réseau n'est pas « aucune paire » — on attend
+ * un refetch plutôt que de verrouiller la clé.
+ */
+export function canAutoSelectScheduledTournament(input: {
+  competitionsLoading: boolean;
+  competitionsError: boolean;
+  competitions: readonly unknown[] | undefined;
+  pairingsLoading: boolean;
+  pairingsError: boolean;
+}): boolean {
+  if (input.pairingsLoading || input.pairingsError) return false;
+  if (input.competitionsLoading || input.competitionsError || !input.competitions) return false;
+  return true;
+}
+
 /** Joué = un match_results lié existe. Le statut PLAYED seul ne suffit pas (pas de score inventé). */
 export function tournamentMatchIsPlayed(
   match: Pick<TournamentMatchInput, "club_a_id" | "club_b_id" | "competition_id">,

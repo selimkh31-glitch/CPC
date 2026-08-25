@@ -35,6 +35,7 @@ import {
   tournamentBracketRecordingClubId,
   tournamentUnplayedRecordNav,
   scheduledTournamentCompetitionId,
+  canAutoSelectScheduledTournament,
 } from "../lib/tournaments";
 import { competitionLinkedMatchNav } from "../lib/competitions";
 // @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
@@ -706,6 +707,22 @@ test("pré-sélection finalize : seulement une paire SCHEDULED persistée sur un
   );
 });
 
+test("auto-sélection : un échec de lecture des paires n'est pas « aucune paire »", () => {
+  const ready = {
+    competitionsLoading: false,
+    competitionsError: false,
+    competitions: [{ id: "t1" }],
+    pairingsLoading: false,
+    pairingsError: false,
+  };
+  assert.true(canAutoSelectScheduledTournament(ready), "ready");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, pairingsError: true }), "pairing error waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, pairingsLoading: true }), "pairing loading waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitionsLoading: true }), "competitions loading waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitionsError: true }), "competitions error waits");
+  assert.false(canAutoSelectScheduledTournament({ ...ready, competitions: undefined }), "no competitions yet");
+});
+
 test("copy FR virtuel Pro Clubs, jamais IRL / pas de 0-0 inventé dans le vide", () => {
   assert.true(TOURNAMENT_COPY.subtitle.includes("EA SPORTS FC 27 Pro Clubs"), "fc27");
   assert.true(TOURNAMENT_COPY.needTwoClubs.includes("deux clubs"), "two clubs");
@@ -751,6 +768,8 @@ test("écran tournoi : matchs liés + ClubCard MINI, jamais fallback Club Pro Cl
   const picker = readFileSync(`${root}/components/club/FinalizeMatchLinkFields.tsx`, "utf8");
   assert.true(picker.includes("scheduledTournamentCompetitionId"), "auto-select helper");
   assert.true(picker.includes("useScheduledTournamentPairings"), "persisted pairings");
+  assert.true(picker.includes("canAutoSelectScheduledTournament"), "wait on pairing error");
+  assert.true(picker.includes("pairings.isError"), "do not lock key on pairing error");
   assert.true(picker.includes("COMPETITION_COPY.competitionNone"), "friendly still optional");
 
   const checkin = readFileSync(`${root}/components/club/MatchCheckinPanel.tsx`, "utf8");

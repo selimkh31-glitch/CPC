@@ -8,7 +8,7 @@ import { CLUB_NAME_SEARCH_MIN, useClubNameSearch } from "@/lib/hooks/useClubName
 import { useClubOpenCompetitions } from "@/lib/hooks/useCompetitionResults";
 import { COMPETITION_COPY } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
-import { scheduledTournamentCompetitionId, TOURNAMENT_COPY } from "@/lib/tournaments";
+import { scheduledTournamentCompetitionId, canAutoSelectScheduledTournament, TOURNAMENT_COPY } from "@/lib/tournaments";
 import { useScheduledTournamentPairings } from "@/lib/hooks/useTournaments";
 import type { ClubRow, CompetitionRow } from "@/lib/types";
 
@@ -106,7 +106,18 @@ export function OptionalCompetitionPicker({
       if (selectedId) onSelect(null);
       return;
     }
-    if (isLoading || pairings.isLoading || isError || !data) return;
+    if (
+      !canAutoSelectScheduledTournament({
+        competitionsLoading: isLoading,
+        competitionsError: isError,
+        competitions: data,
+        pairingsLoading: pairings.isLoading,
+        pairingsError: pairings.isError,
+      }) ||
+      !data
+    ) {
+      return;
+    }
     const key = `${clubId}:${opponentClubId}`;
     if (lastAutoKeyRef.current === key) {
       if (selectedId && !data.some((c) => c.id === selectedId)) onSelect(null);
@@ -124,7 +135,18 @@ export function OptionalCompetitionPicker({
       return;
     }
     if (selectedId && !data.some((c) => c.id === selectedId)) onSelect(null);
-  }, [isLoading, isError, selectedId, data, onSelect, opponentClubId, clubId, pairings.isLoading, pairings.data]);
+  }, [
+    isLoading,
+    isError,
+    selectedId,
+    data,
+    onSelect,
+    opponentClubId,
+    clubId,
+    pairings.isLoading,
+    pairings.isError,
+    pairings.data,
+  ]);
 
   return (
     <View>
