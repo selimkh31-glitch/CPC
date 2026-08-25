@@ -23,6 +23,14 @@ import type { MatchOutcome } from "@/lib/types";
 
 export const MATCH_HISTORY_LIMIT = 5;
 
+/**
+ * Fenêtre PRESENT récente côté `match_participations` (pas de `created_at`
+ * sur cette table — ordre via `match_checkins.launched_at`). Plus large que
+ * MATCH_HISTORY_LIMIT pour ne pas masquer 5 résultats finalisés derrière des
+ * check-ins encore ouverts.
+ */
+export const PLAYER_MATCH_HISTORY_LOOKBACK = 40;
+
 export const MATCH_HISTORY_COPY = {
   title: "Derniers matchs",
   empty: "Pas encore de match enregistré",

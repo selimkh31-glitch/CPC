@@ -7,6 +7,7 @@ import {
   MATCH_HISTORY_COPY,
   MATCH_HISTORY_LIMIT,
   PLAYER_MATCH_HISTORY_JOIN,
+  PLAYER_MATCH_HISTORY_LOOKBACK,
   buildClubMatchHistory,
   buildPlayerMatchHistory,
   formatMatchHistoryDate,
@@ -148,6 +149,11 @@ test("outcome invalide (pas un finalize_match) → ligne exclue", () => {
     results: [result({ id: "r1", match_checkin_id: "c1", outcome: "PENDING" })],
   });
   assert.equal(items.length, 0, "excluded");
+});
+
+test("lookback PRESENT plus large que la liste affichée (check-ins non finalisés)", () => {
+  assert.true(PLAYER_MATCH_HISTORY_LOOKBACK > MATCH_HISTORY_LIMIT, "lookback > limit");
+  assert.true(PLAYER_MATCH_HISTORY_LOOKBACK <= 80, "lookback borné");
 });
 
 test("tri du plus récent + limite courte", () => {

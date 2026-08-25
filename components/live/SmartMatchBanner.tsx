@@ -1,23 +1,31 @@
 import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { rankLiveClubsForPlayer } from "@/lib/liveMatch";
 import { isLiveActive } from "@/lib/live";
+import type { ClubSessionRow } from "@/lib/types";
 
 /**
  * Reco LIVE déterministe (poste + plateforme + expiry + besoin club).
  * Affiche le motif réel — jamais un score / % de compatibilité.
+ * Sessions = même liste que FindClubPanel (`useLiveSessions`) — pas un 2e fetch.
  */
-export function SmartMatchBanner({ visible = true }: { visible?: boolean }) {
+export function SmartMatchBanner({
+  visible = true,
+  sessions,
+  loading = false,
+}: {
+  visible?: boolean;
+  sessions: ClubSessionRow[] | undefined;
+  loading?: boolean;
+}) {
   const { profile } = useAuth();
-  const { data: sessions, isLoading } = useLiveSessions();
   const now = useLiveClock();
 
   if (!visible) return null;
-  if (isLoading) return <Skeleton className="mb-3 h-14" />;
+  if (loading) return <Skeleton className="mb-3 h-14" />;
   if (!profile) return null;
 
   const clubs = (sessions ?? [])

@@ -156,7 +156,7 @@ export function FindClubPanel() {
               }}
             />
             <Text className="mb-2 mt-3 text-xs font-semibold text-fg-muted">{liquidityLabel}</Text>
-            <SmartMatchBanner visible={filtersEmpty && !relaxed} />
+            <SmartMatchBanner visible={filtersEmpty && !relaxed} sessions={items} loading={isLoading} />
           </>
         ) : null}
       </View>
