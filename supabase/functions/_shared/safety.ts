@@ -474,7 +474,8 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
       return "/my-invitations";
     case "INVITATION_ACCEPTED":
     case "INVITATION_DECLINED":
-      return clubId ? `/club/${clubId}` : "/my-invitations";
+      // Recrutement (club manager) — jamais le profil public `/club/[id]`.
+      return "/candidatures";
     case "MESSAGE_RECEIVED": {
       const conversationId = conversationIdFromNotificationData(data);
       return conversationId ? `/conversation/${conversationId}` : "/notifications";

@@ -14,9 +14,10 @@ export * from "../supabase/functions/_shared/safety";
 
 /**
  * Cible in-app d'une notification, selon le mode monté.
- * APPLICATION_RECEIVED → Recrutement (`/candidatures`), où ApplicationsPanel
- * accepte/refuse. `/club/[id]` n'a pas ces actions. L'appelant doit passer
- * en Mode Club et sélectionner `data.clubId` (voir recruitmentNotificationNav).
+ * APPLICATION_RECEIVED, INVITATION_ACCEPTED, INVITATION_DECLINED → Recrutement
+ * (`/candidatures`) : ApplicationsPanel + ClubInvitationsPanel. `/club/[id]`
+ * n'a pas le statut d'invitation. L'appelant doit passer en Mode Club et
+ * sélectionner `data.clubId` (voir recruitmentNotificationNav).
  * MATCH_FINALIZED → `/tournaments/[id]` si kind TOURNAMENT, sinon
  * `/competitions/[id]` si `competitionId`, sinon `/match` (feuille Mode Club).
  * COMPETITION_CLUB_REGISTERED → même stack selon kind.

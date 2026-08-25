@@ -85,6 +85,8 @@ function clubIdFromData(data: Record<string, unknown> | null | undefined): strin
  * Cible réelle du tap notification recrutement.
  * APPLICATION_RECEIVED → Recrutement (`/candidatures`) où ApplicationsPanel
  * accepte/refuse — jamais la page publique `/club/[id]` (pas d'actions).
+ * INVITATION_ACCEPTED / INVITATION_DECLINED → même Recrutement (destinataire =
+ * le manager qui a invité ; ClubInvitationsPanel montre le statut). Pas `/club/[id]`.
  * INVITATION_RECEIVED → `/my-invitations` (bouton Accepter côté joueur).
  */
 export function recruitmentNotificationNav(
@@ -93,6 +95,8 @@ export function recruitmentNotificationNav(
 ): RecruitmentNotificationNav | null {
   switch (type) {
     case "APPLICATION_RECEIVED":
+    case "INVITATION_ACCEPTED":
+    case "INVITATION_DECLINED":
       return { href: "/candidatures", selectClubId: clubIdFromData(data), requireClubMode: true };
     case "APPLICATION_ACCEPTED":
     case "APPLICATION_DECLINED":
