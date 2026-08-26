@@ -11,7 +11,7 @@ import type { ClubMatch } from "@/lib/hooks/useClubSearch";
 
 /**
  * Résultat de recherche joueur -> club. Tap = page publique `/club/[id]`
- * (ApplyForm si LIVE). Pas `/match-sheet` : ClubHome est lecture seule, sans candidature.
+ * (Rejoindre le club si LIVE). La feuille `/match-sheet` vient après membership.
  */
 export function ClubMatchCard({ match }: { match: ClubMatch }) {
   const now = useLiveClock();

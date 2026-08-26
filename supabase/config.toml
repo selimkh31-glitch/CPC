@@ -28,6 +28,12 @@ project_id = "clubpro-connect"
 [functions.apply]
 verify_jwt = true
 
+[functions.join-live-club]
+verify_jwt = true
+
+[functions.claim-slot]
+verify_jwt = true
+
 [functions.respond-application]
 verify_jwt = true
 

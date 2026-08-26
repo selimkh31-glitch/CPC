@@ -39,9 +39,9 @@ export function clubActiveLiveSession<T extends LiveSessionLike>(
 }
 
 /**
- * Page publique d'un club (`/club/[id]`) — ApplyForm + membres.
- * Distinct de `/match-sheet` (vue joueur de la formation, interactive=false,
- * pas de candidature) et de `/match` (feuille owner/manager, Mode Club).
+ * Page publique d'un club (`/club/[id]`) — Rejoindre le club (LIVE) + membres.
+ * Distinct de `/match-sheet` (feuille joueur, prise de poste après membership)
+ * et de `/match` (feuille owner/manager, Mode Club).
  */
 export function clubPublicHref(clubId: string, sessionId?: string | null): string {
   const id = clubId.trim();

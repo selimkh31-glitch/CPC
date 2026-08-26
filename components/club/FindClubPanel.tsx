@@ -73,10 +73,6 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
     );
   }, [profile, activeLive, now]);
 
-  const reasonBySession = useMemo(
-    () => new Map(matchResults.map((m) => [m.sessionId, m.reason])),
-    [matchResults]
-  );
   const eligibleIds = useMemo(() => new Set(matchResults.map((m) => m.sessionId)), [matchResults]);
 
   const filtersEmpty = liveFiltersAreEmpty(filters);
@@ -171,7 +167,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={accent} />}
-          renderItem={({ item }) => <LiveClubCard item={item} reason={reasonBySession.get(item.id)} />}
+          renderItem={({ item }) => <LiveClubCard item={item} />}
           ItemSeparatorComponent={() => <View className="h-2.5" />}
           ListEmptyComponent={
             <View style={{ flexGrow: 1, justifyContent: "center" }}>

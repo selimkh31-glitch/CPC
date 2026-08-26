@@ -195,7 +195,7 @@ export function neededPositionsFromEmptySlots(
 
 /**
  * Slot vide du terrain : tappable seulement si un handler réel existe
- * (recherche / candidature). Sinon le "+" est une CTA morte — on le désactive.
+ * (recherche manager / prise de poste membre). Sinon le "+" est une CTA morte.
  */
 export function canPressEmptyFormationSlot(interactive: boolean, hasEmptySlotHandler: boolean): boolean {
   return interactive && hasEmptySlotHandler;

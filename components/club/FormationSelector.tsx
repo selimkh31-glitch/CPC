@@ -43,10 +43,10 @@ export function FormationSelector({
     }
     Alert.alert(
       "Changer de formation ?",
-      "Les membres resteront dans le club, mais les joueurs actuellement placés devront être réassignés.",
+      "Les membres restent dans le club. Un joueur garde le même slot s'il existe encore, sinon le même poste exact. Les autres quittent seulement le terrain.",
       [
         { text: "Annuler", style: "cancel" },
-        { text: "Changer", style: "destructive", onPress: () => applyFormation(next) },
+        { text: "Changer", onPress: () => applyFormation(next) },
       ]
     );
   };

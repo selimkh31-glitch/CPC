@@ -101,7 +101,9 @@ test("source — jamais EA, jamais ClubCard sur la ligne", () => {
   assert.true(row.includes("Jamais des stats EA") || row.includes("Jamais EA"), "never EA comment");
   assert.false(row.includes("verified_stats"), "no verified_stats");
   assert.true(card.includes("Rejoindre"), "join");
-  assert.true(card.includes("clubPublicHref"), "href club page");
+  assert.true(card.includes("JoinLiveClubButton"), "join hook button");
+  assert.true(card.includes("join-live-club") || card.includes("JoinLiveClubButton"), "membership join");
+  assert.false(card.includes("clubPublicHref"), "join does not go to public page");
   assert.false(card.includes("@/components/club/ClubCard"), "no ClubCard import");
   assert.false(/<ClubCard[\s>]/.test(card), "no ClubCard element");
   assert.false(card.includes("LiveCountdown"), "no countdown");
