@@ -82,14 +82,13 @@ export function ProfileOverview({
           <Text numberOfLines={1} className="font-display text-[28px] leading-8 text-fg">
             {user.username}
           </Text>
-          <View className="mt-1.5 flex-row flex-wrap items-center gap-1.5">
-            {user.main_position ? (
-              <View className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
-                <Text className="text-[11px] font-bold tracking-wide text-accent">{user.main_position}</Text>
-              </View>
-            ) : null}
+          <View className="mt-1.5 gap-1.5">
+            <SelectedPositionChips
+              main={user.main_position}
+              secondary={user.secondary_positions ?? []}
+            />
             {ovr !== null ? (
-              <View className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5">
+              <View className="self-start rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5">
                 <Text className="text-[11px] font-bold tracking-wide text-fg">
                   {ovr} {OVR_CPC_LABEL}
                 </Text>
@@ -214,6 +213,32 @@ function CareerTileBox({ tile }: { tile: CareerTile }) {
   );
 }
 
+function SelectedPositionChips({
+  main,
+  secondary,
+}: {
+  main: PositionCode | null | undefined;
+  secondary: readonly PositionCode[] | null | undefined;
+}) {
+  if (!main) return null;
+  const extras = (secondary ?? []).filter((code) => code && code !== main);
+  return (
+    <View>
+      <Text className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Poste</Text>
+      <View className="mt-1 flex-row flex-wrap items-center gap-1.5">
+        <View className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
+          <Text className="text-[11px] font-bold tracking-wide text-accent">{main}</Text>
+        </View>
+        {extras.map((code) => (
+          <View key={code} className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-0.5">
+            <Text className="text-[11px] font-bold tracking-wide text-fg-muted">{code}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function identityPatchForPositions(
   user: UserRow,
   positions: { main_position: PositionCode; secondary_positions: PositionCode[] }
@@ -247,7 +272,10 @@ function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean })
       code,
       intent
     );
-    if (!next) return;
+    if (!next.ok) {
+      if (next.reason === "max") toast.info("3 postes max.");
+      return;
+    }
     const payload = identityPatchForPositions(user, next);
     const validated = validateProfileIdentity(payload);
     if (!validated.ok) {

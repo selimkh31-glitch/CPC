@@ -156,50 +156,63 @@ function sel(main: PositionCode, secondary: PositionCode[] = []) {
   return { main_position: main, secondary_positions: secondary };
 }
 
+function okSel(main: PositionCode, secondary: PositionCode[] = []) {
+  return { ok: true as const, ...sel(main, secondary) };
+}
+
 test("nextPositionsOnTap — vide → secondaire (max 2)", () => {
-  assert.deepEqual(nextPositionsOnTap(sel("ST"), "CAM"), sel("ST", ["CAM"]), "first secondary");
-  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "RW"), sel("ST", ["CAM", "RW"]), "second");
+  assert.deepEqual(nextPositionsOnTap(sel("ST"), "CAM"), okSel("ST", ["CAM"]), "first secondary");
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "RW"), okSel("ST", ["CAM", "RW"]), "second");
 });
 
 test("nextPositionsOnTap — secondaire → principal, ancien principal en secondaire (cap 2)", () => {
-  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "CAM"), sel("CAM", ["ST"]), "promote one");
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "CAM"), okSel("CAM", ["ST"]), "promote one");
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM"),
-    sel("CAM", ["ST", "RW"]),
+    okSel("CAM", ["ST", "RW"]),
     "promote with cap"
   );
 });
 
 test("nextPositionsOnTap — tap principal → no-op", () => {
-  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "ST"), null, "main");
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "ST"), { ok: false, reason: "noop" }, "main");
 });
 
-test("nextPositionsOnTap — 2 secondaires + vide → ce poste devient principal", () => {
+test("nextPositionsOnTap — 4e case vide refusée (reason max), jamais promu", () => {
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "LW"),
-    sel("LW", ["ST", "CAM"]),
-    "empty becomes main, old main kept, cap 2"
+    { ok: false, reason: "max" },
+    "refused"
   );
 });
 
 test("nextPositionsOnTap — long-press secondaire retire ; principal intouchable", () => {
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM", "long-press"),
-    sel("ST", ["RW"]),
+    okSel("ST", ["RW"]),
     "remove secondary"
   );
-  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "ST", "long-press"), null, "cannot remove main");
-  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "RW", "long-press"), null, "empty no-op");
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM"]), "ST", "long-press"),
+    { ok: false, reason: "noop" },
+    "cannot remove main"
+  );
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM"]), "RW", "long-press"),
+    { ok: false, reason: "noop" },
+    "empty no-op"
+  );
 });
 
 test("nextPositionsOnTap + validateProfileIdentity — patch identité complète, pas de stats EA", () => {
   const next = nextPositionsOnTap(sel("ST", ["CAM"]), "RW");
-  assert.true(Boolean(next), "next");
+  assert.true(next.ok, "next");
+  if (!next.ok) return;
   const result = validateProfileIdentity({
     username: "Striker27",
     platform: "PS",
-    main_position: next!.main_position,
-    secondary_positions: next!.secondary_positions,
+    main_position: next.main_position,
+    secondary_positions: next.secondary_positions,
     play_style: "ATTACKING",
     languages: ["FR"],
     availability: { slots: ["weekend"] },
@@ -221,6 +234,9 @@ test("grille profil perso : inline, pas de navigation / popup", () => {
   assert.true(overview.includes("useUpdateOwnProfile"), "mutation");
   assert.true(overview.includes("validateProfileIdentity"), "full identity validate");
   assert.true(overview.includes("onLongPress"), "long-press remove");
+  assert.true(overview.includes('toast.info("3 postes max.")'), "max toast");
+  assert.true(overview.includes("SelectedPositionChips"), "all selected chips");
+  assert.true(overview.includes(">Poste<"), "Poste label");
   assert.true(overview.includes('router.push("/edit-profile")'), "Modifier header stays");
   assert.false(overview.includes("Alert.alert"), "no popup");
   assert.false(overview.includes("Poste ${code}, modifier le profil"), "grid does not open edit-profile");
