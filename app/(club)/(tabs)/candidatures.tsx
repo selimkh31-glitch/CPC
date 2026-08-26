@@ -7,6 +7,7 @@ import { ApplicationsPanel } from "@/components/club/ApplicationsPanel";
 import { ClubInvitationsPanel } from "@/components/club/ClubInvitationsPanel";
 import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
 import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
+import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 
 /**
@@ -17,6 +18,7 @@ export default function RecrutementTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <AppMenuHeader />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }}>
         {body}
       </ScrollView>

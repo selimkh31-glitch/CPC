@@ -11,8 +11,9 @@ const TAB_BAR_STYLE = {
 } as const;
 
 /**
- * Mode Club — 3 onglets : LIVE | Recrutement | Club.
- * match (feuille de match) reste un fichier pour deep link `/match`, hors tab bar.
+ * Mode Club — 2 onglets : LIVE | Recrutement.
+ * Club (identité / effectif) reste joignable plus tard depuis le menu (`href: null`).
+ * match (feuille) reste un fichier pour deep link `/match`, hors tab bar.
  */
 export default function ClubTabsLayout() {
   return (
@@ -35,7 +36,7 @@ export default function ClubTabsLayout() {
       />
       <Tabs.Screen
         name="effectif"
-        options={{ title: "Club", tabBarIcon: ({ color, size }) => <Shield color={color} size={size} /> }}
+        options={{ href: null, title: "Club", tabBarIcon: ({ color, size }) => <Shield color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="match"

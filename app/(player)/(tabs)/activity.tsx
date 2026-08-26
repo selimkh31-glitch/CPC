@@ -7,6 +7,7 @@ import { NotificationsList } from "@/components/player/NotificationsList";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyInvitations } from "@/lib/hooks/useInvitations";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
+import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 
 type ActivitySegment = "applications" | "invitations" | "notifications";
 
@@ -30,6 +31,7 @@ export default function ActivityTab() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <AppMenuHeader />
       <View className="px-5 pt-2 pb-3">
         <Text className="mb-1 font-display text-3xl text-fg">Activité</Text>
         <Text className="mb-4 text-sm text-fg-muted">Tes retours. Touche une ligne pour ouvrir.</Text>

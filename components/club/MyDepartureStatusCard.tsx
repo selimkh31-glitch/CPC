@@ -118,6 +118,11 @@ export function MyDepartureStatusCard({
 
   // Aucune demande active — MEMBER/MANAGER peut toujours taper Quitter.
   const zeroMatches = membership.matches_played_count < 1;
+  const playedCount = membership.matches_played_count;
+  const playedLabel =
+    playedCount > 1
+      ? `${playedCount} matchs joué — départ disponible.`
+      : `${playedCount} match joué — départ disponible.`;
 
   return (
     <Card>
@@ -125,9 +130,7 @@ export function MyDepartureStatusCard({
         <CardTitle icon={<DoorOpen size={18} color="#f4f5f7" />}>Quitter le club</CardTitle>
       </CardHeader>
       <Text className="mb-3 text-sm text-fg-muted">
-        {zeroMatches
-          ? "Tu n'as pas encore joué. Tu quittes tout de suite."
-          : `${membership.matches_played_count} match${membership.matches_played_count > 1 ? "s" : ""} joué — départ disponible.`}
+        {zeroMatches ? "Tu n'as pas encore joué. Tu quittes tout de suite." : playedLabel}
       </Text>
       {confirming ? (
         <View className="gap-2">

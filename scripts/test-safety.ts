@@ -589,7 +589,7 @@ test("0 match : Quitter le club immédiat, jamais OWNER, pas no_match_played", (
   const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
   const hook = readFileSync(`${process.cwd()}/lib/hooks/useDepartures.ts`, "utf8");
   const edge = readFileSync(`${process.cwd()}/supabase/functions/request-departure/index.ts`, "utf8");
-  const sql = readFileSync(`${process.cwd()}/supabase/migrations/0030_request_departure_zero_matches.sql`, "utf8");
+  const sql = readFileSync(`${process.cwd()}/supabase/migrations/0031_request_departure_zero_matches.sql`, "utf8");
   assert.true(depart.includes("Quitter le club"), "cta");
   assert.true(depart.includes("Tu n'as pas encore joué. Tu quittes tout de suite."), "zero copy");
   assert.true(depart.includes("leftImmediately"), "reads immediate flag");

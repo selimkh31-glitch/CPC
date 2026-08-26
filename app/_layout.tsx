@@ -228,6 +228,10 @@ function RootNavigator() {
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Bloqués" }}
         />
         <Stack.Screen
+          name="settings"
+          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Réglages" }}
+        />
+        <Stack.Screen
           name="report/[userId]"
           options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
         />

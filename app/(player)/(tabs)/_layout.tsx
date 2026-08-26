@@ -13,7 +13,8 @@ const TAB_BAR_STYLE = {
 } as const;
 
 /**
- * Mode Joueur — 3 onglets : LIVE | Activité | Profil.
+ * Mode Joueur — 2 onglets : LIVE | Activité.
+ * Profil est joignable depuis le menu (`href: null`), plus un onglet bas.
  * clubs reste un fichier (deep link) hors tab bar (`href: null`).
  * Ligues n'est PAS un onglet : uniquement le stack partagé `app/leagues.tsx`
  * (`/leagues`) pour que Club → Classement et Profil → Classement partagent
@@ -48,7 +49,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: "Profil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
+        options={{ href: null, title: "Profil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
       />
       <Tabs.Screen name="clubs" options={{ href: null, title: "Clubs", tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }} />
     </Tabs>

@@ -139,7 +139,7 @@ test("LIVE / Recrutement / Match / /clubs / tab bars : pas de bascule", () => {
   }
 });
 
-test("bascule seulement Profil (manager) et onglet Club (joueur)", () => {
+test("bascule ModeLifeToggle seulement Profil et page identité Club", () => {
   const profile = read("app/(player)/(tabs)/profile.tsx");
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   assert.true(profile.includes('ModeLifeToggle target="CLUB"'), "profil → manager");
@@ -149,16 +149,52 @@ test("bascule seulement Profil (manager) et onglet Club (joueur)", () => {
   assert.false(clubTab.includes('target="CLUB"'), "club tab does not switch to self");
 });
 
-test("pas de 3e nav, tabs inchangés", () => {
+test("pas de 3e nav ; onglets LIVE|Activité et LIVE|Recrutement", () => {
   const playerTabs = read("app/(player)/(tabs)/_layout.tsx");
   const clubTabs = read("app/(club)/(tabs)/_layout.tsx");
   assert.true(playerTabs.includes('title: "LIVE"'), "player LIVE");
   assert.true(playerTabs.includes('title: "Activité"'), "player activité");
-  assert.true(playerTabs.includes('title: "Profil"'), "player profil");
+  assert.true(playerTabs.includes('href: null, title: "Profil"'), "player profil hidden");
   assert.true(clubTabs.includes('title: "LIVE"'), "club LIVE");
   assert.true(clubTabs.includes('title: "Recrutement"'), "club recrutement");
-  assert.true(clubTabs.includes('title: "Club"'), "club identity");
+  assert.true(clubTabs.includes('href: null, title: "Club"'), "club identity hidden");
   assert.false(existsSync(`${root}/app/(manager)`), "no third tree");
+});
+
+test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", () => {
+  const header = read("components/nav/AppMenuHeader.tsx");
+  const sheet = read("components/nav/AppMenuSheet.tsx");
+  const settings = read("app/settings.tsx");
+  const root = read("app/_layout.tsx");
+  assert.true(header.includes("Avatar"), "avatar");
+  assert.true(header.includes("Menu"), "hamburger");
+  assert.true(header.includes("AppMenuSheet"), "one menu");
+  assert.true(sheet.includes('label="Profil"'), "profil");
+  assert.true(sheet.includes('label="Réglages"'), "réglages");
+  assert.true(sheet.includes('label="Chat"'), "chat");
+  assert.true(sheet.includes('label="Mon club (joueur)"'), "club joueur");
+  assert.true(sheet.includes('label="Mon club (manager)"'), "club manager");
+  assert.true(sheet.includes('go("/pricing")'), "pro");
+  assert.true(sheet.includes('plan !== "PRO"'), "hide if PRO");
+  assert.true(sheet.includes("setMode"), "reuses AppModeProvider");
+  assert.false(/label="Ligues"/.test(sheet), "no ligues");
+  assert.false(/label="Tournois"/.test(sheet), "no tournois");
+  assert.false(/label="Groupes"/.test(sheet), "no groupes");
+  assert.true(settings.includes("Modifier le profil"), "settings edit");
+  assert.true(settings.includes("Joueurs bloqués"), "settings blocked");
+  assert.true(settings.includes("Déconnexion"), "settings signOut");
+  assert.true(settings.includes("signOut()"), "uses auth signOut");
+  assert.false(settings.includes("Ligues"), "settings no extra");
+  assert.true(root.includes('name="settings"'), "settings on stack");
+  const livePlayer = read("app/(player)/(tabs)/index.tsx");
+  const activity = read("app/(player)/(tabs)/activity.tsx");
+  const liveClub = read("components/club/ClubLiveFeuille.tsx");
+  const rec = read("app/(club)/(tabs)/candidatures.tsx");
+  assert.true(livePlayer.includes("AppMenuHeader"), "player LIVE menu");
+  assert.true(activity.includes("AppMenuHeader"), "activité menu");
+  assert.true(liveClub.includes("AppMenuHeader"), "club LIVE menu");
+  assert.true(rec.includes("AppMenuHeader"), "recrutement menu");
+  assert.false(livePlayer.includes("font-display text-3xl text-fg\">Profil"), "no second Profil title on LIVE");
 });
 
 console.log(`\n${passed} tests OK`);
