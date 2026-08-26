@@ -288,8 +288,11 @@ test("Accueil partagé : ClubPro Card, Mon club, À traiter, CTA Matchmaking", (
   assert.true(home.includes("buildClubCardData"), "ClubCard from real club");
   assert.true(home.includes('variant="mini"'), "club mini");
   assert.true(home.includes("useOpenMonClub"), "same Mon club dest");
+  assert.true(home.includes('mode === "CLUB"'), "create-club gated club mode");
+  assert.true(home.includes("Sans club."), "player empty");
+  assert.true(home.includes("Aucun club géré."), "club empty");
   assert.true(home.includes('router.push("/create-club")'), "créer un club");
-  assert.true(home.includes('router.push("/find-club")'), "trouver un club");
+  assert.false(home.includes("/find-club"), "no find-club");
   assert.true(home.includes("Rien à traiter."), "honest empty inbox");
   assert.true(home.includes("useMyInvitations"), "pending invites");
   assert.true(home.includes("useMyApplications"), "pending apps sent");

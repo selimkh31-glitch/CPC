@@ -144,6 +144,9 @@ test("empty LIVE — copy honnête, jamais un vide ni une session fake", () => {
   assert.equal(liveFeedEmptyCopy({ selfLive: true, liveClubCount: 0 }), LIVE_UX_COPY.emptySelfLive, "self live");
   assert.equal(liveFeedEmptyCopy({ selfLive: false, liveClubCount: 2 }), LIVE_UX_COPY.emptyNoPlayers, "players");
   assert.equal(LIVE_UX_COPY.goLive, "Passer LIVE", "cta");
+  assert.equal(LIVE_UX_COPY.title, "Matchmaking", "title");
+  assert.equal(LIVE_UX_COPY.backToLive, "Matchmaking", "back");
+  assert.equal(LIVE_UX_COPY.emptyNoClubs, "Aucun club en LIVE.", "empty clubs");
   assert.equal(LIVE_UX_COPY.discoveryOn, "En ligne", "discovery on");
   assert.equal(LIVE_UX_COPY.discoveryHintOn, "Les joueurs te voient", "discovery hint");
   assert.equal(LIVE_UX_COPY.discoveryHintOff.includes("flag"), false, "no flag in hint");
@@ -282,6 +285,16 @@ test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", (
   assert.true(feed.includes("LIVE_UX_COPY.findClub"), "section label");
   assert.true(feed.includes("LIVE_UX_COPY.noLiveClubs"), "honest empty");
   assert.false(feed.includes("On cherche un match"), "no match hunt");
+});
+
+test("Matchmaking joueur : titre Matchmaking, clubs LIVE seulement", () => {
+  const feed = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
+  assert.true(feed.includes("LIVE_UX_COPY.title"), "title");
+  assert.true(feed.includes("LiveClubCard"), "LiveClubCard");
+  assert.false(feed.includes("LivePlayerCard"), "no LivePlayerCard");
+  assert.false(feed.includes("FindClubPanel"), "no FindClubPanel");
+  assert.false(feed.includes("otherPlayers"), "no otherPlayers");
+  assert.false(feed.includes("useLivePlayers"), "no useLivePlayers");
 });
 
 test("unmount / blur d'onglet LIVE ne coupe pas is_live", () => {

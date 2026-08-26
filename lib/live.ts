@@ -112,14 +112,14 @@ export function clubLiveLayout(input: {
  * Pas de « on cherche un match » côté joueur.
  */
 export const LIVE_UX_COPY = {
-  title: "LIVE",
+  title: "Matchmaking",
   playerHeadline: "Je cherche un club",
   clubHeadline: "On cherche des joueurs",
   goLive: "Passer LIVE",
   findClub: "Clubs en LIVE",
   liveClubFilters: "Filtres",
-  backToLive: "LIVE",
-  emptyNoClubs: "Aucun club en LIVE. Passe LIVE, ou vois les clubs.",
+  backToLive: "Matchmaking",
+  emptyNoClubs: "Aucun club en LIVE.",
   emptySelfLive: "Je cherche un club. Personne d'autre pour l'instant.",
   emptyNoPlayers: "Personne d'autre ne cherche un club pour l'instant.",
   liveClubsNow: (n: number) => (n === 1 ? "1 club en LIVE" : `${n} clubs en LIVE`),

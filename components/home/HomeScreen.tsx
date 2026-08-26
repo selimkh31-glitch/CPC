@@ -145,15 +145,16 @@ export function HomeScreen() {
             <Skeleton className="h-14" />
           ) : clubCard ? (
             <ClubCard data={clubCard} variant="mini" onPress={openMonClub} />
-          ) : (
+          ) : mode === "CLUB" ? (
             <View className="gap-3 rounded-2xl border border-dashed border-white/[0.08] px-4 py-4">
-              <Text className="text-[14px] text-fg-muted">Tu n&apos;as pas de club.</Text>
+              <Text className="text-[14px] text-fg-muted">Aucun club géré.</Text>
               <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
                 Créer un club
               </Button>
-              <Button variant="ghost" className="min-h-[44px]" onPress={() => router.push("/find-club")}>
-                Trouver un club
-              </Button>
+            </View>
+          ) : (
+            <View className="rounded-2xl border border-dashed border-white/[0.08] px-4 py-4">
+              <Text className="text-[14px] text-fg-muted">Sans club.</Text>
             </View>
           )}
         </View>

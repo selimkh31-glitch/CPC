@@ -1,144 +1,56 @@
-import { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { useMemo } from "react";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import { ChevronLeft } from "lucide-react-native";
-import { LivePlayerCard } from "@/components/live/LivePlayerCard";
 import { LiveClubCard } from "@/components/live/LiveClubCard";
 import { PlayerLivePanel } from "@/components/live/PlayerLivePanel";
-import { FindClubPanel } from "@/components/club/FindClubPanel";
 import { ErrorState } from "@/components/ui/Screen";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
-import { useLivePlayers, useMyPlayerSession } from "@/lib/hooks/usePlayerLive";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { useAuth } from "@/lib/providers/AuthProvider";
-import { isLiveActive, liveFeedEmptyCopy, LIVE_UX_COPY } from "@/lib/live";
-import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
+import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { useModeAccent } from "@/lib/theme";
 import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 
-type LivePane = "feed" | "find";
-
 /**
- * Matchmaking Mode Joueur — un état, un CTA : Passer LIVE.
- * Clubs en LIVE = liste principale (pas un second écran). Matching / TTL inchangés.
+ * Matchmaking Mode Joueur — un scroll : Passer LIVE + clubs en LIVE.
+ * Matching / TTL inchangés. Pas de joueurs LIVE, pas de Trouver un club.
  */
 export default function LiveScreen() {
-  const { session } = useAuth();
   const { data: items, refetch, isRefetching, isError: clubsError } = useLiveSessions();
-  const {
-    data: livePlayers,
-    isError: playersError,
-    refetch: refetchPlayers,
-    isRefetching: playersRefetching,
-  } = useLivePlayers();
-  const { data: mySession } = useMyPlayerSession(session?.user.id ?? null);
-  const [pane, setPane] = useState<LivePane>("feed");
   const now = useLiveClock();
+  const accent = useModeAccent();
 
   const liveClubs = useMemo(
     () => (items ?? []).filter((item) => item.club && isLiveActive(item, now) && (item.needed_positions?.length ?? 0) > 0),
     [items, now]
   );
-  const liveClubCount = liveClubs.length;
-
-  const otherLivePlayers = useMemo(() => {
-    const selfId = session?.user.id;
-    return (livePlayers ?? []).filter((row) => isLiveActive(row, now) && row.user && row.user_id !== selfId);
-  }, [livePlayers, session?.user.id, now]);
-  const { data: clubsByUser } = useCurrentClubsByUserIds(otherLivePlayers.map((row) => row.user_id));
-  const selfLive = isLiveActive(mySession, now);
-  const accent = useModeAccent();
-
-  const refreshing = isRefetching || playersRefetching;
-  const onRefresh = () => {
-    refetch();
-    refetchPlayers();
-  };
-
-  const switchPane = (next: LivePane) => {
-    Haptics.selectionAsync();
-    setPane(next);
-  };
-
-  const showFeedEmpty = !playersError && otherLivePlayers.length === 0 && liveClubs.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      {pane === "find" ? (
-        <View className="flex-1">
-          <View className="px-4 pt-2">
-            <Pressable
-              onPress={() => switchPane("feed")}
-              className="min-h-[44px] flex-row items-center gap-1 self-start py-1"
-              accessibilityRole="button"
-              accessibilityLabel={`Retour ${LIVE_UX_COPY.backToLive}`}
-            >
-              <ChevronLeft size={18} color="#9aa0a8" />
-              <Text className="text-sm font-bold text-fg-muted">{LIVE_UX_COPY.backToLive}</Text>
-            </Pressable>
-          </View>
-          <FindClubPanel onCreateSession={() => switchPane("feed")} />
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={accent} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text className="font-display text-[34px] leading-10 text-fg">{LIVE_UX_COPY.title}</Text>
+        <ModeSegmentToggle />
+        <PlayerLivePanel />
+
+        <View className="mb-2">
+          <Text className="mb-3 text-sm text-fg-subtle">{LIVE_UX_COPY.findClub}</Text>
+          {clubsError ? (
+            <ErrorState message="Impossible de charger les clubs LIVE." onRetry={refetch} />
+          ) : liveClubs.length > 0 ? (
+            <View className="gap-3">
+              {liveClubs.map((item) => (
+                <LiveClubCard key={item.id} item={item} />
+              ))}
+            </View>
+          ) : (
+            <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.noLiveClubs}</Text>
+          )}
         </View>
-      ) : (
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text className="font-display text-[34px] leading-10 text-fg">{LIVE_UX_COPY.title}</Text>
-          <ModeSegmentToggle />
-          <PlayerLivePanel />
-
-          <View className="mb-2">
-            <View className="mb-3 min-h-[44px] flex-row items-center justify-between gap-3">
-              <Text className="text-sm text-fg-subtle">{LIVE_UX_COPY.findClub}</Text>
-              <Pressable
-                onPress={() => switchPane("find")}
-                className="min-h-[44px] justify-center py-1 active:opacity-80"
-                accessibilityRole="button"
-                accessibilityLabel={LIVE_UX_COPY.liveClubFilters}
-              >
-                <Text className="text-sm font-bold text-accent">{LIVE_UX_COPY.liveClubFilters}</Text>
-              </Pressable>
-            </View>
-            {clubsError ? (
-              <ErrorState message="Impossible de charger les clubs LIVE." onRetry={refetch} />
-            ) : liveClubs.length > 0 ? (
-              <View className="gap-3">
-                {liveClubs.map((item) => (
-                  <LiveClubCard key={item.id} item={item} />
-                ))}
-              </View>
-            ) : (
-              <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.noLiveClubs}</Text>
-            )}
-          </View>
-
-          {playersError ? (
-            <View className="mb-2">
-              <ErrorState message="Impossible de charger les joueurs LIVE." onRetry={refetchPlayers} />
-            </View>
-          ) : otherLivePlayers.length > 0 ? (
-            <View>
-              <Text className="mb-3 text-sm text-fg-subtle">{LIVE_UX_COPY.otherPlayers}</Text>
-              <View className="gap-3">
-                {otherLivePlayers.map((item) => (
-                  <LivePlayerCard
-                    key={item.id}
-                    item={item}
-                    clubName={clubsByUser?.get(item.user_id)?.name ?? null}
-                    clubId={clubsByUser?.get(item.user_id)?.id ?? null}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : showFeedEmpty && (selfLive || liveClubCount > 0) ? (
-            <Text className="text-sm text-fg-subtle">{liveFeedEmptyCopy({ selfLive, liveClubCount })}</Text>
-          ) : null}
-        </ScrollView>
-      )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
