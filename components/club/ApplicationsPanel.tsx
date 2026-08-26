@@ -43,10 +43,12 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<Inbox size={18} color="#f4f5f7" />}>Ils veulent rentrer</CardTitle>
-        <Text className="text-sm text-fg-muted">{pending.length} en attente</Text>
+    <Card className="p-3">
+      <CardHeader className="mb-2">
+        <CardTitle icon={<Inbox size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+          Ils veulent rentrer
+        </CardTitle>
+        <Text className="text-[12px] text-fg-subtle">{pending.length} en attente</Text>
       </CardHeader>
 
       {isLoading ? (

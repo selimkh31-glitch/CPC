@@ -70,8 +70,8 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View className="flex-1 flex-row bg-black/50">
         <View className="h-full w-[84%] max-w-[320px] bg-bg-card" style={{ paddingTop: Math.max(insets.top, 12) }}>
-          <View className="flex-row items-center justify-between px-4 pb-2">
-            <Text className="font-display text-lg text-fg">Menu</Text>
+          <View className="flex-row items-center justify-between px-5 pb-4">
+            <Text className="font-display text-[22px] text-fg">Menu</Text>
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -82,7 +82,7 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
               <X size={20} color="#9aa0a8" />
             </Pressable>
           </View>
-          <View className="flex-1 px-2 pb-4">
+          <View className="flex-1 px-3 pb-6 pt-2">
             <MenuRow label="Profil" onPress={openProfile} />
             <MenuRow label="Réglages" onPress={() => go("/settings")} />
             <MenuRow label="Chat" onPress={() => go("/conversations")} />
@@ -110,8 +110,8 @@ function ModeSegmentToggle({
   const active = mode === "CLUB" ? "CLUB" : "PLAYER";
 
   return (
-    <View className="border-t border-border px-3 pt-3" style={{ paddingBottom: Math.max(bottomInset, 16) }}>
-      <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+    <View className="border-t border-white/[0.06] px-4 pt-4" style={{ paddingBottom: Math.max(bottomInset, 20) }}>
+      <View className="flex-row rounded-full border border-white/10 bg-white/[0.03] p-1">
         {(["PLAYER", "CLUB"] as const).map((key) => {
           const selected = active === key;
           const label = key === "PLAYER" ? "Joueur" : "Club";
@@ -122,7 +122,7 @@ function ModeSegmentToggle({
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityState={{ selected }}
-              className="min-h-[44px] flex-1 items-center justify-center rounded-xl"
+              className="min-h-[44px] flex-1 items-center justify-center rounded-full"
               style={selected ? { backgroundColor: accent } : undefined}
             >
               <Text className={`text-sm font-bold ${selected ? "text-bg" : "text-fg-muted"}`}>{label}</Text>
@@ -140,9 +140,9 @@ function MenuRow({ label, onPress }: { label: string; onPress: () => void }) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="min-h-[44px] justify-center rounded-xl px-3 py-2 active:bg-bg-elevated"
+      className="min-h-[48px] justify-center rounded-xl px-3 py-3 active:bg-white/[0.04]"
     >
-      <Text className="text-base font-bold text-fg">{label}</Text>
+      <Text className="text-[17px] font-medium text-fg">{label}</Text>
     </Pressable>
   );
 }

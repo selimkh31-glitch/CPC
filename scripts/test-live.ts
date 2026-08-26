@@ -229,6 +229,20 @@ test("panels LIVE : joueur = playerHeadline, club LIVE = discovery + feuille", (
   assert.false(matchTab.includes("LiveSessionPanel"), "match no old panel");
 });
 
+test("pitch LIVE : SLOT 44, codes ST/LW, pas de libellé FR ni Inviter sur le terrain", () => {
+  const pitch = readFileSync(`${process.cwd()}/components/club/FormationPitch.tsx`, "utf8");
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  assert.true(pitch.includes("const SLOT_SIZE = 44"), "SLOT_SIZE 44");
+  assert.true(pitch.includes("h-10 w-10"), "h-10 circles");
+  assert.false(pitch.includes("h-14 w-14"), "no h-14 circles");
+  assert.true(pitch.includes("{slot.position}"), "position CODE on pitch");
+  assert.false(/\{emptySlotHint\}<\/Text>/.test(pitch), "hint not painted on pitch");
+  assert.false(/\{positionLabel\}<\/Text>/.test(pitch), "French label not painted");
+  assert.true(pitch.includes("accessibilityLabel"), "a11y keeps French + hint");
+  assert.true(feuille.includes('emptySlotHint="Inviter sur ce poste"'), "feuille still passes hint");
+  assert.true(feuille.includes("Annuler"), "Annuler stays");
+});
+
 test("club LIVE chrome : toggle ON = is_live + expires_at ; OFF = is_live false", () => {
   const toggle = readFileSync(`${process.cwd()}/components/club/ClubDiscoveryToggle.tsx`, "utf8");
   const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");

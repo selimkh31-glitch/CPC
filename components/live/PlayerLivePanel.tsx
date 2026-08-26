@@ -72,14 +72,14 @@ export function PlayerLivePanel() {
   };
 
   return (
-    <Card className={cn("mb-5 rounded-[28px] p-6", live && "border-accent/35 bg-accent/8")}>
+    <Card className={cn("rounded-2xl p-4", live && "border-accent/35 bg-accent/8")}>
       {isLoading && !mySession ? (
         <Skeleton className="h-16" />
       ) : live ? (
         <>
           <View className="mb-2 flex-row items-start gap-2">
             <PulseDot />
-            <Text className="flex-1 font-display text-2xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
+            <Text className="flex-1 font-display text-xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
           </View>
           <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.stillLooking}</Text>
           <Text className="mt-3 text-base font-semibold text-fg">
@@ -98,8 +98,8 @@ export function PlayerLivePanel() {
         <ErrorState message="Impossible de charger ton LIVE." onRetry={refetch} />
       ) : (
         <>
-          <Text className="font-display text-2xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
-          <Text className="mb-5 mt-2 text-sm text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
+          <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
+          <Text className="mb-4 mt-1.5 text-[13px] text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
           <Button size="lg" loading={goLive.isPending} onPress={openSheet}>
             {LIVE_UX_COPY.goLive}
           </Button>

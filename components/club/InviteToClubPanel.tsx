@@ -103,9 +103,11 @@ export function InviteToClubPanel({ clubId, members }: { clubId: string; members
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<UserPlus size={18} color="#f4f5f7" />}>Inviter au club</CardTitle>
+    <Card className="p-3">
+      <CardHeader className="mb-2">
+        <CardTitle icon={<UserPlus size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+          Inviter au club
+        </CardTitle>
       </CardHeader>
       <Input
         value={query}

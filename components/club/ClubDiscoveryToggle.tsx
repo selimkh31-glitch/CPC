@@ -116,14 +116,14 @@ export function ClubDiscoveryToggle({
   };
 
   return (
-    <View className={`rounded-2xl border p-4 ${live ? "border-accent/35 bg-accent/8" : "border-border bg-bg-card"}`}>
+    <View className={`rounded-2xl border px-4 py-3 ${live ? "border-accent/35 bg-accent/8" : "border-white/[0.08] bg-white/[0.03]"}`}>
       <View className="min-h-[44px] flex-row items-center justify-between gap-3">
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-2">
             {live ? <PulseDot /> : null}
-            <Text className={`font-display text-xl ${live ? "text-fg" : "text-fg-muted"}`}>{LIVE_UX_COPY.discoveryOn}</Text>
+            <Text className={`font-display text-[15px] ${live ? "text-fg" : "text-fg-muted"}`}>{LIVE_UX_COPY.discoveryOn}</Text>
           </View>
-          <Text className="mt-0.5 text-sm text-fg-muted">
+          <Text className="mt-0.5 text-[12px] leading-4 text-fg-muted">
             {live ? LIVE_UX_COPY.discoveryHintOn : LIVE_UX_COPY.discoveryHintOff}
           </Text>
           {live ? (

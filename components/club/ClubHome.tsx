@@ -164,10 +164,10 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
           currentUserId={session?.user.id ?? null}
           clubId={club.id}
           // Foundation #2.1 — Mode Joueur : jamais d'affordance de
-          // recrutement. `interactive={false}` supprime le "+"/l'indice
-          // "Rechercher" sur les slots vides (voir FormationPitch/PitchSlot) ;
-          // le tap sur un titulaire (-> profil) reste inchangé, ce prop ne
-          // désactive que la partie "slot vide" du composant.
+          // recrutement. `interactive={false}` supprime le "+" sur les slots
+          // vides ; le code de poste reste visible, l'indice n'est plus
+          // affiché (a11y seulement). Le tap sur un titulaire (-> profil)
+          // reste inchangé, ce prop ne désactive que la partie "slot vide".
           interactive={false}
         />
       ) : (

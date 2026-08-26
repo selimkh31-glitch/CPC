@@ -15,7 +15,7 @@ import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ClubDiscoveryToggle } from "@/components/club/ClubDiscoveryToggle";
-import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import { type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import {
   canMutateClub,
@@ -66,7 +66,7 @@ export function ClubLiveFeuille() {
         style={{ flex: 1 }}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36, gap: 24 }} keyboardShouldPersistTaps="handled">
           {body}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -113,8 +113,8 @@ export function ClubLiveFeuille() {
       {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <Text className="font-display text-2xl text-fg">{club.name}</Text>
-          <Text className="mt-0.5 text-sm text-fg-muted">EA SPORTS FC 27 Pro Clubs</Text>
+          <Text className="font-display text-[34px] leading-10 text-fg">{club.name}</Text>
+          <Text className="mt-1 text-[11px] tracking-wide text-fg-subtle">EA SPORTS FC 27 Pro Clubs</Text>
         </View>
       </View>
 
@@ -128,13 +128,13 @@ export function ClubLiveFeuille() {
 
       <View className="flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1">
-          <Text className="font-display text-lg text-fg">Effectif</Text>
-          <Text className="text-sm text-fg-muted">{fill}</Text>
+          <Text className="text-[13px] font-medium text-fg-muted">Effectif</Text>
+          <Text className="text-[12px] text-fg-subtle">{fill}</Text>
         </View>
         {canManage ? (
           <FormationSelector clubId={club.id} currentFormation={formationId} hasAssignments={assignments.length > 0} />
         ) : formationId ? (
-          <Text className="font-display text-base text-fg-muted">{formationId}</Text>
+          <Text className="font-mono text-[11px] font-bold text-fg-muted">{formationId}</Text>
         ) : null}
       </View>
 
@@ -202,10 +202,12 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<Mail size={18} color="#f4f5f7" />}>Invitations en attente</CardTitle>
-        <Text className="text-sm text-fg-muted">{invitations?.length ?? 0}</Text>
+    <Card className="p-3">
+      <CardHeader className="mb-2">
+        <CardTitle icon={<Mail size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+          Invitations en attente
+        </CardTitle>
+        <Text className="text-[12px] text-fg-subtle">{invitations?.length ?? 0}</Text>
       </CardHeader>
       {isLoading ? (
         <Skeleton className="h-16" />
@@ -223,9 +225,9 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
             const position = inv.slot_id ? positionBySlotId.get(inv.slot_id) : null;
             const statusBadge = <Badge tone="warn">En attente</Badge>;
             const footer = (
-              <View className="mt-1">
-                <Text className="text-xs text-fg-subtle">
-                  {position ? POSITION_LABELS[position] : "Poste à définir"}
+              <View className="mt-1 flex-row items-center justify-between gap-2">
+                <Text className="font-mono text-[10px] font-bold text-fg-subtle">
+                  {position ?? "Poste"}
                 </Text>
                 <Button
                   size="sm"
@@ -233,7 +235,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
                   loading={actingId === inv.id}
                   disabled={Boolean(actingId)}
                   onPress={() => cancel(inv.id)}
-                  className="mt-1 min-h-[44px] self-start"
+                  className="min-h-[44px] self-end px-2"
                   accessibilityLabel="Annuler l'invitation"
                 >
                   Annuler
@@ -242,7 +244,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
             );
             if (!inv.user) {
               return (
-                <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-border bg-bg-elevated p-2.5">
+                <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
                   <View className="min-w-0 flex-1">
                     <Text className="font-semibold text-fg-muted">Joueur</Text>
                     {footer}

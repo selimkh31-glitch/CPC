@@ -22,12 +22,14 @@ export function VoiceLinkBlock({ voiceLink }: { voiceLink: string | null }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<Mic size={18} color="#f4f5f7" />}>Vocal du club</CardTitle>
+    <Card className="p-3">
+      <CardHeader className="mb-2">
+        <CardTitle icon={<Mic size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+          Vocal du club
+        </CardTitle>
       </CardHeader>
-      <View className="gap-3">
-        <Text numberOfLines={1} className="text-sm text-fg-muted">
+      <View className="gap-2">
+        <Text numberOfLines={1} className="text-[12px] text-fg-muted">
           {voiceLink}
         </Text>
         <Button icon={<Mic size={16} color="#08090b" />} onPress={join}>

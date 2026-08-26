@@ -7,7 +7,7 @@ import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { canPressEmptyFormationSlot } from "@/lib/sessionState";
 import type { SlotAssignmentRow } from "@/lib/types";
 
-const SLOT_SIZE = 56;
+const SLOT_SIZE = 44;
 
 /**
  * Terrain visuel réutilisable (owner ET joueur, lecture ou interaction selon
@@ -33,9 +33,8 @@ export function FormationPitch({
   /** Si fourni, le slot occupé par ce user est marqué "Vous" (Phase 4.6) —
    *  purement visuel, ne change aucune permission. */
   currentUserId?: string | null;
-  /** Libellé sous un slot vide (Phase 5, Étape 3) — "Trouver un remplaçant"
-   *  côté owner/manager, laissé au défaut générique sinon (le tap et le
-   *  routing vers player-search restent strictement inchangés). */
+  /** Hint a11y d’un slot vide — jamais rendu comme texte sur le terrain
+   *  (codes ST/LW uniquement). Tap / routing inchangés. */
   emptySlotHint?: string;
   /** Club de la feuille — passé au profil pour « Retirer de la feuille ». */
   clubId?: string | null;
@@ -120,43 +119,52 @@ function PitchSlot({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={
+        occupant?.user
+          ? occupant.user.username
+          : canOpenEmpty
+            ? `${positionLabel}. ${emptySlotHint}`
+            : positionLabel
+      }
       className="absolute items-center active:opacity-80"
       style={{
         left: `${slot.x}%`,
         top: `${slot.y}%`,
         width: SLOT_SIZE,
         marginLeft: -SLOT_SIZE / 2,
-        marginTop: -SLOT_SIZE / 2 - 14,
+        marginTop: -SLOT_SIZE / 2 - 10,
       }}
     >
       {occupant?.user ? (
         <>
-          <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-accent bg-bg-elevated">
-            <Text className="font-display text-lg text-accent">
+          <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-accent bg-bg-elevated">
+            <Text className="font-display text-[11px] font-bold text-accent">
               {occupant.user.username.slice(0, 2).toUpperCase()}
             </Text>
           </View>
-          <Text numberOfLines={1} className="mt-1 max-w-[72px] text-center text-[11px] font-bold text-fg">
+          <Text numberOfLines={1} className="mt-0.5 max-w-[64px] text-center text-[10px] font-bold text-fg">
             {occupant.user.username}
           </Text>
-          <Text className="text-[10px] text-fg-subtle">{positionLabel}</Text>
           {isYou && <Badge tone="accent" className="mt-0.5 self-center px-1.5 py-0.5">Vous</Badge>}
         </>
       ) : canOpenEmpty ? (
         <>
-          <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-white/30 bg-white/5">
-            <Text className="text-lg font-bold text-white/50">+</Text>
+          <View className="h-10 w-10 items-center justify-center rounded-full border border-dashed border-white/20 bg-white/[0.04]">
+            <Text className="font-display text-lg leading-none text-white/35">+</Text>
           </View>
-          <Text className="mt-1 text-[11px] font-bold text-white/80">{positionLabel}</Text>
-          <Text className="text-[10px] text-white/40">{emptySlotHint}</Text>
+          <Text className="mt-0.5 font-mono text-[9px] font-bold tracking-wide text-white/40">
+            {slot.position}
+          </Text>
         </>
       ) : (
-        // Non-interactif (Mode Joueur, Foundation #2.1) : simple
-        // représentation visuelle d'un poste vacant — pas de "+", pas
-        // d'indice "Rechercher", aucune affordance de recrutement.
+        // Non-interactif (Mode Joueur, Foundation #2.1) : code de poste
+        // uniquement — pas de "+", pas d'indice visuel, aucune affordance.
         <>
-          <View className="h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-white/5" />
-          <Text className="mt-1 text-[11px] font-bold text-white/50">{positionLabel}</Text>
+          <View className="h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5" />
+          <Text className="mt-0.5 font-mono text-[9px] font-bold tracking-wide text-white/40">
+            {slot.position}
+          </Text>
         </>
       )}
     </Pressable>

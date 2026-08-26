@@ -171,6 +171,10 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   const menuIdx = header.indexOf("<Menu");
   const avatarIdx = header.indexOf("<Avatar");
   assert.true(menuIdx >= 0 && avatarIdx > menuIdx, "hamburger left of avatar");
+  assert.true(header.includes('size="sm"'), "avatar sm");
+  assert.true(header.includes('"/profile"'), "avatar opens /profile");
+  assert.true(header.includes("justify-between"), "full-width row");
+  assert.true((header.match(/<Pressable/g) ?? []).length >= 2, "two pressables");
   assert.true(header.includes("AppMenuSheet"), "one menu");
   assert.true(sheet.includes('label="Profil"'), "profil");
   assert.true(sheet.includes('label="Réglages"'), "réglages");

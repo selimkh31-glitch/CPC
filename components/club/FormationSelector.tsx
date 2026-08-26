@@ -60,10 +60,10 @@ export function FormationSelector({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           setOpen(true);
         }}
-        className="min-h-[44px] flex-row items-center gap-1 self-start rounded-xl border border-border bg-bg-elevated px-3 py-2 active:opacity-80"
+        className="min-h-[44px] flex-row items-center gap-1.5 self-start rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 active:opacity-80"
       >
-        <Text className="font-display text-base text-fg">{currentFormation ?? "Choisir une formation"}</Text>
-        <ChevronDown size={16} color="#9aa0a8" />
+        <Text className="font-mono text-[11px] font-bold text-fg">{currentFormation ?? "Formation"}</Text>
+        <ChevronDown size={14} color="#9aa0a8" />
       </Pressable>
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>

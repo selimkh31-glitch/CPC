@@ -17,7 +17,7 @@ export default function RecrutementTab() {
 
   const shell = (body: ReactNode) => (
     <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}>
         {body}
       </ScrollView>
     </SafeAreaView>
@@ -39,8 +39,8 @@ export default function RecrutementTab() {
     <>
       {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <View>
-        <Text className="font-display text-2xl text-fg">Recrutement</Text>
-        <Text className="mt-0.5 text-sm text-fg-muted">Accepte, refuse ou invite.</Text>
+        <Text className="font-display text-[34px] leading-10 text-fg">Recrutement</Text>
+        <Text className="mt-1 text-[11px] tracking-wide text-fg-subtle">Accepte, refuse ou invite.</Text>
       </View>
       <ApplicationsPanel clubId={club.id} />
       <InviteToClubPanel clubId={club.id} members={club.members ?? []} />

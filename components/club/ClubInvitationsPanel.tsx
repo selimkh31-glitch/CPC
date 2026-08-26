@@ -55,10 +55,12 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<Send size={18} color="#f4f5f7" />}>Invitations envoyées</CardTitle>
-        <Text className="text-sm text-fg-muted">{invitations?.length ?? 0}</Text>
+    <Card className="p-3">
+      <CardHeader className="mb-2">
+        <CardTitle icon={<Send size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+          Invitations envoyées
+        </CardTitle>
+        <Text className="text-[12px] text-fg-subtle">{invitations?.length ?? 0}</Text>
       </CardHeader>
 
       {isLoading ? (
@@ -75,7 +77,7 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
           {invitations.map((inv) => {
             const statusBadge = <Badge tone={STATUS_TONES[inv.status]}>{STATUS_LABELS[inv.status]}</Badge>;
             const footer = (
-              <View className="mt-1">
+              <View className="mt-1 flex-row items-center justify-between gap-2">
                 <Text className="text-[11px] text-fg-subtle">Invitation au club · {timeAgo(inv.created_at)}</Text>
                 {inv.status === "PENDING" ? (
                   <Button
@@ -84,7 +86,7 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
                     loading={actingId === inv.id}
                     disabled={Boolean(actingId)}
                     onPress={() => cancel(inv.id)}
-                    className="mt-1 min-h-[44px] self-start"
+                    className="min-h-[44px] self-end px-2"
                     accessibilityLabel="Annuler l'invitation"
                   >
                     Annuler

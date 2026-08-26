@@ -65,7 +65,7 @@ export function PlayerCard({
 
   if (density === "mini") {
     return (
-      <View className={cn("rounded-2xl border bg-bg-card px-3 py-2", stateBorderClass(state, data), className)}>
+      <View className={cn("rounded-xl border bg-bg-card px-2.5 py-1.5", stateBorderClass(state, data), className)}>
         <MiniBody data={data} onPress={press} rightSlot={rightSlot} />
         {footer}
       </View>
@@ -128,12 +128,11 @@ function MiniBody({
             {data.username}
           </Text>
         </View>
-        <Text className="text-xs text-fg-subtle">
+        <Text className="text-[11px] text-fg-subtle">
           {data.mainPosition} · {PLATFORM_LABELS[data.platform]}
           {data.clubName ? ` · ${data.clubName}` : ""}
         </Text>
       </View>
-      <Text className="font-display text-xl text-accent">{data.mainPosition}</Text>
     </>
   );
 

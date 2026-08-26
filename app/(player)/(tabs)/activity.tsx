@@ -30,21 +30,21 @@ export default function ActivityTab() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <View className="px-5 pt-2 pb-3">
-        <Text className="mb-1 font-display text-3xl text-fg">Activité</Text>
-        <Text className="mb-4 text-sm text-fg-muted">Tes retours. Touche une ligne pour ouvrir.</Text>
-        <View className="flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+      <View className="px-5 pt-2 pb-4">
+        <Text className="mb-1 font-display text-[34px] leading-10 text-fg">Activité</Text>
+        <Text className="mb-5 text-[11px] tracking-wide text-fg-subtle">Tes retours. Touche une ligne pour ouvrir.</Text>
+        <View className="flex-row rounded-full border border-white/10 bg-white/[0.03] p-0.5">
           {segments.map((s) => (
             <Pressable
               key={s.key}
               onPress={() => setSegment(s.key)}
-              className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${segment === s.key ? "bg-accent" : ""}`}
+              className={`min-h-[40px] flex-1 justify-center rounded-full px-2 py-2 ${segment === s.key ? "bg-accent" : ""}`}
               accessibilityRole="button"
               accessibilityState={{ selected: segment === s.key }}
             >
               <Text
                 numberOfLines={1}
-                className={`text-center text-xs font-bold ${segment === s.key ? "text-bg" : "text-fg-muted"}`}
+                className={`text-center text-[11px] font-semibold ${segment === s.key ? "text-bg" : "text-fg-muted"}`}
               >
                 {s.label}
               </Text>

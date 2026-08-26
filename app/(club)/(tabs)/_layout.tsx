@@ -3,12 +3,12 @@ import { Inbox, Radio, Shield, Swords } from "lucide-react-native";
 import { useModeAccent } from "@/lib/theme";
 
 const TAB_BAR_STYLE = {
-  backgroundColor: "#0f1114",
-  borderTopColor: "#24272c",
-  borderTopWidth: 1,
-  height: 64,
-  paddingBottom: 10,
-  paddingTop: 8,
+  backgroundColor: "#08090b",
+  borderTopColor: "rgba(255,255,255,0.06)",
+  borderTopWidth: 0.5,
+  height: 56,
+  paddingBottom: 6,
+  paddingTop: 6,
 } as const;
 
 /**
@@ -26,7 +26,7 @@ export default function ClubTabsLayout() {
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: "#666c74",
         tabBarStyle: TAB_BAR_STYLE,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
       <Tabs.Screen

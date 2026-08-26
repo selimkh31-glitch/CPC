@@ -82,14 +82,14 @@ export default function LiveScreen() {
       ) : (
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="mb-5 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>
+          <Text className="font-display text-[34px] leading-10 text-fg">{LIVE_UX_COPY.title}</Text>
           <PlayerLivePanel />
 
-          <View className="mb-6">
+          <View className="mb-2">
             <View className="mb-3 min-h-[44px] flex-row items-center justify-between gap-3">
               <Text className="text-sm text-fg-subtle">{LIVE_UX_COPY.findClub}</Text>
               <Pressable
