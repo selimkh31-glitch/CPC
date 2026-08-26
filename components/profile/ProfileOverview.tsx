@@ -8,7 +8,14 @@ import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { careerTilesCaption, resolveCareerTiles, type CareerTile } from "@/lib/profileCareer";
 import { PLAYER_CARD_COPY } from "@/lib/playerCard";
 import { computeOvr, OVR_CPC_LABEL } from "@/lib/ovr";
-import { PLATFORM_LABELS, PLAY_STYLE_LABELS, POSITIONS } from "@/lib/constants";
+import { PLATFORM_LABELS, PLAY_STYLE_LABELS, POSITIONS, type PositionCode } from "@/lib/constants";
+import {
+  availabilitySlotsFromUser,
+  nextPositionsOnTap,
+  validateProfileIdentity,
+} from "@/lib/profileIdentity";
+import { useUpdateOwnProfile } from "@/lib/hooks/useProfile";
+import { toast } from "@/lib/toast";
 import type { UserRow } from "@/lib/types";
 import type { MatchHistoryItem } from "@/lib/matchHistory";
 import { cn } from "@/lib/utils";
@@ -66,7 +73,6 @@ export function ProfileOverview({
   const clubLine = clubName?.trim() ? clubName.trim() : PLAYER_CARD_COPY.sansClub;
   const platform = PLATFORM_LABELS[user.platform] ?? user.platform;
   const playStyle = PLAY_STYLE_LABELS[user.play_style] ?? user.play_style;
-  const secondary = new Set(user.secondary_positions ?? []);
 
   return (
     <View className="w-full gap-5">
@@ -165,54 +171,7 @@ export function ProfileOverview({
             </View>
           ) : null}
 
-          <View className="flex-row flex-wrap gap-1.5">
-            {POSITIONS.map((code) => {
-              const isMain = code === user.main_position;
-              const isSecondary = secondary.has(code);
-              const cell = (
-                <View
-                  className={cn(
-                    "items-center justify-center rounded-lg border py-2",
-                    isMain
-                      ? "border-accent/50 bg-accent/15"
-                      : isSecondary
-                        ? "border-white/15 bg-white/[0.04]"
-                        : "border-white/5 bg-transparent"
-                  )}
-                >
-                  <Text
-                    className={cn(
-                      "text-[11px] font-bold tracking-wide",
-                      isMain ? "text-accent" : isSecondary ? "text-fg-muted" : "text-fg-subtle/50"
-                    )}
-                  >
-                    {code}
-                  </Text>
-                </View>
-              );
-              if (!isOwn) {
-                return (
-                  <View key={code} className="w-[31%]">
-                    {cell}
-                  </View>
-                );
-              }
-              return (
-                <Pressable
-                  key={code}
-                  className="w-[31%]"
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    router.push("/edit-profile");
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Poste ${code}, modifier le profil`}
-                >
-                  {cell}
-                </Pressable>
-              );
-            })}
-          </View>
+          <ProfilePositionGrid user={user} isOwn={isOwn} />
 
           <View className="items-center">
             <ClubProCard
@@ -251,6 +210,110 @@ function CareerTileBox({ tile }: { tile: CareerTile }) {
     >
       <Text className="text-[10px] font-bold uppercase tracking-wide text-fg-muted">{tile.label}</Text>
       <Text className={cn("font-display text-2xl", tile.highlight ? "text-accent" : "text-fg")}>{tile.value}</Text>
+    </View>
+  );
+}
+
+function identityPatchForPositions(
+  user: UserRow,
+  positions: { main_position: PositionCode; secondary_positions: PositionCode[] }
+): Record<string, unknown> {
+  return {
+    username: user.username,
+    platform: user.platform,
+    main_position: positions.main_position,
+    secondary_positions: positions.secondary_positions,
+    play_style: user.play_style,
+    languages: user.languages ?? [],
+    availability: { slots: availabilitySlotsFromUser(user.availability) },
+  };
+}
+
+function positionCellLabel(code: PositionCode, isMain: boolean, isSecondary: boolean, isOwn: boolean): string {
+  if (!isOwn) return `Poste ${code}`;
+  if (isMain) return `Poste principal ${code}`;
+  if (isSecondary) return `Poste secondaire ${code}, appui long pour retirer`;
+  return `Ajouter ${code} comme poste secondaire`;
+}
+
+function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean }) {
+  const update = useUpdateOwnProfile();
+  const secondary = new Set(user.secondary_positions ?? []);
+
+  const applyTap = (code: PositionCode, intent: "tap" | "long-press") => {
+    if (!isOwn || update.isPending) return;
+    const next = nextPositionsOnTap(
+      { main_position: user.main_position, secondary_positions: user.secondary_positions ?? [] },
+      code,
+      intent
+    );
+    if (!next) return;
+    const payload = identityPatchForPositions(user, next);
+    const validated = validateProfileIdentity(payload);
+    if (!validated.ok) {
+      toast.error(validated.message);
+      return;
+    }
+    Haptics.selectionAsync();
+    update.mutate(payload, {
+      onError: (err: unknown) => {
+        const message = err && typeof err === "object" && "message" in err && typeof err.message === "string"
+          ? err.message
+          : "Impossible d'enregistrer le poste.";
+        toast.error(message);
+      },
+    });
+  };
+
+  return (
+    <View className="flex-row flex-wrap gap-1.5">
+      {POSITIONS.map((code) => {
+        const isMain = code === user.main_position;
+        const isSecondary = secondary.has(code);
+        const cell = (
+          <View
+            className={cn(
+              "items-center justify-center rounded-lg border py-2",
+              isMain
+                ? "border-accent/50 bg-accent/15"
+                : isSecondary
+                  ? "border-white/15 bg-white/[0.04]"
+                  : "border-white/5 bg-transparent"
+            )}
+          >
+            <Text
+              className={cn(
+                "text-[11px] font-bold tracking-wide",
+                isMain ? "text-accent" : isSecondary ? "text-fg-muted" : "text-fg-subtle/50"
+              )}
+            >
+              {code}
+            </Text>
+          </View>
+        );
+        if (!isOwn) {
+          return (
+            <View key={code} className="w-[31%]">
+              {cell}
+            </View>
+          );
+        }
+        return (
+          <Pressable
+            key={code}
+            className="w-[31%]"
+            disabled={update.isPending}
+            onPress={() => applyTap(code, "tap")}
+            onLongPress={() => applyTap(code, "long-press")}
+            delayLongPress={450}
+            accessibilityRole="button"
+            accessibilityLabel={positionCellLabel(code, isMain, isSecondary, true)}
+            accessibilityState={{ disabled: update.isPending, selected: isMain || isSecondary }}
+          >
+            {cell}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

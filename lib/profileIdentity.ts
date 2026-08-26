@@ -184,3 +184,68 @@ export function validateProfileIdentity(input: Record<string, unknown>): Profile
     },
   };
 }
+
+export type PositionSelection = {
+  main_position: PositionCode;
+  secondary_positions: PositionCode[];
+};
+
+export type PositionTapIntent = "tap" | "long-press";
+
+function normalizeSecondary(
+  main: PositionCode,
+  secondary: readonly string[] | null | undefined
+): PositionCode[] {
+  const seen = new Set<string>();
+  const out: PositionCode[] = [];
+  for (const raw of secondary ?? []) {
+    if (typeof raw !== "string" || raw === main || !POSITION_SET.has(raw) || seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw as PositionCode);
+    if (out.length === 2) break;
+  }
+  return out;
+}
+
+/**
+ * Grille de postes inline (profil perso). Pas de navigation.
+ * - tap vide → secondaire (max 2)
+ * - tap secondaire → devient principal, l'ancien principal passe secondaire (cap 2)
+ * - tap principal → no-op
+ * - déjà 2 secondaires + tap vide → ce poste devient principal
+ * - appui long sur un secondaire → le retire ; le principal ne se retire pas
+ */
+export function nextPositionsOnTap(
+  current: { main_position: PositionCode; secondary_positions?: readonly PositionCode[] | null },
+  tapped: PositionCode,
+  intent: PositionTapIntent = "tap"
+): PositionSelection | null {
+  if (!POSITION_SET.has(tapped) || !POSITION_SET.has(current.main_position)) return null;
+  const main = current.main_position;
+  const secondary = normalizeSecondary(main, current.secondary_positions);
+
+  if (intent === "long-press") {
+    if (tapped === main) return null;
+    if (!secondary.includes(tapped)) return null;
+    return { main_position: main, secondary_positions: secondary.filter((p) => p !== tapped) };
+  }
+
+  if (tapped === main) return null;
+
+  if (secondary.includes(tapped)) {
+    const rest = secondary.filter((p) => p !== tapped);
+    return {
+      main_position: tapped,
+      secondary_positions: normalizeSecondary(tapped, [main, ...rest]),
+    };
+  }
+
+  if (secondary.length < 2) {
+    return { main_position: main, secondary_positions: [...secondary, tapped] };
+  }
+
+  return {
+    main_position: tapped,
+    secondary_positions: normalizeSecondary(tapped, [main, ...secondary]),
+  };
+}

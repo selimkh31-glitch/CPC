@@ -6,11 +6,15 @@
  */
 import {
   isAllowedProfileIdentityColumn,
+  nextPositionsOnTap,
   pickAllowedProfileIdentityPatch,
   PROFILE_CLIENT_FORBIDDEN_COLUMNS,
   PROFILE_SELF_UPDATE_COLUMNS,
   validateProfileIdentity,
 } from "../lib/profileIdentity";
+import type { PositionCode } from "../lib/constants";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 
 const assert = {
   equal(actual: unknown, expected: unknown, label: string) {
@@ -146,6 +150,80 @@ test("validate — max 2 secondaires, principal exclu, langues requises", () => 
   if (droppedMain.ok) {
     assert.deepEqual(droppedMain.patch.secondary_positions, ["CAM"], "secondary without main");
   }
+});
+
+function sel(main: PositionCode, secondary: PositionCode[] = []) {
+  return { main_position: main, secondary_positions: secondary };
+}
+
+test("nextPositionsOnTap — vide → secondaire (max 2)", () => {
+  assert.deepEqual(nextPositionsOnTap(sel("ST"), "CAM"), sel("ST", ["CAM"]), "first secondary");
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "RW"), sel("ST", ["CAM", "RW"]), "second");
+});
+
+test("nextPositionsOnTap — secondaire → principal, ancien principal en secondaire (cap 2)", () => {
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "CAM"), sel("CAM", ["ST"]), "promote one");
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM"),
+    sel("CAM", ["ST", "RW"]),
+    "promote with cap"
+  );
+});
+
+test("nextPositionsOnTap — tap principal → no-op", () => {
+  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "ST"), null, "main");
+});
+
+test("nextPositionsOnTap — 2 secondaires + vide → ce poste devient principal", () => {
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "LW"),
+    sel("LW", ["ST", "CAM"]),
+    "empty becomes main, old main kept, cap 2"
+  );
+});
+
+test("nextPositionsOnTap — long-press secondaire retire ; principal intouchable", () => {
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM", "long-press"),
+    sel("ST", ["RW"]),
+    "remove secondary"
+  );
+  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "ST", "long-press"), null, "cannot remove main");
+  assert.equal(nextPositionsOnTap(sel("ST", ["CAM"]), "RW", "long-press"), null, "empty no-op");
+});
+
+test("nextPositionsOnTap + validateProfileIdentity — patch identité complète, pas de stats EA", () => {
+  const next = nextPositionsOnTap(sel("ST", ["CAM"]), "RW");
+  assert.true(Boolean(next), "next");
+  const result = validateProfileIdentity({
+    username: "Striker27",
+    platform: "PS",
+    main_position: next!.main_position,
+    secondary_positions: next!.secondary_positions,
+    play_style: "ATTACKING",
+    languages: ["FR"],
+    availability: { slots: ["weekend"] },
+    reliability_score: 99,
+    verified_stats: { goals: 40 },
+    ea_identity_kind: "USERNAME_EQUALITY",
+  });
+  assert.true(result.ok, "ok");
+  if (!result.ok) return;
+  assert.equal(result.patch.main_position, "ST", "main unchanged");
+  assert.deepEqual(result.patch.secondary_positions, ["CAM", "RW"], "added RW");
+  assert.equal("verified_stats" in result.patch, false, "no EA stats");
+  assert.equal("reliability_score" in result.patch, false, "no score");
+});
+
+test("grille profil perso : inline, pas de navigation / popup", () => {
+  const overview = readFileSync(`${process.cwd()}/components/profile/ProfileOverview.tsx`, "utf8");
+  assert.true(overview.includes("nextPositionsOnTap"), "tap helper");
+  assert.true(overview.includes("useUpdateOwnProfile"), "mutation");
+  assert.true(overview.includes("validateProfileIdentity"), "full identity validate");
+  assert.true(overview.includes("onLongPress"), "long-press remove");
+  assert.true(overview.includes('router.push("/edit-profile")'), "Modifier header stays");
+  assert.false(overview.includes("Alert.alert"), "no popup");
+  assert.false(overview.includes("Poste ${code}, modifier le profil"), "grid does not open edit-profile");
 });
 
 console.log(`\n${passed} tests OK`);

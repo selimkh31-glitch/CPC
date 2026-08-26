@@ -216,6 +216,9 @@ test("ProfileContent passe par ProfileOverview ; actions + avis + LinkEaClub", (
   assert.true(overview.includes("OVR_CPC_LABEL"), "ovr cpc");
   assert.true(overview.includes("PLAYER_CARD_COPY.sansClub"), "sans club");
   assert.true(overview.includes('"/edit-profile"') || overview.includes("'/edit-profile'"), "modifier");
+  assert.true(overview.includes("nextPositionsOnTap"), "inline positions");
+  assert.true(overview.includes("useUpdateOwnProfile"), "own profile mutate");
+  assert.true(overview.includes("onLongPress"), "long-press secondary");
   assert.true(overview.includes("`/club/${resolvedClubId}`") || overview.includes("/club/"), "voir le club");
   assert.false(overview.includes("matchHistory="), "card has no history footer");
   assert.false(overview.includes("vars("), "no vars() wrapping");
