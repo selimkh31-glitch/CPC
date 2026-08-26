@@ -158,6 +158,16 @@ test("currentStreak/badges/secondaryPositions absents -> tableaux/0 vides", () =
   assert.deepEqual(data.secondaryPositions, [], "secondaryPositions");
 });
 
+test("secondaryPositions — déduplique et exclut le principal", () => {
+  const data = buildPlayerCardData(
+    baseUser({
+      main_position: "CB",
+      secondary_positions: ["CB", "CB", "ST", "ST"],
+    })
+  );
+  assert.deepEqual(data.secondaryPositions, ["ST"], "unique without main");
+});
+
 test("clubName absent par défaut -> null ; fourni -> tel quel", () => {
   assert.equal(buildPlayerCardData(baseUser()).clubName, null, "default");
   assert.equal(buildPlayerCardData(baseUser(), { clubName: "Les Invincibles" }).clubName, "Les Invincibles", "set");

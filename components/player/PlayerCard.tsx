@@ -244,7 +244,7 @@ function FullBody({
   const faceCells = visibleFaceStatCells(data.faceStats);
   const careerBlocks = data.showEaStats ? visibleEaStatBlocks(data.eaStats) : [];
   const surface = ["#12151a", "#08090b"] as [string, string];
-  const secondaryCodes = data.secondaryPositions.filter((p, i, arr) => arr.indexOf(p) === i);
+  const secondaryCodes = [...new Set(data.secondaryPositions.filter((p) => p !== data.mainPosition))];
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -322,7 +322,7 @@ function FullBody({
           </View>
         ) : null}
         {secondaryCodes.map((code) => (
-          <Text key={code} className="font-mono text-[11px] font-bold text-white/45">
+          <Text key={`sec-${code}`} className="font-mono text-[11px] font-bold text-white/45">
             {code}
           </Text>
         ))}

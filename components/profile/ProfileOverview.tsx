@@ -221,17 +221,17 @@ function SelectedPositionChips({
   secondary: readonly PositionCode[] | null | undefined;
 }) {
   if (!main) return null;
-  const extras = (secondary ?? []).filter((code) => code && code !== main);
+  const extras = [...new Set((secondary ?? []).filter((p) => p !== main))];
   return (
     <View>
       <Text className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Poste</Text>
       <View className="mt-1 flex-row flex-wrap items-center gap-1.5">
-        <View className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
+        <View key={`main-${main}`} className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
           <Text className="text-[11px] font-bold tracking-wide text-accent">{main}</Text>
         </View>
-        {extras.map((code) => (
-          <View key={code} className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-0.5">
-            <Text className="text-[11px] font-bold tracking-wide text-fg-muted">{code}</Text>
+        {extras.map((pos) => (
+          <View key={`sec-${pos}`} className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-0.5">
+            <Text className="text-[11px] font-bold tracking-wide text-fg-muted">{pos}</Text>
           </View>
         ))}
       </View>
@@ -263,7 +263,9 @@ function positionCellLabel(code: PositionCode, isMain: boolean, isSecondary: boo
 
 function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean }) {
   const update = useUpdateOwnProfile();
-  const secondary = new Set(user.secondary_positions ?? []);
+  const main = user.main_position;
+  const secondary = [...new Set((user.secondary_positions ?? []).filter((p) => p !== main))];
+  const secondarySet = new Set(secondary);
 
   const applyTap = (code: PositionCode, intent: "tap" | "long-press") => {
     if (!isOwn || update.isPending) return;
@@ -295,9 +297,9 @@ function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean })
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {POSITIONS.map((code) => {
-        const isMain = code === user.main_position;
-        const isSecondary = secondary.has(code);
+      {POSITIONS.map((pos) => {
+        const isMain = pos === main;
+        const isSecondary = secondarySet.has(pos);
         const cell = (
           <View
             className={cn(
@@ -315,27 +317,27 @@ function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean })
                 isMain ? "text-accent" : isSecondary ? "text-fg-muted" : "text-fg-subtle/50"
               )}
             >
-              {code}
+              {pos}
             </Text>
           </View>
         );
         if (!isOwn) {
           return (
-            <View key={code} className="w-[31%]">
+            <View key={`grid-${pos}`} className="w-[31%]">
               {cell}
             </View>
           );
         }
         return (
           <Pressable
-            key={code}
+            key={`grid-${pos}`}
             className="w-[31%]"
             disabled={update.isPending}
-            onPress={() => applyTap(code, "tap")}
-            onLongPress={() => applyTap(code, "long-press")}
+            onPress={() => applyTap(pos, "tap")}
+            onLongPress={() => applyTap(pos, "long-press")}
             delayLongPress={450}
             accessibilityRole="button"
-            accessibilityLabel={positionCellLabel(code, isMain, isSecondary, true)}
+            accessibilityLabel={positionCellLabel(pos, isMain, isSecondary, true)}
             accessibilityState={{ disabled: update.isPending, selected: isMain || isSecondary }}
           >
             {cell}

@@ -235,8 +235,14 @@ test("grille profil perso : inline, pas de navigation / popup", () => {
   assert.true(overview.includes("validateProfileIdentity"), "full identity validate");
   assert.true(overview.includes("onLongPress"), "long-press remove");
   assert.true(overview.includes('toast.info("3 postes max.")'), "max toast");
-  assert.true(overview.includes("SelectedPositionChips"), "all selected chips");
-  assert.true(overview.includes(">Poste<"), "Poste label");
+  assert.true(overview.includes("`main-${main}`"), "main chip key");
+  assert.true(overview.includes("`sec-${pos}`"), "sec chip key");
+  assert.true(overview.includes("`grid-${pos}`"), "grid key");
+  assert.true(overview.includes("[...new Set("), "dedupe secondary");
+  const card = readFileSync(`${process.cwd()}/components/player/PlayerCard.tsx`, "utf8");
+  assert.true(card.includes("`sec-${code}`"), "card sec key");
+  const builder = readFileSync(`${process.cwd()}/lib/playerCard.ts`, "utf8");
+  assert.true(builder.includes("new Set((user.secondary_positions ?? []).filter((p) => p !== user.main_position))"), "builder dedupe");
   assert.true(overview.includes('router.push("/edit-profile")'), "Modifier header stays");
   assert.false(overview.includes("Alert.alert"), "no popup");
   assert.false(overview.includes("Poste ${code}, modifier le profil"), "grid does not open edit-profile");

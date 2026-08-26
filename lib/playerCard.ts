@@ -215,7 +215,7 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
     eaUsername: identityKind === "USERNAME_EQUALITY" && user.username ? user.username : null,
     platform: user.platform,
     mainPosition: user.main_position,
-    secondaryPositions: user.secondary_positions ?? [],
+    secondaryPositions: [...new Set((user.secondary_positions ?? []).filter((p) => p !== user.main_position))],
     playStyle: user.play_style,
     plan: user.plan,
     clubName: opts.clubName?.trim() ? opts.clubName.trim() : null,
