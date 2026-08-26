@@ -47,7 +47,7 @@ export default function ClubTab() {
   );
 
   const shell = (body: ReactNode) => (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
         {body}
       </ScrollView>

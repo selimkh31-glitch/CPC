@@ -14,7 +14,6 @@ import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ClubDiscoveryToggle } from "@/components/club/ClubDiscoveryToggle";
-import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import {
@@ -56,8 +55,7 @@ export function ClubLiveFeuille() {
   );
 
   const shell = (body: ReactNode) => (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <AppMenuHeader />
+    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
       {/* iOS: padding, offset 0 — contenu déjà sous le notch, au-dessus de la tab bar (pas un header stack). */}
       {/* Android: undefined — windowSoftInputMode resize (app.json) rétrécit la fenêtre ; padding doublerait. */}
       <KeyboardAvoidingView

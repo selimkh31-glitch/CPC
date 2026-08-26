@@ -24,7 +24,7 @@ export default function ClubsScreen() {
 
   if (membershipsLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <View style={{ padding: 16, gap: 12 }}>
           <Skeleton className="h-40" />
         </View>
@@ -34,14 +34,14 @@ export default function ClubsScreen() {
 
   if (playerMembership) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <ClubHome clubId={playerMembership.club.id} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
       <FindClubPanel />
     </SafeAreaView>
   );

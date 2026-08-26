@@ -38,7 +38,7 @@ export default function ProfileTabScreen() {
   const proEntry = profileProEntryCopy(FEATURE_REVENUECAT);
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="font-display text-3xl text-fg">Profil</Text>

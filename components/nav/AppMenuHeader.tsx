@@ -6,7 +6,7 @@ import { AppMenuSheet } from "@/components/nav/AppMenuSheet";
 import { useAuth } from "@/lib/providers/AuthProvider";
 
 /**
- * Chrome des onglets restants : avatar (initiales) + hamburger.
+ * Chrome authentifié : hamburger puis avatar (initiales).
  * Un tap sur l'un ou l'autre ouvre le même menu.
  */
 export function AppMenuHeader() {
@@ -22,10 +22,10 @@ export function AppMenuHeader() {
         accessibilityLabel="Menu"
         className="min-h-[44px] flex-row items-center gap-2 self-start py-1"
       >
-        <Avatar username={username} size="md" />
         <View className="min-h-[44px] min-w-[44px] items-center justify-center">
           <Menu size={22} color="#f4f5f7" />
         </View>
+        <Avatar username={username} size="md" />
       </Pressable>
       <AppMenuSheet visible={open} onClose={() => setOpen(false)} />
     </View>

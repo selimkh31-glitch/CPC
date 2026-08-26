@@ -14,7 +14,6 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { isLiveActive, liveFeedEmptyCopy, LIVE_UX_COPY } from "@/lib/live";
 import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
-import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 
 type LivePane = "feed" | "find";
 
@@ -62,8 +61,7 @@ export default function LiveScreen() {
   const showFeedEmpty = !playersError && otherLivePlayers.length === 0 && liveClubs.length === 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <AppMenuHeader />
+    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
       {pane === "find" ? (
         <View className="flex-1">
           <View className="px-4 pt-2">

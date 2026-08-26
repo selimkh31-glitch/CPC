@@ -37,7 +37,7 @@ export default function ClubModeLayout() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <View style={{ padding: 16 }}>
           <Skeleton className="h-40" />
         </View>
@@ -47,7 +47,7 @@ export default function ClubModeLayout() {
 
   if (isError) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <EmptyState title="Impossible de charger tes clubs gérés." subtitle="Vérifie ta connexion." />
         </ScrollView>
@@ -61,7 +61,7 @@ export default function ClubModeLayout() {
 
   if (!validSelection && managedClubs.length > 1) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 12 }}>
           <View className="mb-2 flex-row items-center gap-2">
             <Shield size={22} color="#39ff8a" />
@@ -75,7 +75,7 @@ export default function ClubModeLayout() {
 
   if (!validSelection) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <SafeAreaView className="flex-1 bg-bg" edges={[]}>
         <View style={{ padding: 16 }}>
           <Skeleton className="h-40" />
         </View>

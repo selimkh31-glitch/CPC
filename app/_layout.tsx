@@ -2,7 +2,7 @@ import "@/global.css";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -17,6 +17,7 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider, useAuth } from "@/lib/providers/AuthProvider";
 import { AppModeProvider, useAppMode } from "@/lib/providers/AppModeProvider";
 import { ToastHost } from "@/components/ui/ToastHost";
+import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { RANKING_COPY } from "@/lib/rankings";
@@ -106,7 +107,7 @@ function RootNavigator() {
     );
   }
 
-  return (
+  const stack = (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#08090b" } }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
@@ -270,4 +271,19 @@ function RootNavigator() {
       <Stack.Screen name="auth/callback" />
     </Stack>
   );
+
+  // Chrome unique (hamburger + avatar) une fois session + profil + mode
+  // posés. Auth, onboarding et porte de mode restent sans menu.
+  if (session && profile && mode) {
+    return (
+      <View className="flex-1 bg-bg">
+        <SafeAreaView edges={["top"]} className="bg-bg">
+          <AppMenuHeader />
+        </SafeAreaView>
+        <View className="flex-1">{stack}</View>
+      </View>
+    );
+  }
+
+  return stack;
 }
