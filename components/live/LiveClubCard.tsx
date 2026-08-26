@@ -1,38 +1,55 @@
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ClubCard } from "@/components/club/ClubCard";
+import { PulseDot } from "@/components/ui/PulseDot";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { LiveCountdown } from "@/components/live/LiveCountdown";
-import { CLUB_CARD_COPY, buildClubCardDataFromLiveSession } from "@/lib/clubCard";
+import { buildClubLiveRowMeta } from "@/lib/clubLiveRow";
+import { clubPublicHref } from "@/lib/clubProfile";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
- * Carte opportunité LIVE — même ClubCard compacte que l'annuaire.
- * PulseDot + countdown + un seul CTA « Voir le club ». `reason` déterministe, jamais un %.
+ * Ligne Matchmaking — PulseDot, avatar, nom + meta, Rejoindre à droite.
+ * Rangée unique, sans carte club, postes recherchés, timer ni second CTA.
  */
-export function LiveClubCard({ item, reason }: { item: ClubSessionRow; reason?: string }) {
-  const data = buildClubCardDataFromLiveSession(item, { reason });
-  if (!data) return null;
+export function LiveClubCard({
+  item,
+  memberCount,
+  form,
+}: {
+  item: ClubSessionRow;
+  memberCount?: number | null;
+  form?: string | null;
+}) {
+  const club = item.club;
+  const name = club?.name?.trim();
+  if (!club || !name) return null;
 
-  const openClub = () => {
+  const href = clubPublicHref(club.id, item.id);
+  const meta = buildClubLiveRowMeta({
+    languages: club.languages,
+    level: club.level,
+    memberCount,
+    form,
+    clubId: club.id,
+  });
+
+  const join = () => {
     Haptics.selectionAsync();
-    router.push(data.href);
+    router.push(href);
   };
 
   return (
-    <ClubCard
-      data={data}
-      variant="compact"
-      onPress={openClub}
-      rightSlot={<LiveCountdown expiresAt={item.expires_at} />}
-      footer={
-        <View className="mt-3">
-          <Button size="sm" onPress={openClub}>
-            {CLUB_CARD_COPY.viewClub}
-          </Button>
-        </View>
-      }
-    />
+    <View className="min-h-[44px] flex-row items-center gap-2">
+      <PulseDot />
+      <Avatar username={name} size="sm" />
+      <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] font-medium text-fg">
+        {name}
+        {meta ? `  ${meta}` : ""}
+      </Text>
+      <Button size="sm" onPress={join} accessibilityLabel="Rejoindre">
+        Rejoindre
+      </Button>
+    </View>
   );
 }

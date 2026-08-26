@@ -289,8 +289,11 @@ test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", (
 
 test("Matchmaking joueur : titre Matchmaking, clubs LIVE seulement", () => {
   const feed = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
+  const clubCard = readFileSync(`${process.cwd()}/components/live/LiveClubCard.tsx`, "utf8");
   assert.true(feed.includes("LIVE_UX_COPY.title"), "title");
   assert.true(feed.includes("LiveClubCard"), "LiveClubCard");
+  assert.true(feed.includes("MatchmakingFilters"), "MatchmakingFilters");
+  assert.true(clubCard.includes("Rejoindre"), "join on row");
   assert.false(feed.includes("LivePlayerCard"), "no LivePlayerCard");
   assert.false(feed.includes("FindClubPanel"), "no FindClubPanel");
   assert.false(feed.includes("otherPlayers"), "no otherPlayers");

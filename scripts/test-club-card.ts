@@ -358,7 +358,9 @@ test("spine UX — Recrutement invite ; Club pas un 2e LIVE ; Card a Lier mon cl
   assert.true(feuille.includes("FormationPitch"), "pitch on LIVE");
   assert.false(feuille.includes("flag + durée"), "no intern flag copy");
   assert.true(livePlayer.includes("LiveClubCard"), "clubs on matchmaking");
+  assert.true(livePlayer.includes("MatchmakingFilters"), "filters");
   assert.false(livePlayer.includes("LivePlayerCard"), "no other players");
+  assert.false(livePlayer.includes("liveFeedEmptyCopy"), "not liveFeedEmptyCopy");
   assert.true(profile.includes("onLinkEaClub"), "EA CTA wired");
   assert.true(card.includes("PLAYER_CARD_COPY.linkClub"), "cta on card");
 });

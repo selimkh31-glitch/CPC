@@ -60,6 +60,7 @@
     "test:card-face": "tsx scripts/test-card-face.ts",
     "test:profile-career": "tsx scripts/test-profile-career.ts",
     "test:club-card": "tsx scripts/test-club-card.ts",
+    "test:club-live-row": "tsx scripts/test-club-live-row.ts",
     "test:club-profile": "tsx scripts/test-club-profile.ts",
     "test:session-state": "tsx scripts/test-session-state.ts",
     "test:live": "tsx scripts/test-live.ts",
