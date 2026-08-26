@@ -17,6 +17,7 @@ import { POSITION_LABELS } from "@/lib/constants";
 import type { Plan, Platform, PlayStyleCode, PositionCode, UserRow, VerifiedStats } from "@/lib/types";
 import type { EaIdentityKind } from "@/lib/statsSource";
 import { hasVerifiedEaStatValues, normalizeEaIdentityKind } from "@/lib/statsSource";
+import { resolveFaceStats, type FaceStatsPack } from "@/lib/cardFace";
 
 export type PlayerCardDensity = "mini" | "compact" | "full";
 /** `standard` → compact, `hero` → full (aliases historiques). */
@@ -94,6 +95,8 @@ export const PLAYER_CARD_COPY = {
   eaAssists: "Passes EA",
   eaMatches: "Matchs EA",
   eaRating: "Note EA",
+  sansClub: "Sans club",
+  watermark: "ClubPro",
 } as const;
 
 export function formatCpcMatchCount(played: number | null | undefined): string | null {
@@ -162,8 +165,11 @@ export interface PlayerCardData {
   /** Club EA lié (colonne). ≠ identité joueur EA vérifiée. */
   eaClubLinked: boolean;
   eaIdentityKind: EaIdentityKind;
+  /** Career EA (buts/passes/matchs/note) — distinct du pack face PAC/SHO. */
   eaStats: VerifiedStats | null;
   showEaStats: boolean;
+  /** Pack face. `null` en prod sans attributs stockés. DEV = mock, jamais labellisé EA. */
+  faceStats: FaceStatsPack | null;
 
   /** Comptage PRESENT → match_results. `null` = non fourni (listes). 0 = aucun. */
   cpcMatchesPlayed: number | null;
@@ -185,6 +191,8 @@ export interface BuildPlayerCardOpts {
   needPositions?: string | readonly string[] | null;
   /** Ignoré s'il n'est pas STANDARD / sélectionnable. */
   templateId?: PlayerCardTemplateId | null;
+  /** Défaut `__DEV__`. Les tests passent `false` pour verrouiller la prod. */
+  isDev?: boolean;
 }
 
 export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {}): PlayerCardData {
@@ -194,6 +202,7 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
   const ovr = computeOvr({ reliabilityScore: reliability, verifiedStats: user.verified_stats });
   const identityKind = normalizeEaIdentityKind(user.ea_identity_kind);
   const showEaStats = identityKind === "USERNAME_EQUALITY" && hasVerifiedEaStatValues(user.verified_stats);
+  const isDev = opts.isDev ?? (typeof __DEV__ !== "undefined" && Boolean(__DEV__));
   const template = resolvePlayerCardTemplate(opts.templateId);
   const played =
     typeof opts.cpcMatchesPlayed === "number" && Number.isFinite(opts.cpcMatchesPlayed)
@@ -222,6 +231,13 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
     eaIdentityKind: identityKind,
     eaStats: showEaStats ? user.verified_stats : null,
     showEaStats,
+    faceStats: resolveFaceStats({
+      verified: user.verified_stats,
+      identityKind,
+      isDev,
+      seed: user.id || user.username,
+      position: user.main_position,
+    }),
 
     cpcMatchesPlayed: played,
     live: Boolean(opts.live),
@@ -240,8 +256,8 @@ export function formatPositionsLine(main: PositionCode, secondary: PositionCode[
 }
 
 /**
- * Blocs EA à afficher — seulement les chiffres déjà stockés.
- * Pas de SHO/PAS/TAC : ces % ne sont pas dans `verified_stats`.
+ * Blocs EA carrière à afficher — seulement les chiffres déjà stockés.
+ * PAC/SHO/PAS/DRI/DEF/PHY vivent dans `faceStats`, pas ici.
  * Pas de courbe : une note unique n'est pas un historique.
  */
 export function visibleEaStatBlocks(

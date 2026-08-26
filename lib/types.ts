@@ -45,6 +45,13 @@ export interface VerifiedStats {
   lastSyncedAt?: string;
   /** Matchs EA déjà agrégés — skip incrémental, pas une identité joueur. */
   importedMatchIds?: string[];
+  /** Attributs face EA (0–99), optionnels — jamais inventés en prod. */
+  pac?: number;
+  sho?: number;
+  pas?: number;
+  dri?: number;
+  def?: number;
+  phy?: number;
 }
 
 export interface UserRow {

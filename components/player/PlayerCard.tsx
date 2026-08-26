@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/Button";
 import {
   PLAYER_CARD_COPY,
   formatCpcMatchCount,
-  formatPositionsLine,
   playerCardHeroNumber,
   resolvePlayerCardDensity,
   visibleEaStatBlocks,
@@ -22,6 +21,7 @@ import {
   type PlayerCardState,
   type PlayerCardVariant,
 } from "@/lib/playerCard";
+import { faceStatsCaption, visibleFaceStatCells } from "@/lib/cardFace";
 import { PLATFORM_LABELS, PLAY_STYLE_LABELS, POSITION_LABELS } from "@/lib/constants";
 import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
@@ -240,9 +240,11 @@ function FullBody({
   className?: string;
 }) {
   const identity = eaIdentityBadge(data.eaIdentityKind);
-  const positionLine = formatPositionsLine(data.mainPosition, data.secondaryPositions);
   const hero = playerCardHeroNumber(data);
-  const surface = ["#1a1e24", "#0c0d10"] as [string, string];
+  const faceCells = visibleFaceStatCells(data.faceStats);
+  const careerBlocks = data.showEaStats ? visibleEaStatBlocks(data.eaStats) : [];
+  const surface = ["#12151a", "#08090b"] as [string, string];
+  const secondaryCodes = data.secondaryPositions.filter((p, i, arr) => arr.indexOf(p) === i);
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -253,60 +255,122 @@ function FullBody({
   };
 
   const inner = (
-    <LinearGradient colors={surface} className="px-6 pb-6 pt-6">
-      <View className="flex-row items-start justify-between">
-        <View className="min-w-0 flex-1 pr-3">
-          <View className="flex-row items-center gap-1.5">
-            {data.live ? <PulseDot /> : null}
-            <Text numberOfLines={1} className="font-display text-3xl leading-9 text-fg">
-              {data.username}
-            </Text>
-          </View>
-          {data.clubName ? (
-            <Text numberOfLines={1} className="mt-1 text-base text-fg-muted">
-              {data.clubName}
-            </Text>
+    <LinearGradient colors={surface} className="relative px-5 pb-8 pt-5">
+      <View className="min-h-[44px] flex-row items-start justify-between">
+        <View>
+          {hero ? (
+            <>
+              <Text className="font-display text-5xl leading-[48px] text-accent">{hero.value}</Text>
+              <Text className="text-[9px] uppercase tracking-wide text-fg-subtle">{hero.label}</Text>
+            </>
+          ) : data.cpcMatchesPlayed === 0 && !footer ? (
+            <Text className="text-xs text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
           ) : null}
-          <Text className="mt-2 text-sm text-fg-subtle">
-            {data.mainPosition} · {POSITION_LABELS[data.mainPosition]}
-            {` · ${PLATFORM_LABELS[data.platform]}`}
-          </Text>
-          {data.playStyle ? (
-            <Text className="mt-0.5 text-xs text-fg-subtle">{PLAY_STYLE_LABELS[data.playStyle]}</Text>
-          ) : null}
+          <Text className="mt-1 font-display text-2xl leading-7 text-accent">{data.mainPosition}</Text>
         </View>
-        <View className="items-end gap-2">
-          <Avatar username={data.username} size="xl" tone={data.live ? "accent" : "neutral"} />
-          {shareEnabled ? (
-            <Pressable
-              onPress={handleShare}
-              accessibilityLabel="Partager la carte"
-              hitSlop={8}
-              className="min-h-[44px] min-w-[44px] items-center justify-center active:opacity-70"
-            >
-              <Share2 size={16} color="#666c74" />
-            </Pressable>
-          ) : null}
+        {shareEnabled ? (
+          <Pressable
+            onPress={handleShare}
+            accessibilityLabel="Partager la carte"
+            hitSlop={8}
+            className="min-h-[44px] min-w-[44px] items-center justify-center active:opacity-70"
+          >
+            <Share2 size={16} color="#666c74" />
+          </Pressable>
+        ) : (
+          <View className="min-h-[44px] min-w-[44px]" />
+        )}
+      </View>
+
+      <View className="mt-3 items-center">
+        <View className="items-center justify-center" style={{ width: 120, height: 120 }}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -18,
+              bottom: -18,
+              left: -18,
+              right: -18,
+              borderRadius: 9999,
+              backgroundColor: "#39ff8a",
+              opacity: 0.18,
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -8,
+              bottom: -8,
+              left: -8,
+              right: -8,
+              borderRadius: 9999,
+              backgroundColor: "#39ff8a",
+              opacity: 0.12,
+            }}
+          />
+          <Avatar username={data.username} size="xl" tone="accent" />
         </View>
       </View>
 
-      {hero ? (
-        <View className="mt-6">
-          <Text className="font-display text-6xl leading-[60px] text-accent">{hero.value}</Text>
-          <Text className="text-xs uppercase tracking-wide text-fg-subtle">{hero.label}</Text>
+      <View className="mt-4 flex-row flex-wrap items-center justify-center gap-1.5">
+        {data.live ? (
+          <View className="flex-row items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
+            <PulseDot />
+            <Text className="text-[10px] font-bold uppercase tracking-wide text-accent">{PLAYER_CARD_COPY.live}</Text>
+          </View>
+        ) : null}
+        {secondaryCodes.map((code) => (
+          <Text key={code} className="font-mono text-[11px] font-bold text-white/45">
+            {code}
+          </Text>
+        ))}
+      </View>
+
+      <Text numberOfLines={1} className="mt-3 text-center font-display text-3xl leading-9 text-fg">
+        {data.username}
+      </Text>
+      <Text numberOfLines={1} className="mt-0.5 text-center text-sm text-fg-muted">
+        {data.clubName ?? PLAYER_CARD_COPY.sansClub}
+      </Text>
+      <Text className="mt-1 text-center text-[12px] text-fg-subtle">
+        {PLATFORM_LABELS[data.platform]}
+        {data.playStyle ? ` · ${PLAY_STYLE_LABELS[data.playStyle]}` : ""}
+      </Text>
+
+      {faceCells.length > 0 && data.faceStats ? (
+        <View className="mt-5">
+          <View className="flex-row flex-wrap">
+            {faceCells.map((cell) => (
+              <View key={cell.key} className="w-1/3 items-center py-1.5">
+                <Text className="text-[10px] font-bold uppercase tracking-wide text-white/40">{cell.label}</Text>
+                <Text className="font-display text-xl text-fg">{cell.value}</Text>
+              </View>
+            ))}
+          </View>
+          <Text className="mt-1.5 text-center text-[10px] text-fg-subtle">{faceStatsCaption(data.faceStats.source)}</Text>
         </View>
-      ) : data.cpcMatchesPlayed === 0 && !footer ? (
-        <Text className="mt-6 text-sm text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
       ) : null}
 
-      {data.secondaryPositions.length > 0 ? (
-        <Text className="mt-4 text-sm text-fg-subtle">{positionLine}</Text>
+      {careerBlocks.length > 0 ? (
+        <View className="mt-4 flex-row flex-wrap gap-2">
+          {careerBlocks.map((block) => (
+            <StatBlock key={block.label} label={block.label} value={block.value} />
+          ))}
+        </View>
       ) : null}
 
-      <EaSlot data={data} identity={identity} onLinkEaClub={onLinkEaClub} />
+      <EaSlot
+        data={data}
+        identity={identity}
+        onLinkEaClub={onLinkEaClub}
+        hasFaceEa={data.faceStats?.source === "EA"}
+        hasCareer={careerBlocks.length > 0}
+      />
 
       {data.badges.length > 0 ? (
-        <View className="mt-4 flex-row flex-wrap gap-1.5">
+        <View className="mt-4 flex-row flex-wrap justify-center gap-1.5">
           {data.badges.map((badge) => (
             <Badge key={badge.id} tone="accent">
               {badge.label}
@@ -316,11 +380,15 @@ function FullBody({
       ) : null}
 
       {data.currentStreak > 0 ? (
-        <View className="mt-3 flex-row items-center gap-1">
+        <View className="mt-3 flex-row items-center justify-center gap-1">
           <Flame size={14} color="#39ff8a" />
           <Text className="text-xs font-bold text-accent">{data.currentStreak} de suite</Text>
         </View>
       ) : null}
+
+      <Text className="absolute bottom-3 right-4 text-[9px] font-bold uppercase tracking-[3px] text-white/20">
+        {PLAYER_CARD_COPY.watermark}
+      </Text>
     </LinearGradient>
   );
 
@@ -351,10 +419,14 @@ function EaSlot({
   data,
   identity,
   onLinkEaClub,
+  hasFaceEa = false,
+  hasCareer = false,
 }: {
   data: PlayerCardData;
   identity: { show: boolean; label: string; hint: string };
   onLinkEaClub?: () => void;
+  hasFaceEa?: boolean;
+  hasCareer?: boolean;
 }) {
   if (onLinkEaClub && !data.eaClubLinked) {
     return (
@@ -373,8 +445,6 @@ function EaSlot({
     );
   }
 
-  const eaBlocks = data.showEaStats ? visibleEaStatBlocks(data.eaStats) : [];
-
   if (identity.show) {
     return (
       <View className="mt-5">
@@ -383,20 +453,14 @@ function EaSlot({
           <Text className="text-xs text-fg-subtle">{identity.label}</Text>
         </View>
         <Text className="mt-0.5 text-[10px] text-fg-subtle">{identity.hint}</Text>
-        {eaBlocks.length > 0 ? (
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            {eaBlocks.map((block) => (
-              <StatBlock key={block.label} label={block.label} value={block.value} />
-            ))}
-          </View>
-        ) : data.eaClubLinked ? (
+        {!hasCareer && !hasFaceEa && data.eaClubLinked ? (
           <Text className="mt-2 text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>
         ) : null}
       </View>
     );
   }
 
-  if (data.eaClubLinked) {
+  if (data.eaClubLinked && !hasCareer && !hasFaceEa) {
     return (
       <View className="mt-4">
         <Text className="text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>

@@ -17,6 +17,9 @@ import {
   visibleCpcBadges,
 } from "../lib/playerCard";
 import { computeOvr, rarityForOvr, OVR_CPC_LABEL } from "../lib/ovr";
+import { FACE_STAT_KEYS } from "../lib/cardFace";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import type { UserRow } from "../lib/types";
 
 const assert = {
@@ -253,6 +256,50 @@ test("visibleEaStatBlocks — seulement chiffres stockés, jamais SHO/PAS/TAC vi
   assert.equal(labels.includes("SHO"), false, "no SHO");
   assert.equal(labels.includes("PAS"), false, "no PAS");
   assert.equal(labels.includes("TAC"), false, "no TAC");
+  const mixed = visibleEaStatBlocks({ pac: 90, sho: 88, goals: 3 });
+  assert.equal(mixed.length, 1, "face attrs are not career");
+  assert.equal(mixed[0]?.label, PLAYER_CARD_COPY.eaGoals, "goals only");
+});
+
+test("faceStats — prod isDev false → null ; DEV sans attrs → DEV, showEaStats false", () => {
+  const prod = buildPlayerCardData(baseUser(), { isDev: false });
+  assert.equal(prod.faceStats, null, "prod null");
+  assert.equal(prod.showEaStats, false, "prod no career");
+  const dev = buildPlayerCardData(baseUser({ verified_stats: null }), { isDev: true });
+  assert.equal(dev.faceStats?.source, "DEV", "dev overlay");
+  assert.equal(dev.showEaStats, false, "DEV is not Buts EA");
+  assert.equal(FACE_STAT_KEYS.every((k) => typeof dev.faceStats?.values[k] === "number"), true, "six mock");
+});
+
+test("faceStats — attrs + USERNAME_EQUALITY même isDev true → EA, pas de pad DEV", () => {
+  const data = buildPlayerCardData(
+    baseUser({
+      ea_identity_kind: "USERNAME_EQUALITY",
+      ea_club_linked: "club-1",
+      verified_stats: { pac: 81, sho: 90, goals: 4 },
+    }),
+    { isDev: true }
+  );
+  assert.equal(data.faceStats?.source, "EA", "real wins");
+  assert.equal(data.faceStats?.values.pac, 81, "pac");
+  assert.equal(data.faceStats?.values.pas, undefined, "no pad");
+  assert.equal(data.showEaStats, true, "career still shown");
+  assert.equal(data.ovr, 50, "ovr still CPC from reliability");
+});
+
+test("FULL a la grille face ; MINI/COMPACT non", () => {
+  const src = readFileSync(`${process.cwd()}/components/player/PlayerCard.tsx`, "utf8");
+  const full = src.slice(src.indexOf("function FullBody"), src.indexOf("function EaSlot"));
+  const mini = src.slice(src.indexOf("function MiniBody"), src.indexOf("function CompactBody"));
+  const compact = src.slice(src.indexOf("function CompactBody"), src.indexOf("function FullBody"));
+  assert.equal(full.includes("visibleFaceStatCells"), true, "full grid");
+  assert.equal(full.includes("faceStatsCaption"), true, "full caption");
+  assert.equal(full.includes("PLAYER_CARD_COPY.watermark"), true, "ClubPro watermark");
+  assert.equal(full.includes("Sans club") || full.includes("sansClub"), true, "sans club");
+  assert.equal(mini.includes("visibleFaceStatCells"), false, "mini no grid");
+  assert.equal(compact.includes("visibleFaceStatCells"), false, "compact no grid");
+  assert.equal(full.includes("EaSlot"), true, "EaSlot stays");
+  assert.equal(full.includes("#39ff8a"), true, "green glow");
 });
 
 console.log(`\n${passed} test(s) passés.`);
