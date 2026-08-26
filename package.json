@@ -77,6 +77,7 @@
     "test:leagues": "tsx scripts/test-leagues.ts",
     "test:leagues-link": "tsx scripts/test-leagues-link.ts",
     "test:app-mode": "tsx scripts/test-app-mode.ts",
+    "test:applications-channels": "tsx scripts/test-applications-channels.ts",
     "test:dev-accounts": "tsx scripts/test-dev-accounts.ts",
     "test:rankings": "tsx scripts/test-rankings.ts",
     "test:match-history": "tsx scripts/test-match-history.ts",
