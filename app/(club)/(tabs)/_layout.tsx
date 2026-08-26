@@ -1,6 +1,10 @@
 import { Tabs } from "expo-router";
-import { Inbox, Radio, Shield, Swords } from "lucide-react-native";
+import { House, Inbox, Radio, Shield, Swords } from "lucide-react-native";
 import { useModeAccent } from "@/lib/theme";
+
+export const unstable_settings = {
+  initialRouteName: "home",
+};
 
 const TAB_BAR_STYLE = {
   backgroundColor: "#08090b",
@@ -12,15 +16,16 @@ const TAB_BAR_STYLE = {
 } as const;
 
 /**
- * Mode Club — 2 onglets : LIVE | Recrutement.
- * Club (identité / effectif) reste joignable plus tard depuis le menu (`href: null`).
- * match (feuille) reste un fichier pour deep link `/match`, hors tab bar.
+ * Mode Club — 3 onglets : Accueil | Matchmaking | Recrutement.
+ * index.tsx reste la feuille (ex-LIVE) pour les deep links.
+ * Club / match hors tab bar (`href: null`).
  */
 export default function ClubTabsLayout() {
   const accent = useModeAccent();
 
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
@@ -30,8 +35,12 @@ export default function ClubTabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="home"
+        options={{ title: "Accueil", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="index"
-        options={{ title: "LIVE", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
+        options={{ title: "Matchmaking", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="candidatures"

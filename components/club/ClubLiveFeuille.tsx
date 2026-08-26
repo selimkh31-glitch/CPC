@@ -15,6 +15,7 @@ import { FormationSelector } from "@/components/club/FormationSelector";
 import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ClubDiscoveryToggle } from "@/components/club/ClubDiscoveryToggle";
+import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import {
@@ -36,7 +37,7 @@ import { buildPlayerCardData } from "@/lib/playerCard";
 import { toast } from "@/lib/toast";
 
 /**
- * Feuille manager (onglet LIVE et deep link `/match`).
+ * Feuille manager (onglet Matchmaking et deep link `/match`).
  * Chrome : nom du club + un ON/OFF de découverte. Le terrain reste visible.
  * Check-in plus bas. Pas de carte intern de statut.
  */
@@ -68,6 +69,7 @@ export function ClubLiveFeuille() {
       >
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36, gap: 24 }} keyboardShouldPersistTaps="handled">
           {body}
+          <ModeSegmentToggle />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

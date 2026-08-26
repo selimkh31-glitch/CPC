@@ -15,11 +15,12 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { isLiveActive, liveFeedEmptyCopy, LIVE_UX_COPY } from "@/lib/live";
 import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
 import { useModeAccent } from "@/lib/theme";
+import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 
 type LivePane = "feed" | "find";
 
 /**
- * LIVE Mode Joueur — un état, un CTA : Passer LIVE.
+ * Matchmaking Mode Joueur — un état, un CTA : Passer LIVE.
  * Clubs en LIVE = liste principale (pas un second écran). Matching / TTL inchangés.
  */
 export default function LiveScreen() {
@@ -87,6 +88,7 @@ export default function LiveScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Text className="font-display text-[34px] leading-10 text-fg">{LIVE_UX_COPY.title}</Text>
+          <ModeSegmentToggle />
           <PlayerLivePanel />
 
           <View className="mb-2">

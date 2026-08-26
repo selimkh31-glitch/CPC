@@ -1,15 +1,12 @@
 import { InteractionManager, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { router, type Href } from "expo-router";
 import { X } from "lucide-react-native";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
-import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
-import { playerInvitationAcceptHref } from "@/lib/recruitment";
-import { useModeAccent } from "@/lib/theme";
-import type { AppMode } from "@/lib/appMode";
+import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
+import { useOpenMonClub } from "@/lib/hooks/useOpenMonClub";
 
 /**
  * Menu unique — Profil, Réglages, Chat, Mon club, Pro.
@@ -17,11 +14,11 @@ import type { AppMode } from "@/lib/appMode";
  */
 export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const { session, profile } = useAuth();
-  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
-  const { data: memberships } = useMyMemberships(session?.user.id ?? null);
+  const { profile } = useAuth();
+  const { mode, setMode } = useAppMode();
   const proEntry = profileProEntryCopy(FEATURE_REVENUECAT);
   const showPro = profile?.plan !== "PRO";
+  const { openMonClub } = useOpenMonClub();
 
   const go = (href: Href, nextMode?: "PLAYER" | "CLUB") => {
     onClose();
@@ -35,36 +32,6 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
   };
 
   const openProfile = () => go("/profile", "PLAYER");
-
-  const openMonClub = () => {
-    const managed = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
-    if (managed.length > 0) {
-      onClose();
-      if (managed.length === 1) setSelectedManagedClubId(managed[0].club.id);
-      if (mode !== "CLUB") {
-        setMode("CLUB");
-        return;
-      }
-      router.push("/(club)/(tabs)");
-      return;
-    }
-    const member = memberships?.find((m) => m.role === "MEMBER") ?? memberships?.[0];
-    if (member?.club?.id) {
-      go(playerInvitationAcceptHref(member.club.id) as Href);
-      return;
-    }
-    go("/clubs", "PLAYER");
-  };
-
-  const pickMode = (next: AppMode) => {
-    Haptics.selectionAsync();
-    if (next === "CLUB") {
-      const managed = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
-      if (managed.length === 1) setSelectedManagedClubId(managed[0].club.id);
-    }
-    setMode(next);
-    onClose();
-  };
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -86,51 +53,20 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
             <MenuRow label="Profil" onPress={openProfile} />
             <MenuRow label="Réglages" onPress={() => go("/settings")} />
             <MenuRow label="Chat" onPress={() => go("/conversations")} />
-            <MenuRow label="Mon club" onPress={openMonClub} />
+            <MenuRow
+              label="Mon club"
+              onPress={() => {
+                onClose();
+                openMonClub();
+              }}
+            />
             {showPro ? <MenuRow label={proEntry.title} onPress={() => go("/pricing")} /> : null}
           </View>
-          <ModeSegmentToggle mode={mode} onPick={pickMode} bottomInset={insets.bottom} />
+          <ModeSegmentToggle onPicked={onClose} bottomInset={insets.bottom} />
         </View>
         <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
       </View>
     </Modal>
-  );
-}
-
-function ModeSegmentToggle({
-  mode,
-  onPick,
-  bottomInset,
-}: {
-  mode: AppMode | null;
-  onPick: (next: AppMode) => void;
-  bottomInset: number;
-}) {
-  const accent = useModeAccent();
-  const active = mode === "CLUB" ? "CLUB" : "PLAYER";
-
-  return (
-    <View className="border-t border-white/[0.06] px-4 pt-4" style={{ paddingBottom: Math.max(bottomInset, 20) }}>
-      <View className="flex-row rounded-full border border-white/10 bg-white/[0.03] p-1">
-        {(["PLAYER", "CLUB"] as const).map((key) => {
-          const selected = active === key;
-          const label = key === "PLAYER" ? "Joueur" : "Club";
-          return (
-            <Pressable
-              key={key}
-              onPress={() => onPick(key)}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-              accessibilityState={{ selected }}
-              className="min-h-[44px] flex-1 items-center justify-center rounded-full"
-              style={selected ? { backgroundColor: accent } : undefined}
-            >
-              <Text className={`text-sm font-bold ${selected ? "text-bg" : "text-fg-muted"}`}>{label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 

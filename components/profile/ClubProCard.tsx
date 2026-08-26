@@ -24,6 +24,7 @@ export function ClubProCard({
   matchHistoryError = false,
   onRetryMatchHistory,
   onLinkEaClub,
+  onPress,
 }: {
   user?: UserRow | null;
   clubName?: string | null;
@@ -37,6 +38,8 @@ export function ClubProCard({
   matchHistoryError?: boolean;
   onRetryMatchHistory?: () => void;
   onLinkEaClub?: () => void;
+  /** Accueil : ouvrir le profil existant. Profil perso : omis (carte non tappable). */
+  onPress?: () => void;
 }) {
   if (error) {
     return (
@@ -69,23 +72,29 @@ export function ClubProCard({
     cpcMatchesPlayed,
   });
 
+  const showHistory =
+    matchHistory != null || matchHistoryLoading || matchHistoryError || Boolean(onRetryMatchHistory);
+
   return (
     <PlayerCard
       data={data}
       variant="full"
-      interactive={false}
+      interactive={Boolean(onPress)}
+      onPress={onPress}
       shareEnabled
       onLinkEaClub={onLinkEaClub}
       footer={
-        <View className="px-6 pb-6">
-          <MatchHistoryList
-            variant="embedded"
-            items={matchHistory}
-            loading={matchHistoryLoading}
-            error={matchHistoryError}
-            onRetry={onRetryMatchHistory}
-          />
-        </View>
+        showHistory ? (
+          <View className="px-6 pb-6">
+            <MatchHistoryList
+              variant="embedded"
+              items={matchHistory}
+              loading={matchHistoryLoading}
+              error={matchHistoryError}
+              onRetry={onRetryMatchHistory}
+            />
+          </View>
+        ) : undefined
       }
     />
   );

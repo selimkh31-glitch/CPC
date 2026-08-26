@@ -12,7 +12,7 @@ import { useAppMode } from "@/lib/providers/AppModeProvider";
 
 /**
  * Racine Mode Manager. Monté uniquement quand `mode === "CLUB"`.
- * Sans club géré : les tabs (LIVE / Recrutement / Club) gardent l'empty
+ * Sans club géré : les tabs (Accueil / Matchmaking / Recrutement) gardent l'empty
  * state existant — pas de rebond forcé vers Joueur, pas de wizard club.
  */
 export default function ClubModeLayout() {

@@ -11,6 +11,7 @@ import {
   parseStoredAppMode,
   shouldShowModeDoor,
 } from "../lib/appMode";
+import { splitMemberships } from "../lib/monClubNav";
 
 const root = process.cwd();
 
@@ -149,15 +150,41 @@ test("bascule ModeLifeToggle seulement Profil et page identité Club", () => {
   assert.false(clubTab.includes('target="CLUB"'), "club tab does not switch to self");
 });
 
-test("pas de 3e nav ; onglets LIVE|Activité et LIVE|Recrutement", () => {
+test("splitMemberships — manager d'abord, sinon membre, jamais un club inventé", () => {
+  const clubA = { id: "a", name: "Alpha" } as never;
+  const clubB = { id: "b", name: "Beta" } as never;
+  const none = splitMemberships([]);
+  assert.equal(none.anyClub, null, "empty");
+  const memberOnly = splitMemberships([{ role: "MEMBER", club: clubA }]);
+  assert.equal(memberOnly.anyClub?.club.id, "a", "member club");
+  assert.equal(memberOnly.managed.length, 0, "not managed");
+  const owner = splitMemberships([
+    { role: "MEMBER", club: clubA },
+    { role: "OWNER", club: clubB },
+  ]);
+  assert.equal(owner.managed.length, 1, "one managed");
+  assert.equal(owner.anyClub?.club.id, "b", "owner wins");
+});
+
+test("pas de 3e arbre ; Accueil | Matchmaking | Activité / Recrutement", () => {
   const playerTabs = read("app/(player)/(tabs)/_layout.tsx");
   const clubTabs = read("app/(club)/(tabs)/_layout.tsx");
-  assert.true(playerTabs.includes('title: "LIVE"'), "player LIVE");
+  assert.true(playerTabs.includes('title: "Accueil"'), "player Accueil");
+  assert.true(playerTabs.includes('title: "Matchmaking"'), "player Matchmaking");
   assert.true(playerTabs.includes('title: "Activité"'), "player activité");
+  assert.false(playerTabs.includes('title: "LIVE"'), "player tab not LIVE");
   assert.true(playerTabs.includes('href: null, title: "Profil"'), "player profil hidden");
-  assert.true(clubTabs.includes('title: "LIVE"'), "club LIVE");
+  assert.true(playerTabs.includes('name="home"'), "player home file");
+  assert.true(playerTabs.includes('name="index"'), "player index stays Matchmaking");
+  assert.true(clubTabs.includes('title: "Accueil"'), "club Accueil");
+  assert.true(clubTabs.includes('title: "Matchmaking"'), "club Matchmaking");
   assert.true(clubTabs.includes('title: "Recrutement"'), "club recrutement");
+  assert.false(clubTabs.includes('title: "LIVE"'), "club tab not LIVE");
   assert.true(clubTabs.includes('href: null, title: "Club"'), "club identity hidden");
+  assert.true(clubTabs.includes('name="home"'), "club home file");
+  assert.true(clubTabs.includes('name="index"'), "club index stays feuille");
+  assert.true(playerTabs.includes('initialRouteName: "home"'), "player lands Accueil");
+  assert.true(clubTabs.includes('initialRouteName: "home"'), "club lands Accueil");
   assert.false(existsSync(`${root}/app/(manager)`), "no third tree");
 });
 
@@ -179,13 +206,20 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.true(sheet.includes('label="Profil"'), "profil");
   assert.true(sheet.includes('label="Réglages"'), "réglages");
   assert.true(sheet.includes('label="Chat"'), "chat");
+  assert.true(sheet.includes('label="Mon club"'), "one Mon club");
   assert.equal((sheet.match(/label="Mon club"/g) ?? []).length, 1, "one Mon club");
   assert.false(sheet.includes("Mon club (joueur)"), "no club joueur row");
   assert.false(sheet.includes("Mon club (manager)"), "no club manager row");
-  assert.true(sheet.includes('"Joueur"'), "toggle Joueur");
-  assert.true(sheet.includes('"Club"'), "toggle Club");
-  assert.true(sheet.includes("OWNER") && sheet.includes("MANAGER"), "Mon club by role");
-  assert.true(sheet.includes("playerInvitationAcceptHref"), "member → ClubHome");
+  const toggle = read("components/nav/ModeSegmentToggle.tsx");
+  assert.true(sheet.includes("ModeSegmentToggle"), "sheet reuses toggle");
+  assert.true(toggle.includes('"Joueur"'), "toggle Joueur");
+  assert.true(toggle.includes('"Club"'), "toggle Club");
+  assert.true(toggle.includes("setMode"), "toggle reuses AppModeProvider");
+  const monClub = read("lib/hooks/useOpenMonClub.ts");
+  const monClubNav = read("lib/monClubNav.ts");
+  assert.true(monClubNav.includes("OWNER") && monClubNav.includes("MANAGER"), "Mon club by role");
+  assert.true(monClub.includes("playerInvitationAcceptHref"), "member → ClubHome");
+  assert.true(sheet.includes("useOpenMonClub"), "sheet uses shared Mon club");
   assert.true(sheet.includes('go("/pricing")'), "pro");
   assert.true(sheet.includes('plan !== "PRO"'), "hide if PRO");
   assert.true(sheet.includes("setMode"), "reuses AppModeProvider");
@@ -237,7 +271,42 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.true(liveClub.includes("edges={[]}"), "club LIVE no double inset");
   assert.true(rec.includes("edges={[]}"), "recrutement no double inset");
   assert.true(profile.includes("edges={[]}"), "profile no double inset");
+  assert.true(livePlayer.includes("ModeSegmentToggle"), "player Matchmaking has mode toggle");
+  assert.true(liveClub.includes("ModeSegmentToggle"), "club Matchmaking has mode toggle");
   assert.false(livePlayer.includes("font-display text-3xl text-fg\">Profil"), "no second Profil title on LIVE");
+});
+
+test("Accueil partagé : ClubPro Card, Mon club, À traiter, CTA Matchmaking", () => {
+  const home = read("components/home/HomeScreen.tsx");
+  const playerHome = read("app/(player)/(tabs)/home.tsx");
+  const clubHome = read("app/(club)/(tabs)/home.tsx");
+  assert.true(playerHome.includes("HomeScreen"), "player home shared");
+  assert.true(clubHome.includes("HomeScreen"), "club home shared");
+  assert.false(playerHome.includes("ClubProCard"), "no duplicated card in player home");
+  assert.false(clubHome.includes("ClubProCard"), "no duplicated card in club home");
+  assert.true(home.includes("ClubProCard"), "ClubPro Card");
+  assert.true(home.includes("buildClubCardData"), "ClubCard from real club");
+  assert.true(home.includes('variant="mini"'), "club mini");
+  assert.true(home.includes("useOpenMonClub"), "same Mon club dest");
+  assert.true(home.includes('router.push("/create-club")'), "créer un club");
+  assert.true(home.includes('router.push("/find-club")'), "trouver un club");
+  assert.true(home.includes("Rien à traiter."), "honest empty inbox");
+  assert.true(home.includes("useMyInvitations"), "pending invites");
+  assert.true(home.includes("useMyApplications"), "pending apps sent");
+  assert.true(home.includes("useApplications"), "incoming if manager");
+  assert.true(home.includes("est en ligne"), "club live line");
+  assert.true(home.includes("Matchmaking"), "loud CTA");
+  assert.true(home.includes("PLAYER_MATCHMAKING_HREF"), "CTA → player index");
+  assert.true(home.includes("CLUB_MATCHMAKING_HREF"), "CTA → club index");
+  assert.false(home.includes("LiveClubCard"), "no feed");
+  assert.false(home.includes("LivePlayerCard"), "no player feed");
+  assert.false(home.includes("ApplicationsPanel"), "no recrutement panel");
+  assert.false(home.includes("ClubDiscoveryToggle"), "no En ligne on Accueil");
+  assert.false(home.includes("PlayerLivePanel"), "no player LIVE panel");
+  assert.true(home.includes("edges={[]}"), "accueil no double inset");
+  assert.false(home.includes("AppMenuHeader"), "accueil uses global chrome");
+  assert.true(read("app/(player)/(tabs)/index.tsx").includes("ModeSegmentToggle"), "toggle on player matchmaking");
+  assert.true(read("components/nav/AppMenuSheet.tsx").includes("ModeSegmentToggle"), "toggle stays in drawer");
 });
 
 console.log(`\n${passed} tests OK`);

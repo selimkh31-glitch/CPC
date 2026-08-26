@@ -1,8 +1,12 @@
 import { Tabs } from "expo-router";
-import { Bell, Radio, User, Users } from "lucide-react-native";
+import { Bell, House, Radio, User, Users } from "lucide-react-native";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
 import { useModeAccent } from "@/lib/theme";
+
+export const unstable_settings = {
+  initialRouteName: "home",
+};
 
 const TAB_BAR_STYLE = {
   backgroundColor: "#08090b",
@@ -14,12 +18,9 @@ const TAB_BAR_STYLE = {
 } as const;
 
 /**
- * Mode Joueur — 2 onglets : LIVE | Activité.
- * Profil est joignable depuis le menu (`href: null`), plus un onglet bas.
- * clubs reste un fichier (deep link) hors tab bar (`href: null`).
- * Ligues n'est PAS un onglet : uniquement le stack partagé `app/leagues.tsx`
- * (`/leagues`) pour que Club → Classement et Profil → Classement partagent
- * la même pile (retour header), sans collision de route avec un Redirect.
+ * Mode Joueur — 3 onglets : Accueil | Matchmaking | Activité.
+ * index.tsx reste Matchmaking (ex-LIVE) pour les deep links.
+ * Profil / clubs hors tab bar (`href: null`).
  */
 export default function TabsLayout() {
   const { session } = useAuth();
@@ -28,6 +29,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
@@ -37,8 +39,12 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="home"
+        options={{ title: "Accueil", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="index"
-        options={{ title: "LIVE", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
+        options={{ title: "Matchmaking", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="activity"
