@@ -163,7 +163,7 @@ test("LIVE / needed / note viennent de la session, pas de la ligne Club", () => 
     liveExpiresAt: "2026-08-25T21:00:00.000Z",
   });
   assert.equal(on.live, true, "live");
-  assert.equal(on.neededLine, "Attaquant · Milieu offensif", "needed from session");
+  assert.equal(on.neededLine, "ST · CAM", "needed from session");
   assert.equal(on.liveNote, "Dispo 21h", "note");
   assert.equal(on.liveExpiresAt, "2026-08-25T21:00:00.000Z", "ttl");
 });
@@ -250,7 +250,7 @@ test("buildClubCardDataFromLiveSession — owner platform + needed session", () 
   assert.equal(data?.live, true, "live");
   assert.equal(data?.ownerPlatform, "XBOX", "owner platform");
   assert.equal(data?.ownerUsername, "Patron", "owner name");
-  assert.equal(data?.neededLine, "Attaquant", "needed");
+  assert.equal(data?.neededLine, "ST", "needed");
   assert.equal(data?.reason, "poste recherché (ST)", "reason");
   assert.equal(data?.href.includes("session=s1"), true, "session href");
   assert.equal(buildClubCardDataFromLiveSession({ ...item, club: undefined }), null, "no club");
@@ -318,7 +318,7 @@ test("hydraté : plateforme owner, LIVE session, effectif déjà chargé ; pas d
   assert.equal(data.ownerUsername, "Patron", "username");
   assert.equal(data.memberCount, 1, "members loaded");
   assert.equal(data.live, true, "live session");
-  assert.equal(data.neededLine, "Gardien", "needed from session");
+  assert.equal(data.neededLine, "GK", "needed from session");
   assert.equal("ovr" in data, false, "pas d'OVR");
   assert.equal(data.matchRecord, null, "pas de W-D-L sans results");
 });

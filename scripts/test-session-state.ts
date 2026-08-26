@@ -147,7 +147,7 @@ test("titres FR — Recrutement LIVE / Hors ligne / Match lancé, jamais OPEN ni
 test("formatNeededPositionsLine — une ligne ; vide -> null", () => {
   assert.equal(formatNeededPositionsLine([]), null, "vide");
   assert.equal(formatNeededPositionsLine(null), null, "null");
-  assert.equal(formatNeededPositionsLine(["ST", "CM"]), "Attaquant · Milieu central", "labels");
+  assert.equal(formatNeededPositionsLine(["ST", "CM"]), "ST · CM", "codes");
 });
 
 test("canMutateClub — OWNER/MANAGER seulement", () => {

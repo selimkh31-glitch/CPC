@@ -8,6 +8,7 @@ import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { useApply } from "@/lib/hooks/useApply";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { playerPlaysPosition } from "@/lib/liveMatch";
+import { uniquePositionCodes } from "@/lib/sessionState";
 import { toast } from "@/lib/toast";
 
 /** Bouton "Postuler" en 1 clic + message optionnel. Poste ∈ besoin ∩ profil. */
@@ -20,7 +21,7 @@ export function ApplyForm({ sessionId, neededPositions }: { sessionId: string; n
       secondaryPositions: profile.secondary_positions ?? [],
       platform: profile.platform,
     };
-    return neededPositions.filter((p) => playerPlaysPosition(player, p));
+    return uniquePositionCodes(neededPositions).filter((p) => playerPlaysPosition(player, p));
   }, [profile, neededPositions]);
 
   const [open, setOpen] = useState(false);
