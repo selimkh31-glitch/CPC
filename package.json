@@ -58,6 +58,7 @@
     "test:reliability": "tsx scripts/test-reliability.ts",
     "test:player-card": "tsx scripts/test-player-card.ts",
     "test:card-face": "tsx scripts/test-card-face.ts",
+    "test:profile-career": "tsx scripts/test-profile-career.ts",
     "test:club-card": "tsx scripts/test-club-card.ts",
     "test:club-profile": "tsx scripts/test-club-profile.ts",
     "test:session-state": "tsx scripts/test-session-state.ts",
