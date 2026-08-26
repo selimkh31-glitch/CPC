@@ -90,12 +90,14 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.equal(notificationHref("APPLICATION_ACCEPTED", {}), "/my-applications", "accepted");
   assert.equal(notificationHref("APPLICATION_DECLINED", {}), "/my-applications", "declined");
   assert.equal(notificationHref("INVITATION_RECEIVED", {}), "/my-invitations", "inv recv");
+  assert.equal(notificationHref("INVITATION_CANCELLED", {}), "/my-invitations", "inv cancelled");
   assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "c2" }), "/candidatures", "inv acc");
   assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/candidatures", "inv dec");
   assert.equal(notificationHref("INVITATION_ACCEPTED", {}), "/candidatures", "inv acc no club");
   assert.equal(notificationHref("INVITATION_DECLINED", {}), "/candidatures", "inv dec no club");
   assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "" }), "/candidatures", "inv acc empty club");
   assert.true(isNotificationType("APPLICATION_RECEIVED"), "known type");
+  assert.true(isNotificationType("INVITATION_CANCELLED"), "cancel type");
   assert.false(isNotificationType("RANDOM"), "unknown type");
 });
 
@@ -114,6 +116,19 @@ test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter
     inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
     "/conversation/conv-1",
     "dm inchangé"
+  );
+});
+
+test("inAppNotificationHref — INVITATION_CANCELLED va aux invitations joueur", () => {
+  assert.equal(
+    inAppNotificationHref("INVITATION_CANCELLED", { clubId: "c2" }, "PLAYER"),
+    "/my-invitations",
+    "player"
+  );
+  assert.equal(
+    inAppNotificationHref("INVITATION_CANCELLED", { clubId: "c2" }, "CLUB"),
+    "/my-invitations",
+    "club mode still player dest"
   );
 });
 

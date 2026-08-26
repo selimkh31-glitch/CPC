@@ -18,6 +18,7 @@ export * from "../supabase/functions/_shared/safety";
  * (`/candidatures`) : ApplicationsPanel + ClubInvitationsPanel. `/club/[id]`
  * n'a pas le statut d'invitation. L'appelant doit passer en Mode Club et
  * sélectionner `data.clubId` (voir recruitmentNotificationNav).
+ * INVITATION_RECEIVED / INVITATION_CANCELLED → `/my-invitations`.
  * MATCH_FINALIZED → `/tournaments/[id]` si kind TOURNAMENT, sinon
  * `/competitions/[id]` si `competitionId`, sinon `/club/[id]` (historique
  * du club enregistreur). Sans clubId ni competitionId → `/notifications`.

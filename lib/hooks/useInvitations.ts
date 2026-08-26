@@ -254,6 +254,23 @@ export function useMyInvitations(userId: string | null) {
   return query;
 }
 
+/** Owner/manager annule une invitation PENDING via `cancel-invitation`. */
+export function useCancelInvitation(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { invitationId: string }) =>
+      callEdgeFunction<{ invitation: InvitationRow }>("cancel-invitation", {
+        invitationId: vars.invitationId,
+      }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club-invitations", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["my-invitations"] });
+    },
+    onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
 /** Le joueur invité accepte/refuse, via l'Edge Function `respond-invitation`. */
 export function useRespondInvitation(userId: string | null) {
   const queryClient = useQueryClient();

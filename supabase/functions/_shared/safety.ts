@@ -25,6 +25,7 @@ export const NOTIFICATION_TYPES = [
   "INVITATION_RECEIVED",
   "INVITATION_ACCEPTED",
   "INVITATION_DECLINED",
+  "INVITATION_CANCELLED",
   "MESSAGE_RECEIVED",
   "MATCH_FINALIZED",
   "COMPETITION_CLUB_REGISTERED",
@@ -40,6 +41,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   INVITATION_RECEIVED: "Invitation reçue",
   INVITATION_ACCEPTED: "Invitation acceptée",
   INVITATION_DECLINED: "Invitation déclinée",
+  INVITATION_CANCELLED: "Invitation annulée",
   MESSAGE_RECEIVED: "Nouveau message",
   MATCH_FINALIZED: "Résultat de match",
   COMPETITION_CLUB_REGISTERED: "Club inscrit",
@@ -472,6 +474,7 @@ export function notificationHref(type: string, data: Record<string, unknown> | n
     case "APPLICATION_DECLINED":
       return "/my-applications";
     case "INVITATION_RECEIVED":
+    case "INVITATION_CANCELLED":
       return "/my-invitations";
     case "INVITATION_ACCEPTED":
     case "INVITATION_DECLINED":

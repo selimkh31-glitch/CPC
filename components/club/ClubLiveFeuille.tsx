@@ -1,9 +1,10 @@
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Mail } from "lucide-react-native";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
@@ -26,12 +27,13 @@ import {
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
-import { useClubInvitations } from "@/lib/hooks/useInvitations";
+import { useClubInvitations, useCancelInvitation } from "@/lib/hooks/useInvitations";
 import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
 import { buildPlayerCardData } from "@/lib/playerCard";
+import { toast } from "@/lib/toast";
 
 /**
  * Feuille manager (onglet LIVE et deep link `/match`).
@@ -183,6 +185,21 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
   const positionBySlotId = formationId
     ? new Map<string, PositionCode>(FORMATIONS[formationId].map((s) => [s.slotId, s.position]))
     : new Map<string, PositionCode>();
+  const cancelInvitation = useCancelInvitation(clubId);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const cancel = (invitationId: string) => {
+    if (actingId || cancelInvitation.isPending) return;
+    setActingId(invitationId);
+    cancelInvitation.mutate(
+      { invitationId },
+      {
+        onSuccess: () => toast.success("Invitation annulée."),
+        onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Impossible d'annuler."),
+        onSettled: () => setActingId(null),
+      }
+    );
+  };
 
   return (
     <Card>
@@ -206,9 +223,22 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
             const position = inv.slot_id ? positionBySlotId.get(inv.slot_id) : null;
             const statusBadge = <Badge tone="warn">En attente</Badge>;
             const footer = (
-              <Text className="mt-1 text-xs text-fg-subtle">
-                {position ? POSITION_LABELS[position] : "Poste à définir"}
-              </Text>
+              <View className="mt-1">
+                <Text className="text-xs text-fg-subtle">
+                  {position ? POSITION_LABELS[position] : "Poste à définir"}
+                </Text>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={actingId === inv.id}
+                  disabled={Boolean(actingId)}
+                  onPress={() => cancel(inv.id)}
+                  className="mt-1 min-h-[44px] self-start"
+                  accessibilityLabel="Annuler l'invitation"
+                >
+                  Annuler
+                </Button>
+              </View>
             );
             if (!inv.user) {
               return (

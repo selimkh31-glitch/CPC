@@ -64,6 +64,9 @@ verify_jwt = true
 [functions.respond-invitation]
 verify_jwt = true
 
+[functions.cancel-invitation]
+verify_jwt = true
+
 [functions.respond-transition-invitation]
 verify_jwt = true
 
