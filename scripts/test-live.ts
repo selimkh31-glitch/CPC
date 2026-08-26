@@ -250,6 +250,18 @@ test("club LIVE chrome : toggle ON = is_live + expires_at ; OFF = is_live false"
   assert.true(create.includes("const goingLive = !input.isLive"), "toggle inverts isLive");
 });
 
+test("LIVE joueur DEV : 12 h, pas de chips durée ; Arrêter reste le kill", () => {
+  const player = readFileSync(`${process.cwd()}/components/live/PlayerLivePanel.tsx`, "utf8");
+  assert.true(player.includes("liveSessionDurationMs"), "helper");
+  assert.true(player.includes("String(liveSessionDurationMs())"), "default duration state");
+  assert.true(player.includes("__DEV__ ? liveSessionDurationMs()"), "DEV start 12h");
+  assert.true(player.includes("__DEV__ ? null"), "chips hidden in DEV");
+  assert.true(player.includes("LIVE_DURATION_OPTIONS"), "prod chips still in file");
+  const stop = player.slice(player.indexOf("const stop"), player.indexOf("const openSheet"));
+  assert.true(stop.includes("goOffline.mutate"), "Arrêter still cuts LIVE");
+  assert.false(/useEffect\(/.test(player), "no unmount effect");
+});
+
 test("LIVE joueur : clubs en LIVE sur le feed, pas cachés derrière un pane", () => {
   const feed = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
   assert.true(feed.includes("LiveClubCard"), "cards on feed");

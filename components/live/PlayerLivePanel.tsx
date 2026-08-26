@@ -7,10 +7,10 @@ import { PulseDot } from "@/components/ui/PulseDot";
 import { Sheet } from "@/components/ui/Sheet";
 import { LiveCountdown } from "@/components/live/LiveCountdown";
 import {
-  DEFAULT_LIVE_DURATION_MS,
   LIVE_DURATION_OPTIONS,
   LIVE_UX_COPY,
   isLiveActive,
+  liveSessionDurationMs,
   parseLiveDurationMs,
 } from "@/lib/live";
 import { PLATFORM_LABELS, POSITION_LABELS } from "@/lib/constants";
@@ -34,7 +34,7 @@ export function PlayerLivePanel() {
   const goLive = useGoPlayerLive(userId);
   const goOffline = useGoPlayerOffline(userId);
   const [note, setNote] = useState("");
-  const [duration, setDuration] = useState(String(DEFAULT_LIVE_DURATION_MS));
+  const [duration, setDuration] = useState(String(liveSessionDurationMs()));
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const now = useLiveClock();
@@ -46,7 +46,10 @@ export function PlayerLivePanel() {
   const start = () => {
     if (goLive.isPending) return;
     goLive.mutate(
-      { note: note.trim() || undefined, durationMs: parseLiveDurationMs(duration) },
+      {
+        note: note.trim() || undefined,
+        durationMs: __DEV__ ? liveSessionDurationMs() : parseLiveDurationMs(duration),
+      },
       {
         onSuccess: () => {
           toast.success("C'est parti. Les clubs te voient.");
@@ -113,25 +116,29 @@ export function PlayerLivePanel() {
           <InfoRow label="Plateforme" value={platformLabel} />
         </View>
 
-        <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
-          {LIVE_UX_COPY.howLong}
-        </Text>
-        <View className="mb-4 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
-          {LIVE_DURATION_OPTIONS.map((opt) => {
-            const active = duration === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => setDuration(opt.value)}
-                className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-accent" : ""}`}
-              >
-                <Text className={`text-center text-sm font-bold ${active ? "text-bg" : "text-fg-muted"}`}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {__DEV__ ? null : (
+          <>
+            <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
+              {LIVE_UX_COPY.howLong}
+            </Text>
+            <View className="mb-4 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+              {LIVE_DURATION_OPTIONS.map((opt) => {
+                const active = duration === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setDuration(opt.value)}
+                    className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-accent" : ""}`}
+                  >
+                    <Text className={`text-center text-sm font-bold ${active ? "text-bg" : "text-fg-muted"}`}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         <Pressable
           onPress={() => setShowMore((v) => !v)}

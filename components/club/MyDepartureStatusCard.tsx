@@ -48,9 +48,10 @@ export function MyDepartureStatusCard({
   const confirmAndRequest = () => {
     if (requestDeparture.isPending) return;
     requestDeparture.mutate(undefined, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setConfirming(false);
-        toast.success("Demande de départ envoyée.");
+        const leftNow = Boolean(data.leftImmediately) || data.departure?.status === "ACCEPTED_NOW";
+        toast.success(leftNow ? "Tu as quitté le club." : "Demande de départ envoyée.");
       },
       onError: (err: any) => toast.error(err.message ?? "Impossible d'envoyer la demande de départ."),
     });
@@ -115,19 +116,8 @@ export function MyDepartureStatusCard({
     );
   }
 
-  // Aucune demande active.
-  if (membership.matches_played_count < 1) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle icon={<DoorOpen size={18} color="#f4f5f7" />}>Quitter le club</CardTitle>
-        </CardHeader>
-        <Text className="text-sm text-fg-muted">
-          Tu dois avoir joué au moins 1 match validé (check-in) dans ce club avant de pouvoir demander ton départ.
-        </Text>
-      </Card>
-    );
-  }
+  // Aucune demande active — MEMBER/MANAGER peut toujours taper Quitter.
+  const zeroMatches = membership.matches_played_count < 1;
 
   return (
     <Card>
@@ -135,15 +125,18 @@ export function MyDepartureStatusCard({
         <CardTitle icon={<DoorOpen size={18} color="#f4f5f7" />}>Quitter le club</CardTitle>
       </CardHeader>
       <Text className="mb-3 text-sm text-fg-muted">
-        {membership.matches_played_count} match{membership.matches_played_count > 1 ? "s" : ""} joué — départ
-        disponible.
+        {zeroMatches
+          ? "Tu n'as pas encore joué. Tu quittes tout de suite."
+          : `${membership.matches_played_count} match${membership.matches_played_count > 1 ? "s" : ""} joué — départ disponible.`}
       </Text>
       {confirming ? (
         <View className="gap-2">
-          <Text className="text-sm text-fg-muted">
-            L&apos;owner/manager aura 3 minutes pour répondre. Tu restes membre et tu peux continuer à jouer pendant ce
-            temps — aucune pénalité.
-          </Text>
+          {zeroMatches ? null : (
+            <Text className="text-sm text-fg-muted">
+              L&apos;owner/manager aura 3 minutes pour répondre. Tu restes membre et tu peux continuer à jouer pendant ce
+              temps — aucune pénalité.
+            </Text>
+          )}
           <Button variant="danger" loading={requestDeparture.isPending} onPress={confirmAndRequest}>
             Confirmer
           </Button>

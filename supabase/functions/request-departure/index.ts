@@ -16,11 +16,9 @@ function mapDepartureError(message: string): { text: string; status: number } {
 }
 
 /**
- * Demande de départ (Phase 5, section B) — le joueur reste membre pendant
- * toute la procédure, aucune pénalité. Toute la logique d'éligibilité
- * (membership, rôle, 1 match joué, pas de demande active) est vérifiée
- * SERVEUR dans request_departure() (0012_engagement_functions.sql) — jamais
- * uniquement côté UI.
+ * Demande de départ — éligibilité SERVEUR dans request_departure().
+ * 0 match : ACCEPTED_NOW + release immédiat, pas de push « 3 minutes ».
+ * 1+ match : PENDING 3 min, push owner/manager inchangé.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -49,21 +47,24 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: text }, status);
   }
 
-  // Notifie owner/manager du club — non-bloquant.
-  const { data: player } = await admin.from("users").select("username").eq("id", user.id).maybeSingle();
-  const { data: managers } = await admin
-    .from("club_members")
-    .select("user:users(push_token)")
-    .eq("club_id", clubId)
-    .in("role", ["OWNER", "MANAGER"]);
-  for (const m of managers ?? []) {
-    await sendPushNotification(
-      (m as any).user?.push_token,
-      "Nouvelle demande de départ 🚪",
-      `${player?.username ?? "Un joueur"} souhaite quitter le club — réponds sous 3 minutes.`,
-      { type: "departure_request", clubId }
-    );
+  const leftImmediately = (departure as { status?: string } | null)?.status === "ACCEPTED_NOW";
+
+  if (!leftImmediately) {
+    const { data: player } = await admin.from("users").select("username").eq("id", user.id).maybeSingle();
+    const { data: managers } = await admin
+      .from("club_members")
+      .select("user:users(push_token)")
+      .eq("club_id", clubId)
+      .in("role", ["OWNER", "MANAGER"]);
+    for (const m of managers ?? []) {
+      await sendPushNotification(
+        (m as any).user?.push_token,
+        "Nouvelle demande de départ 🚪",
+        `${player?.username ?? "Un joueur"} souhaite quitter le club — réponds sous 3 minutes.`,
+        { type: "departure_request", clubId }
+      );
+    }
   }
 
-  return jsonResponse({ departure });
+  return jsonResponse({ departure, leftImmediately });
 });

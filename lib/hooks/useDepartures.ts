@@ -39,10 +39,12 @@ export function useDeparture(departureId: string | null) {
 export function useRequestDeparture(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => callEdgeFunction<{ departure: ClubDepartureRow }>("request-departure", { clubId }),
+    mutationFn: () =>
+      callEdgeFunction<{ departure: ClubDepartureRow; leftImmediately?: boolean }>("request-departure", { clubId }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   });

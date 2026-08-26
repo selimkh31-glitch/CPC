@@ -583,3 +583,28 @@ test("retirer de la feuille sans Bloquer ; check-in ne swallow pas", () => {
   assert.true(depart.includes("requestDeparture.mutate"), "mutates");
   assert.false(depart.includes("Alert.alert"), "not Alert-only");
 });
+
+test("0 match : Quitter le club immédiat, jamais OWNER, pas no_match_played", () => {
+  const depart = readFileSync(`${process.cwd()}/components/club/MyDepartureStatusCard.tsx`, "utf8");
+  const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
+  const hook = readFileSync(`${process.cwd()}/lib/hooks/useDepartures.ts`, "utf8");
+  const edge = readFileSync(`${process.cwd()}/supabase/functions/request-departure/index.ts`, "utf8");
+  const sql = readFileSync(`${process.cwd()}/supabase/migrations/0030_request_departure_zero_matches.sql`, "utf8");
+  assert.true(depart.includes("Quitter le club"), "cta");
+  assert.true(depart.includes("Tu n'as pas encore joué. Tu quittes tout de suite."), "zero copy");
+  assert.true(depart.includes("leftImmediately"), "reads immediate flag");
+  assert.true(depart.includes("Tu as quitté le club."), "immediate toast");
+  assert.false(depart.includes("Tu dois avoir joué au moins 1 match"), "no gate copy");
+  assert.true(home.includes("role !== \"OWNER\""), "owner never sees card");
+  assert.true(hook.includes('queryKey: ["my-memberships"]'), "invalidate memberships");
+  assert.true(hook.includes("leftImmediately"), "typed flag");
+  assert.true(edge.includes("leftImmediately"), "edge returns flag");
+  assert.true(edge.includes("ACCEPTED_NOW"), "skip 3 min push");
+  assert.true(edge.includes("no_match_played"), "old DB mapping kept");
+  assert.true(sql.includes("ACCEPTED_NOW"), "historize now");
+  assert.true(sql.includes("initiated_by, requested_at, responded_at"), "player now");
+  assert.true(sql.includes("release_club_member"), "reuses 0012 helper");
+  assert.false(sql.includes("raise exception 'no_match_played'"), "no trap");
+  assert.true(sql.includes("owner_cannot_request_departure"), "owner still blocked");
+  assert.true(sql.includes("grant execute on function public.request_departure(uuid, uuid) to service_role"), "service_role only");
+});
