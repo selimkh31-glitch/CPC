@@ -25,6 +25,7 @@ import {
   widenLiveFilters,
 } from "@/lib/liveFilters";
 import { PLATFORM_LABELS, POSITION_LABELS } from "@/lib/constants";
+import { useModeAccent } from "@/lib/theme";
 
 type FindMode = "live" | "matchmaking" | "directory";
 
@@ -35,6 +36,7 @@ type FindMode = "live" | "matchmaking" | "directory";
  */
 export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => void }) {
   const { profile } = useAuth();
+  const accent = useModeAccent();
   const { data: items, isLoading, isError, refetch, isRefetching } = useLiveSessions();
   const now = useLiveClock();
   const [filters, setFilters] = useState<LiveFiltersState>(EMPTY_LIVE_FILTERS);
@@ -168,7 +170,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
           data={displayed}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#39ff8a" />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={accent} />}
           renderItem={({ item }) => <LiveClubCard item={item} reason={reasonBySession.get(item.id)} />}
           ItemSeparatorComponent={() => <View className="h-2.5" />}
           ListEmptyComponent={

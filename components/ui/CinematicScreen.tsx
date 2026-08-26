@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { cn } from "@/lib/utils";
+import { useModeAccent } from "@/lib/theme";
 
 type AmbientTone = "none" | "accent" | "win" | "draw" | "loss";
 
@@ -40,12 +41,14 @@ export function CinematicScreen({
   children: React.ReactNode;
 }) {
   const Container = safeArea ? SafeAreaView : View;
+  const modeAccent = useModeAccent();
+  const wash = ambient === "none" ? null : ambient === "accent" ? modeAccent : AMBIENT_COLORS[ambient];
   return (
     <Container className={cn("flex-1 bg-bg", className)}>
-      {ambient !== "none" && (
+      {wash && (
         <LinearGradient
           pointerEvents="none"
-          colors={[`${AMBIENT_COLORS[ambient]}22`, "transparent"]}
+          colors={[`${wash}22`, "transparent"]}
           style={{ position: "absolute", top: 0, left: 0, right: 0, height: 320 }}
         />
       )}

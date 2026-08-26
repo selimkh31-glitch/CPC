@@ -1,4 +1,5 @@
 import { View, type ViewProps } from "react-native";
+import { useModeAccent } from "@/lib/theme";
 
 type GlowTone = "accent" | "win" | "draw" | "loss" | "ambient";
 type GlowIntensity = "sm" | "md" | "lg";
@@ -36,7 +37,8 @@ export function Glow({
   children,
   ...props
 }: ViewProps & { tone?: GlowTone; intensity?: GlowIntensity; className?: string }) {
-  const color = GLOW_COLORS[tone];
+  const modeAccent = useModeAccent();
+  const color = tone === "accent" || tone === "ambient" ? modeAccent : GLOW_COLORS[tone];
   const spread = SPREAD[intensity];
 
   return (

@@ -9,10 +9,12 @@ import { isLiveActive } from "@/lib/live";
 import { clubPublicHref } from "@/lib/clubProfile";
 import { buildClubCardData } from "@/lib/clubCard";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
+import { useModeAccent } from "@/lib/theme";
 
 /** Annuaire complet — extrait de l'ancien onglet Clubs (Mode Joueur). */
 export function ClubsDirectory({ hideTitle = false }: { hideTitle?: boolean }) {
   const now = useLiveClock();
+  const accent = useModeAccent();
   const { data: clubs, isLoading, isError, refetch, isRefetching } = useClubsList();
 
   return (
@@ -21,11 +23,11 @@ export function ClubsDirectory({ hideTitle = false }: { hideTitle?: boolean }) {
       data={clubs}
       keyExtractor={(c) => c.id}
       contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 12 }}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#39ff8a" />}
+      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={accent} />}
       ListHeaderComponent={
         hideTitle ? null : (
           <View className="mb-2 flex-row items-center gap-2">
-            <Users size={20} color="#39ff8a" />
+            <Users size={20} color={accent} />
             <Text className="font-display text-xl text-fg">Tous les clubs</Text>
           </View>
         )

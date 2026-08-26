@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { rankLiveClubsForPlayer } from "@/lib/liveMatch";
 import { isLiveActive } from "@/lib/live";
 import type { ClubSessionRow } from "@/lib/types";
+import { useModeAccent } from "@/lib/theme";
 
 /**
  * Reco LIVE déterministe (poste + plateforme + expiry + besoin club).
@@ -23,6 +24,7 @@ export function SmartMatchBanner({
 }) {
   const { profile } = useAuth();
   const now = useLiveClock();
+  const accent = useModeAccent();
 
   if (!visible) return null;
   if (loading) return <Skeleton className="mb-3 h-14" />;
@@ -55,7 +57,7 @@ export function SmartMatchBanner({
 
   return (
     <View className="mb-3 flex-row items-start gap-2 rounded-xl bg-accent/10 px-3 py-2.5">
-      <Sparkles size={14} color="#39ff8a" />
+      <Sparkles size={14} color={accent} />
       <View className="min-w-0 flex-1">
         <Text className="text-xs font-bold text-accent">
           {matches.length} club{matches.length > 1 ? "s" : ""} correspondent à ton profil

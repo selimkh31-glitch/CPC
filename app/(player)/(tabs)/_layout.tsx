@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Bell, Radio, User, Users } from "lucide-react-native";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
+import { useModeAccent } from "@/lib/theme";
 
 const TAB_BAR_STYLE = {
   backgroundColor: "#0f1114",
@@ -23,12 +24,13 @@ const TAB_BAR_STYLE = {
 export default function TabsLayout() {
   const { session } = useAuth();
   const unread = useUnreadNotificationCount(session?.user.id ?? null);
+  const accent = useModeAccent();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#39ff8a",
+        tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: "#666c74",
         tabBarStyle: TAB_BAR_STYLE,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
@@ -44,7 +46,7 @@ export default function TabsLayout() {
           title: "Activité",
           tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
           tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarBadgeStyle: { backgroundColor: "#39ff8a", color: "#08090b" },
+          tabBarBadgeStyle: { backgroundColor: accent, color: "#08090b" },
         }}
       />
       <Tabs.Screen

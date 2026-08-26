@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Inbox, Radio, Shield, Swords } from "lucide-react-native";
+import { useModeAccent } from "@/lib/theme";
 
 const TAB_BAR_STYLE = {
   backgroundColor: "#0f1114",
@@ -16,11 +17,13 @@ const TAB_BAR_STYLE = {
  * match (feuille) reste un fichier pour deep link `/match`, hors tab bar.
  */
 export default function ClubTabsLayout() {
+  const accent = useModeAccent();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#39ff8a",
+        tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: "#666c74",
         tabBarStyle: TAB_BAR_STYLE,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },

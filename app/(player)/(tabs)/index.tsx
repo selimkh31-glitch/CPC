@@ -14,6 +14,7 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { isLiveActive, liveFeedEmptyCopy, LIVE_UX_COPY } from "@/lib/live";
 import { useCurrentClubsByUserIds } from "@/lib/hooks/useCurrentClubs";
+import { useModeAccent } from "@/lib/theme";
 
 type LivePane = "feed" | "find";
 
@@ -46,6 +47,7 @@ export default function LiveScreen() {
   }, [livePlayers, session?.user.id, now]);
   const { data: clubsByUser } = useCurrentClubsByUserIds(otherLivePlayers.map((row) => row.user_id));
   const selfLive = isLiveActive(mySession, now);
+  const accent = useModeAccent();
 
   const refreshing = isRefetching || playersRefetching;
   const onRefresh = () => {
@@ -81,7 +83,7 @@ export default function LiveScreen() {
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#39ff8a" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
           keyboardShouldPersistTaps="handled"
         >
           <Text className="mb-5 font-display text-2xl text-fg">{LIVE_UX_COPY.title}</Text>

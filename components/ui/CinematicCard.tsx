@@ -2,6 +2,7 @@ import { View, type ViewProps } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 import { cn } from "@/lib/utils";
+import { useModeAccent } from "@/lib/theme";
 
 type CinematicTone = "neutral" | "accent" | "win" | "draw" | "loss";
 
@@ -39,9 +40,11 @@ export function CinematicCard({
   children,
   ...props
 }: ViewProps & { tone?: CinematicTone; animateIn?: boolean; className?: string }) {
+  const modeAccent = useModeAccent();
+  const gradient: [string, string] = tone === "accent" ? [`${modeAccent}26`, "#131519"] : TONE_GRADIENT[tone];
   const content = (
     <View className={cn("overflow-hidden rounded-3xl border-2", TONE_BORDER[tone])} {...props}>
-      <LinearGradient colors={TONE_GRADIENT[tone]} className={cn("p-5", className)}>
+      <LinearGradient colors={gradient} className={cn("p-5", className)}>
         {children}
       </LinearGradient>
     </View>

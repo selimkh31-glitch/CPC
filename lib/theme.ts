@@ -1,5 +1,15 @@
 import type { MatchOutcome } from "@/lib/types";
 import type { Rarity } from "@/lib/ovr";
+import { useAppMode } from "@/lib/providers/AppModeProvider";
+
+/** Accent d'interface par mode. Joueur = bleu esport, Club = vert live. */
+export const MODE_ACCENT = { PLAYER: "#4DA3FF", CLUB: "#39ff8a" } as const;
+
+/** Accent du mode actif. Sans mode (porte / auth), défaut Joueur. */
+export function useModeAccent(): string {
+  const { mode } = useAppMode();
+  return MODE_ACCENT[mode === "CLUB" ? "CLUB" : "PLAYER"];
+}
 
 /**
  * Palette Cinematic (Phase G.2) en valeurs brutes — pour tout ce qui ne peut
@@ -8,6 +18,7 @@ import type { Rarity } from "@/lib/ovr";
  * synchronisées manuellement : même doctrine que `RARITY_GRADIENT` dans
  * components/profile/ClubProCard.tsx, généralisée ici pour être partagée par
  * les futurs écrans (G.3-G.7) plutôt que redupliquée composant par composant.
+ * `accent` reste le vert Club ; le chrome JS LIVE suit `useModeAccent()`.
  */
 export const CINEMATIC_COLORS = {
   bg: "#08090b",

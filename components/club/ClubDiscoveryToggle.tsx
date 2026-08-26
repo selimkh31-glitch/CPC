@@ -5,6 +5,7 @@ import { LiveCountdown } from "@/components/live/LiveCountdown";
 import { LIVE_UX_COPY, liveSessionDurationMs } from "@/lib/live";
 import { useCreateSession, usePatchLiveNeededPositions, useToggleSession } from "@/lib/hooks/useClubs";
 import { toast } from "@/lib/toast";
+import { useModeAccent } from "@/lib/theme";
 
 /**
  * Découverte club — un ON/OFF. TTL silencieux (2 h prod / 12 h DEV, expires_at obligatoire).
@@ -27,6 +28,7 @@ export function ClubDiscoveryToggle({
   const createSession = useCreateSession(clubId);
   const toggleSession = useToggleSession(clubId);
   const patchPositions = usePatchLiveNeededPositions(clubId);
+  const accent = useModeAccent();
   const live = Boolean(activeSession);
   const pending = createSession.isPending || toggleSession.isPending || patchPositions.isPending;
   const neededKey = neededPositions.join(",");
@@ -133,7 +135,7 @@ export function ClubDiscoveryToggle({
             value={live}
             onValueChange={(next) => (next ? turnOn() : turnOff())}
             disabled={pending}
-            trackColor={{ false: "#24272c", true: "#39ff8a" }}
+            trackColor={{ false: "#24272c", true: accent }}
             thumbColor="#f4f5f7"
             ios_backgroundColor="#24272c"
             accessibilityRole="switch"
