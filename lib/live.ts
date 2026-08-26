@@ -16,21 +16,28 @@ export const LIVE_DURATION_OPTIONS = [
 ] as const;
 
 export const DEFAULT_LIVE_DURATION_MS = 2 * 60 * 60 * 1000;
+/** DEV only — Metro reload / switcher must outlive a 2 h session. Prod stays 2 h. */
+export const DEV_LIVE_DURATION_MS = 12 * 60 * 60 * 1000;
+
+export function liveSessionDurationMs(): number {
+  return typeof __DEV__ !== "undefined" && __DEV__ ? DEV_LIVE_DURATION_MS : DEFAULT_LIVE_DURATION_MS;
+}
 
 export interface LiveSessionLike {
   is_live: boolean;
   expires_at: string | null;
 }
 
-export function parseLiveDurationMs(raw: string | undefined, fallback = DEFAULT_LIVE_DURATION_MS): number {
-  const allowed = LIVE_DURATION_OPTIONS.map((o) => Number(o.value));
+export function parseLiveDurationMs(raw: string | undefined, fallback = liveSessionDurationMs()): number {
+  const allowed: number[] = LIVE_DURATION_OPTIONS.map((o) => Number(o.value));
+  if (typeof __DEV__ !== "undefined" && __DEV__) allowed.push(DEV_LIVE_DURATION_MS);
   const n = raw ? Number(raw) : fallback;
   if (!Number.isFinite(n) || !allowed.includes(n)) return fallback;
   return n;
 }
 
-export function computeLiveExpiresAt(nowMs: number, durationMs = DEFAULT_LIVE_DURATION_MS): Date {
-  const duration = parseLiveDurationMs(String(durationMs), DEFAULT_LIVE_DURATION_MS);
+export function computeLiveExpiresAt(nowMs: number, durationMs = liveSessionDurationMs()): Date {
+  const duration = parseLiveDurationMs(String(durationMs), liveSessionDurationMs());
   return new Date(nowMs + duration);
 }
 

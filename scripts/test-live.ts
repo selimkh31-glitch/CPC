@@ -11,10 +11,12 @@ import {
   clubLiveLayout,
   CLUB_MATCH_SHEET_HREF,
   DEFAULT_LIVE_DURATION_MS,
+  DEV_LIVE_DURATION_MS,
   findActiveLiveSession,
   formatLiveRemaining,
   isLiveActive,
   liveFeedEmptyCopy,
+  liveSessionDurationMs,
   liveUiState,
   LIVE_UX_COPY,
   parseLiveDurationMs,
@@ -96,9 +98,10 @@ test("remainingLiveMs — expires_at invalide -> 0", () => {
   assert.equal(remainingLiveMs("not-a-date", NOW), 0, "invalid");
 });
 
-test("computeLiveExpiresAt — défaut = 2 h", () => {
+test("computeLiveExpiresAt — défaut = liveSessionDurationMs (2 h hors DEV)", () => {
   const expires = computeLiveExpiresAt(NOW);
-  assert.equal(expires.toISOString(), new Date(NOW + DEFAULT_LIVE_DURATION_MS).toISOString(), "default 2h");
+  assert.equal(expires.toISOString(), new Date(NOW + liveSessionDurationMs()).toISOString(), "default duration");
+  assert.equal(liveSessionDurationMs(), DEFAULT_LIVE_DURATION_MS, "node tests are not DEV");
 });
 
 test("computeLiveExpiresAt — durée 30 min respectée", () => {
@@ -106,10 +109,22 @@ test("computeLiveExpiresAt — durée 30 min respectée", () => {
   assert.equal(expires.toISOString(), "2026-08-24T12:30:00.000Z", "30min");
 });
 
-test("parseLiveDurationMs — valeur hors catalogue -> défaut 2 h", () => {
-  assert.equal(parseLiveDurationMs("999"), DEFAULT_LIVE_DURATION_MS, "unknown");
-  assert.equal(parseLiveDurationMs(undefined), DEFAULT_LIVE_DURATION_MS, "undefined");
+test("parseLiveDurationMs — valeur hors catalogue -> liveSessionDurationMs", () => {
+  assert.equal(parseLiveDurationMs("999"), liveSessionDurationMs(), "unknown");
+  assert.equal(parseLiveDurationMs(undefined), liveSessionDurationMs(), "undefined");
   assert.equal(parseLiveDurationMs("1800000"), 1_800_000, "30min allowed");
+});
+
+test("DEV TTL — 12 h constant ; catalogue prod inchangé ; expires_at jamais omis", () => {
+  assert.equal(DEFAULT_LIVE_DURATION_MS, 2 * 60 * 60 * 1000, "prod 2h");
+  assert.equal(DEV_LIVE_DURATION_MS, 12 * 60 * 60 * 1000, "dev 12h");
+  assert.equal(parseLiveDurationMs(String(DEFAULT_LIVE_DURATION_MS)), DEFAULT_LIVE_DURATION_MS, "2h still allowed");
+  const src = readFileSync(`${process.cwd()}/lib/live.ts`, "utf8");
+  assert.true(src.includes("liveSessionDurationMs()"), "default via helper");
+  assert.true(src.includes("allowed.push(DEV_LIVE_DURATION_MS)"), "DEV 12h allowed when __DEV__");
+  assert.false(/expires_at:\s*null/.test(src), "never write null expiry");
+  const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");
+  assert.true(create.includes("expires_at: expiresAt"), "create always sets expires_at");
 });
 
 test("formatLiveRemaining — moins d'une heure -> minutes ceil, mots humains", () => {
@@ -219,9 +234,15 @@ test("club LIVE chrome : toggle ON = is_live + expires_at ; OFF = is_live false"
   const create = readFileSync(`${process.cwd()}/lib/hooks/useClubs.ts`, "utf8");
   assert.true(toggle.includes("useCreateSession"), "create session");
   assert.true(toggle.includes("useToggleSession"), "toggle session");
-  assert.true(toggle.includes("DEFAULT_LIVE_DURATION_MS"), "silent 2h TTL");
-  assert.true(toggle.includes("durationMs: DEFAULT_LIVE_DURATION_MS"), "create uses 2h");
+  assert.true(toggle.includes("liveSessionDurationMs"), "DEV/prod TTL helper");
+  assert.true(toggle.includes("durationMs: liveSessionDurationMs()"), "create uses helper");
+  assert.true(toggle.includes("if (__DEV__) return"), "DEV never auto-cuts on empty pitch");
+  assert.true(toggle.includes("if (!pitchReady) return"), "prod empty hydrate is not full roster");
   assert.true(toggle.includes("neededPositions"), "vacancies from pitch");
+  const emptyBranch = toggle.slice(toggle.indexOf("if (neededPositions.length === 0)"), toggle.indexOf("if (neededKey === liveKey)"));
+  assert.true(emptyBranch.includes("if (__DEV__) return"), "DEV return before auto-off");
+  assert.true(emptyBranch.includes("if (!pitchReady) return"), "pitchReady before auto-off");
+  assert.true(emptyBranch.includes("toggleSession.mutate"), "prod full roster still auto-off");
   const turnOff = toggle.slice(toggle.indexOf("const turnOff"), toggle.indexOf("return ("));
   assert.true(turnOff.includes("isLive: true"), "OFF passes isLive true so goingLive is false");
   assert.true(create.includes("is_live: true"), "insert is_live");

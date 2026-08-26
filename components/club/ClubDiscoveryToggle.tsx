@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 import { Switch, Text, View } from "react-native";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { LiveCountdown } from "@/components/live/LiveCountdown";
-import { DEFAULT_LIVE_DURATION_MS, LIVE_UX_COPY } from "@/lib/live";
+import { LIVE_UX_COPY, liveSessionDurationMs } from "@/lib/live";
 import { useCreateSession, usePatchLiveNeededPositions, useToggleSession } from "@/lib/hooks/useClubs";
 import { toast } from "@/lib/toast";
 
 /**
- * Découverte club — un ON/OFF. TTL 2 h silencieux (expires_at obligatoire).
+ * Découverte club — un ON/OFF. TTL silencieux (2 h prod / 12 h DEV, expires_at obligatoire).
  * needed_positions = postes vides du terrain, pas un sheet de postes.
- * Seul ce toggle (et le TTL) coupe le LIVE — pas un unmount d'onglet.
+ * Seul le toggle OFF (et le TTL) coupe le LIVE — pas un unmount, pas un pitch [] au hydrate.
  */
 export function ClubDiscoveryToggle({
   clubId,
@@ -40,6 +40,8 @@ export function ClubDiscoveryToggle({
     if (syncedKeyRef.current === key) return;
 
     if (neededPositions.length === 0) {
+      if (__DEV__) return;
+      if (!pitchReady) return;
       syncedKeyRef.current = key;
       toggleSession.mutate(
         { sessionId, isLive: true },
@@ -73,7 +75,7 @@ export function ClubDiscoveryToggle({
     );
     // Vacancies only — never write is_live false from a cleanup / unmount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, live, sessionId, neededKey, liveKey]);
+  }, [canManage, live, sessionId, neededKey, liveKey, pitchReady]);
 
   const emptyToast = () => {
     toast.error(pitchReady ? LIVE_UX_COPY.discoveryFull : LIVE_UX_COPY.discoveryNeedPitch);
@@ -86,7 +88,7 @@ export function ClubDiscoveryToggle({
       return;
     }
     createSession.mutate(
-      { neededPositions, durationMs: DEFAULT_LIVE_DURATION_MS },
+      { neededPositions, durationMs: liveSessionDurationMs() },
       {
         onSuccess: () => toast.success(`${LIVE_UX_COPY.discoveryOn}. ${LIVE_UX_COPY.discoveryHintOn}.`),
         onError: (err: unknown) => {
