@@ -1,8 +1,10 @@
-# ClubPro Connect (mobile)
+# ClubPro Connect (CPC)
 
-Application mobile native **iOS + Android** de matchmaking temps réel pour la communauté EA SPORTS FC / FIFA **Pro Clubs**. Identité compétitive vérifiée, Trust Engine, Live Feed, Ligues & Saisons. Une seule base de code cross-platform, dark mode e-sport.
+App mobile **iOS + Android** de matchmaking pour **EA SPORTS FC Pro Clubs** (virtuel uniquement). Joueurs et managers : trouver un club / recruter sur un poste, feuille de match, chat, avis. Dark, mobile-first.
 
-Stack : **React Native + Expo (SDK 57, Expo Router)** · **TypeScript strict** · **NativeWind** · **Supabase** (Auth + Postgres + Realtime + RLS + Edge Functions) · **Prisma** (schéma/outils) · **RevenueCat** (achats in-app) · **EAS Build/Submit**.
+Stack : **React Native + Expo SDK 57 (Expo Router, expo-dev-client)** · **TypeScript** · **NativeWind** · **Supabase** (Auth + Postgres + Realtime + RLS + Edge Functions) · **Prisma** (schéma/outils) · **EAS Build**.
+
+> Ce dépôt public n’est **pas** un lancement produit. Pas de partenariat EA. Pas de FUT. Pas de recrutement IRL.
 
 ---
 
@@ -35,7 +37,7 @@ cp .env.example .env      # Expo charge .env automatiquement (EXPO_PUBLIC_*)
 npm run prisma:generate
 npm run prisma:migrate    # crée les tables dans Supabase
 npm run prisma:seed       # peuple 30 users, 10 clubs, sessions live, etc.
-npx expo start            # scanne le QR avec Expo Go, ou lance un simulateur
+npx expo start --dev-client   # app déjà en expo-dev-client (pas Expo Go)
 ```
 
 ## Configuration
@@ -113,12 +115,12 @@ npm run prisma:seed
 ## Lancer l'app (iOS / Android)
 
 ```bash
-npx expo start           # ouvre le menu Metro — scanne le QR avec l'app Expo Go
+npx expo start --dev-client   # Metro → expo-dev-client installé
 npx expo start --ios      # simulateur iOS (macOS + Xcode requis)
 npx expo start --android  # émulateur Android (Android Studio requis)
 ```
 
-⚠️ **expo-notifications** et **react-native-purchases** (RevenueCat) sont des modules natifs : ils fonctionnent dans **Expo Go pour la partie UI**, mais les push réelles et les achats in-app nécessitent un **dev build EAS** (`eas build --profile development`, puis `npx expo start --dev-client`).
+⚠️ **expo-notifications** et les achats in-app (si activés) nécessitent un **dev build EAS** / expo-dev-client — pas Expo Go.
 
 Vérifications disponibles sans simulateur/device (utilisées pour valider ce projet) :
 
@@ -146,7 +148,7 @@ Profils disponibles dans `eas.json` : `development` (dev client), `preview` (int
 ### Checklist store
 - Icônes/splash : remplace les assets par défaut dans `assets/` (icon.png, splash-icon.png, android-icon-*.png) par la charte ClubPro Connect.
 - Politique de confidentialité : requise par l'App Store et Google Play dès que Supabase Auth + notifications + achats in-app sont utilisés — héberge une page et renseigne l'URL dans App Store Connect / Play Console.
-- Déclaration des achats in-app : configure le produit d'abonnement `pro_monthly` (5€/mois) dans App Store Connect ET Google Play Console, puis dans RevenueCat.
+- Déclaration des achats in-app : configure le produit d'abonnement `pro_monthly` dans App Store Connect ET Google Play Console, puis dans RevenueCat (si le flag Pro est activé).
 
 ## Cron jobs
 
@@ -181,11 +183,11 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR_PROJECT.supabase.co/fu
 Le MVP livre la **structure complète** (SDK configuré, gestion de l'entitlement `pro`, restauration d'achats, webhook → Supabase) avec des placeholders de clés. Pour activer réellement :
 
 1. Crée un projet [RevenueCat](https://app.revenuecat.com), ajoute les apps iOS + Android.
-2. Configure le produit d'abonnement `pro_monthly` (5€/mois) dans App Store Connect / Google Play Console, importe-le dans RevenueCat, crée l'entitlement `pro` et l'offering par défaut.
+2. Configure le produit d'abonnement `pro_monthly` dans App Store Connect / Google Play Console, importe-le dans RevenueCat, crée l'entitlement `pro` et l'offering par défaut.
 3. Renseigne `EXPO_PUBLIC_REVENUECAT_IOS_KEY` / `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (clés SDK publiques, une par plateforme).
 4. Passe `EXPO_PUBLIC_FEATURE_REVENUECAT=true`.
 5. RevenueCat > Project Settings > Integrations > Webhooks → pointe vers `https://YOUR_PROJECT.supabase.co/functions/v1/revenuecat-webhook`, avec un secret partagé stocké dans `REVENUECAT_WEBHOOK_SECRET` (Supabase secrets).
-6. Build un **dev client EAS** pour tester les achats (`react-native-purchases` ne fonctionne pas dans Expo Go).
+6. Build un **dev client EAS** pour tester les achats (pas Expo Go).
 
 `lib/revenuecat.ts` centralise `configureRevenueCat()`, `purchasePro()`, `restorePurchases()`.
 
@@ -201,7 +203,7 @@ Le MVP livre la **structure complète** (SDK configuré, gestion de l'entitlemen
 
 `lib/notifications.ts` demande la permission et enregistre le push token Expo sur `users.push_token` au premier affichage de l'onglet Profil. Les Edge Functions `apply` et `respond-application` envoient les push (nouvelle candidature côté club, réponse côté candidat) via l'API Expo Push — aucune clé requise pour ce provider.
 
-⚠️ Ne fonctionne que sur device réel (pas simulateur/émulateur), et nécessite un dev build EAS pour un test fiable en dehors d'Expo Go.
+⚠️ Ne fonctionne que sur device réel (pas simulateur/émulateur), et nécessite un dev build EAS / expo-dev-client.
 
 ## Feature flags
 
@@ -255,8 +257,8 @@ score  = clamp(base + streak + ea, 0, 100)
 
 ## Limites connues (MVP)
 
-- **Matching EA ↔ compte** : l'API EA non-officielle n'expose pas d'identifiant stable — rapprochement par égalité `username == playername EA` (documenté dans `supabase/functions/_shared/ea.ts`).
+- **Matching Clubs Pro ↔ compte** : pas d'identifiant joueur stable côté sources Clubs Pro observées — rapprochement par égalité `username == playername` (documenté dans `supabase/functions/_shared/ea.ts`). Pas un partenariat EA.
 - **Filtre "plateforme" du Live Feed** : le modèle de données ne place `platform` que sur `users`, pas sur `clubs`/`club_sessions` (fidèle au brief). Filtres implémentés : poste, niveau, langue.
 - **RevenueCat / clés IA réelles** : non fournies (placeholders `.env.example`) ; tout le reste fonctionne sans elles (fallbacks documentés ci-dessus).
-- **Push & achats in-app** : nécessitent un dev build EAS, non testables tels quels dans Expo Go.
+- **Push & achats in-app** : nécessitent un dev build EAS / expo-dev-client.
 - **Un seul dashboard actif** si un joueur gère plusieurs clubs (le MVP affiche le premier ; sélecteur multi-club = TODO Phase 4).
