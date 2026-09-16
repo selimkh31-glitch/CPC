@@ -21,6 +21,8 @@ import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { RANKING_COPY } from "@/lib/rankings";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -99,16 +101,17 @@ function RootNavigator() {
             await refreshProfile();
             setRetrying(false);
           }}
-          className="rounded-xl bg-accent px-5 py-3"
+          className="min-h-[44px] min-w-[44px] items-center justify-center bg-accent px-5 py-3"
+          style={{ borderRadius: cpcTokens.radius.control }}
         >
-          {retrying ? <ActivityIndicator color="#08090b" /> : <Text className="font-bold text-bg">Réessayer</Text>}
+          {retrying ? <ActivityIndicator color={cpcHex.accentForeground} /> : <Text className="font-bold text-accent-fg">Réessayer</Text>}
         </Pressable>
       </View>
     );
   }
 
   const stack = (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#08090b" } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: cpcHex.background } }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
@@ -140,51 +143,51 @@ function RootNavigator() {
       <Stack.Protected guard={Boolean(session) && Boolean(profile) && Boolean(mode)}>
         <Stack.Screen
           name="club/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
         <Stack.Screen
           name="profile/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
         <Stack.Screen
           name="dashboard"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Mon club" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Mon club" }}
         />
         <Stack.Screen
           name="create-club"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Créer un club" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Créer un club" }}
         />
         <Stack.Screen
           name="my-applications"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Mes candidatures" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Mes candidatures" }}
         />
         <Stack.Screen
           name="match-sheet"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Feuille de match" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Feuille de match" }}
         />
         <Stack.Screen
           name="player-search"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Rechercher un joueur" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Rechercher un joueur" }}
         />
         <Stack.Screen
           name="find-club"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Trouver un club" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Trouver un club" }}
         />
         <Stack.Screen
           name="my-invitations"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Mes invitations" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Mes invitations" }}
         />
         <Stack.Screen
           name="pricing"
-          options={{ presentation: "modal", headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Pro" }}
+          options={{ presentation: "modal", headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Pro" }}
         />
         <Stack.Screen
           name="edit-profile"
           options={{
             presentation: "modal",
             headerShown: true,
-            headerStyle: { backgroundColor: "#08090b" },
-            headerTintColor: "#f4f5f7",
+            headerStyle: { backgroundColor: cpcHex.background },
+            headerTintColor: cpcHex.textPrimary,
             title: "Identité Pro Clubs",
           }}
         />
@@ -193,8 +196,8 @@ function RootNavigator() {
           options={{
             presentation: "modal",
             headerShown: true,
-            headerStyle: { backgroundColor: "#08090b" },
-            headerTintColor: "#f4f5f7",
+            headerStyle: { backgroundColor: cpcHex.background },
+            headerTintColor: cpcHex.textPrimary,
             title: "Identité du club",
           }}
         />
@@ -203,38 +206,38 @@ function RootNavigator() {
             router.push, notamment depuis le bouton "Message" du profil joueur. */}
         <Stack.Screen
           name="conversations"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Messages" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Messages" }}
         />
         <Stack.Screen
           name="conversation/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
         {/* Social Foundations — Groupes (mission section 12). Même doctrine
             que Chat ci-dessus : pas d'entrée dans une tab bar, accessible via
             router.push depuis le raccourci "Groupes" de l'onglet Profil. */}
         <Stack.Screen
           name="groups"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Groupes" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Groupes" }}
         />
         <Stack.Screen
           name="group/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
         <Stack.Screen
           name="notifications"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Notifications" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Notifications" }}
         />
         <Stack.Screen
           name="blocked"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Bloqués" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Bloqués" }}
         />
         <Stack.Screen
           name="settings"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Réglages" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Réglages" }}
         />
         <Stack.Screen
           name="report/[userId]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Signaler" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Signaler" }}
         />
         {/* Ligues + Compétitions + Tournois — stack partagé, pas un onglet.
             `/leagues` = app/leagues.tsx (Mode Club n'a pas (player)).
@@ -242,24 +245,24 @@ function RootNavigator() {
             Détail `/competitions/[id]` (deep link notifs), pas de tab dédié. */}
         <Stack.Screen
           name="leagues"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: RANKING_COPY.clubTitle }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: RANKING_COPY.clubTitle }}
         />
         <Stack.Screen
           name="competitions/index"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Compétitions" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Compétitions" }}
         />
         <Stack.Screen
           name="competitions/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
         {/* Tournois V1 — même stack, pas un onglet. kind=TOURNAMENT sur competitions. */}
         <Stack.Screen
           name="tournaments/index"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", title: "Tournois" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, title: "Tournois" }}
         />
         <Stack.Screen
           name="tournaments/[id]"
-          options={{ headerShown: true, headerStyle: { backgroundColor: "#08090b" }, headerTintColor: "#f4f5f7", headerTitle: "" }}
+          options={{ headerShown: true, headerStyle: { backgroundColor: cpcHex.background }, headerTintColor: cpcHex.textPrimary, headerTitle: "" }}
         />
       </Stack.Protected>
 

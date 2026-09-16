@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
-// Design tokens — thème "e-sport dark". Vert énergie = accent live/action,
-// violet = accent secondaire (premium / Pro / IA). Voir README > Design system.
+const { cpcHex } = require("./lib/design/cpc-hex.cjs");
+
+// CPC tokens — hex NativeWind (RN). Canonical OKLCH: lib/design/cpc-tokens.ts
 module.exports = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
@@ -8,47 +9,46 @@ module.exports = {
     extend: {
       colors: {
         bg: {
-          DEFAULT: "#08090b",
-          soft: "#0f1114",
-          elevated: "#16191d",
-          card: "#131519",
-          // Cinematic (Phase G.2) — surface "verre" pour panneaux flottants /
-          // overlays (LIVE, RESULT). Pas de vrai flou (expo-blur absent du
-          // projet, non ajouté ici) : opacité élevée sur le ton "elevated"
-          // pour suggérer une profondeur sans dépendance native supplémentaire.
-          glass: "rgba(22,25,29,0.72)",
+          DEFAULT: cpcHex.background,
+          soft: cpcHex.elevated,
+          elevated: cpcHex.elevated,
+          card: cpcHex.card,
+          secondary: cpcHex.secondary,
+          glass: "rgba(8,14,20,0.72)",
         },
         border: {
-          DEFAULT: "#24272c",
-          soft: "#1a1d21",
-          // Cinematic (Phase G.2)
-          active: "#3a3f46", // état focus/actif neutre, sans teinte
-          cinematic: "rgba(57,255,138,0.35)", // bordure accentuée des cartes "moment"
+          DEFAULT: cpcHex.border,
+          soft: cpcHex.borderSubtle,
+          active: cpcHex.secondary,
+          cinematic: "rgba(84,225,130,0.35)",
         },
         accent: {
-          DEFAULT: "#39ff8a",
+          DEFAULT: cpcHex.accent,
           50: "#e9fff3",
           100: "#c6ffe0",
           200: "#8dffc2",
-          300: "#5bff9f",
-          400: "#39ff8a",
-          500: "#1de873",
+          300: "#7aeba0",
+          400: cpcHex.accent,
+          500: cpcHex.success,
           600: "#12b559",
           700: "#0e8c46",
           800: "#0c6d38",
           900: "#0a562d",
-          // Cinematic (Phase G.2) — surface accent translucide prête à
-          // l'emploi (évite de retaper `accent/10`-`accent/15` à chaque écran).
-          soft: "rgba(57,255,138,0.12)",
+          fg: cpcHex.accentForeground,
+          soft: "rgba(84,225,130,0.12)",
         },
-        // Cinematic (Phase G.2) — résultat de match (WIN/DRAW/LOSS), reprend
-        // exactement le mapping déjà informel de MatchCheckinPanel.tsx
-        // (accent/warn/danger) pour lui donner un nom sémantique partagé,
-        // sans changer une seule valeur de couleur existante.
+        live: {
+          DEFAULT: cpcHex.live,
+          soft: "rgba(249,65,68,0.12)",
+        },
+        success: {
+          DEFAULT: cpcHex.success,
+          soft: "rgba(92,212,129,0.12)",
+        },
         outcome: {
-          win: { DEFAULT: "#39ff8a", soft: "rgba(57,255,138,0.12)" },
-          draw: { DEFAULT: "#f5a623", soft: "rgba(245,166,35,0.12)" },
-          loss: { DEFAULT: "#ff4d4f", soft: "rgba(255,77,79,0.12)" },
+          win: { DEFAULT: cpcHex.success, soft: "rgba(92,212,129,0.12)" },
+          draw: { DEFAULT: cpcHex.warning, soft: "rgba(252,181,44,0.12)" },
+          loss: { DEFAULT: cpcHex.error, soft: "rgba(234,60,63,0.12)" },
         },
         pro: {
           DEFAULT: "#8b5cf6",
@@ -69,20 +69,66 @@ module.exports = {
           gold: "#e8b84b",
           icon: "#39e6ff",
         },
-        danger: "#ff4d4f",
-        warn: "#f5a623",
+        danger: cpcHex.error,
+        warn: cpcHex.warning,
+        disabled: cpcHex.disabled,
+        pitch: {
+          DEFAULT: cpcHex.pitch,
+          deep: cpcHex.pitchDeep,
+          line: cpcHex.pitchLine,
+        },
+        overlay: cpcHex.overlay,
         fg: {
-          DEFAULT: "#f4f5f7",
-          muted: "#9aa0a8",
-          subtle: "#666c74",
+          DEFAULT: cpcHex.textPrimary,
+          secondary: cpcHex.textSecondary,
+          muted: cpcHex.textMuted,
+          subtle: cpcHex.disabled,
         },
       },
       borderRadius: {
+        none: "0px",
+        control: "2px",
+        card: "0px",
+        badge: "2px",
+        input: "4px",
+        sheet: "16px",
+        phone: "28px",
         xl2: "20px",
+      },
+      fontSize: {
+        micro: ["9px", { lineHeight: "12px" }],
+        caption: ["10px", { lineHeight: "14px" }],
+        eyebrow: ["11px", { lineHeight: "16px", letterSpacing: "1.32px" }],
+        bodySmall: ["12px", { lineHeight: "20px" }],
+        body: ["14px", { lineHeight: "24px" }],
+        action: ["16px", { lineHeight: "20px" }],
+        titleSmall: ["20px", { lineHeight: "24px" }],
+        title: ["24px", { lineHeight: "28px" }],
+        displaySmall: ["30px", { lineHeight: "30px" }],
+        display: ["36px", { lineHeight: "36px" }],
+        displayLarge: ["48px", { lineHeight: "44px" }],
+        timer: ["72px", { lineHeight: "72px" }],
+      },
+      spacing: {
+        13: "52px",
+        15: "60px",
+        18: "72px",
+      },
+      minHeight: {
+        touch: "44px",
+        button: "44px",
+        "button-lg": "52px",
+        header: "64px",
+        nav: "78px",
+      },
+      minWidth: {
+        touch: "44px",
       },
       fontFamily: {
         display: ["BarlowCondensed_700Bold"],
         "display-semibold": ["BarlowCondensed_600SemiBold"],
+        "display-extrabold": ["BarlowCondensed_700Bold"],
+        "display-black": ["BarlowCondensed_700Bold"],
         sans: ["Inter_400Regular"],
         "sans-medium": ["Inter_500Medium"],
         "sans-semibold": ["Inter_600SemiBold"],

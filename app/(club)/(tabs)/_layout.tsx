@@ -1,19 +1,12 @@
 import { Tabs } from "expo-router";
 import { House, Inbox, Radio, Shield, Swords } from "lucide-react-native";
 import { useModeAccent } from "@/lib/theme";
+import { BottomNavigation } from "@/components/nav/BottomNavigation";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 export const unstable_settings = {
   initialRouteName: "home",
 };
-
-const TAB_BAR_STYLE = {
-  backgroundColor: "#08090b",
-  borderTopColor: "rgba(255,255,255,0.06)",
-  borderTopWidth: 0.5,
-  height: 56,
-  paddingBottom: 6,
-  paddingTop: 6,
-} as const;
 
 /**
  * Mode Club — 3 onglets : Accueil | Matchmaking | Recrutement.
@@ -26,11 +19,11 @@ export default function ClubTabsLayout() {
   return (
     <Tabs
       initialRouteName="home"
+      tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
-        tabBarInactiveTintColor: "#666c74",
-        tabBarStyle: TAB_BAR_STYLE,
+        tabBarInactiveTintColor: cpcHex.disabled,
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >

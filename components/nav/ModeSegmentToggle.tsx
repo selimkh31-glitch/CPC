@@ -53,7 +53,7 @@ export function ModeSegmentToggle({
               className="min-h-[44px] flex-1 items-center justify-center rounded-full"
               style={selected ? { backgroundColor: accent } : undefined}
             >
-              <Text className={`text-sm font-bold ${selected ? "text-bg" : "text-fg-muted"}`}>{label}</Text>
+              <Text className={`text-sm font-bold ${selected ? "text-accent-fg" : "text-fg-muted"}`}>{label}</Text>
             </Pressable>
           );
         })}

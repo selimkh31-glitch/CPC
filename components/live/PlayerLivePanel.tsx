@@ -3,7 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { LiveBadge } from "@/components/ui/LiveBadge";
+import { InfoRow } from "@/components/ui/InfoRow";
 import { Sheet } from "@/components/ui/Sheet";
 import { LiveCountdown } from "@/components/live/LiveCountdown";
 import {
@@ -21,6 +22,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
  * LIVE joueur — un état (off / open). Matching / TTL inchangés.
@@ -72,14 +74,14 @@ export function PlayerLivePanel() {
   };
 
   return (
-    <Card className={cn("rounded-2xl p-4", live && "border-accent/35 bg-accent/8")}>
+    <Card className={cn("p-4", live && "border-live/40 bg-live/10")}>
       {isLoading && !mySession ? (
         <Skeleton className="h-16" />
       ) : live ? (
         <>
           <View className="mb-2 flex-row items-start gap-2">
-            <PulseDot />
-            <Text className="flex-1 font-display text-xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
+            <LiveBadge />
+            <Text className="flex-1 font-display text-titleSmall text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
           </View>
           <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.stillLooking}</Text>
           <Text className="mt-3 text-base font-semibold text-fg">
@@ -99,7 +101,7 @@ export function PlayerLivePanel() {
       ) : (
         <>
           <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.playerHeadline}</Text>
-          <Text className="mb-4 mt-1.5 text-[13px] text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
+          <Text className="mb-4 mt-1.5 font-sans text-bodySmall text-fg-muted">Passe LIVE. Les clubs te voient tout de suite.</Text>
           <Button size="lg" loading={goLive.isPending} onPress={openSheet}>
             {LIVE_UX_COPY.goLive}
           </Button>
@@ -118,19 +120,20 @@ export function PlayerLivePanel() {
 
         {__DEV__ ? null : (
           <>
-            <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
+            <Text className="mb-1.5 font-sans-bold text-eyebrow uppercase text-fg-subtle">
               {LIVE_UX_COPY.howLong}
             </Text>
-            <View className="mb-4 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+            <View className="mb-4 flex-row border border-border bg-bg-elevated p-1" style={{ borderRadius: cpcTokens.radius.control }}>
               {LIVE_DURATION_OPTIONS.map((opt) => {
                 const active = duration === opt.value;
                 return (
                   <Pressable
                     key={opt.value}
                     onPress={() => setDuration(opt.value)}
-                    className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-accent" : ""}`}
+                    className={`min-h-[44px] flex-1 justify-center px-2 py-2 ${active ? "bg-accent" : ""}`}
+                    style={{ borderRadius: cpcTokens.radius.control }}
                   >
-                    <Text className={`text-center text-sm font-bold ${active ? "text-bg" : "text-fg-muted"}`}>
+                    <Text className={`text-center text-sm font-bold ${active ? "text-accent-fg" : "text-fg-muted"}`}>
                       {opt.label}
                     </Text>
                   </Pressable>
@@ -158,14 +161,5 @@ export function PlayerLivePanel() {
         </Button>
       </Sheet>
     </Card>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="min-h-[44px] flex-row items-center justify-between rounded-xl bg-bg-elevated px-3 py-2.5">
-      <Text className="text-xs text-fg-subtle">{label}</Text>
-      <Text className="text-sm font-bold text-fg">{value}</Text>
-    </View>
   );
 }

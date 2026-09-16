@@ -25,6 +25,7 @@ import { faceStatsCaption, visibleFaceStatCells } from "@/lib/cardFace";
 import { PLATFORM_LABELS, PLAY_STYLE_LABELS, POSITION_LABELS } from "@/lib/constants";
 import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 /**
  * Carte joueur unique — 3 densités du même builder (`buildPlayerCardData`).
@@ -243,7 +244,7 @@ function FullBody({
   const hero = playerCardHeroNumber(data);
   const faceCells = visibleFaceStatCells(data.faceStats);
   const careerBlocks = data.showEaStats ? visibleEaStatBlocks(data.eaStats) : [];
-  const surface = ["#12151a", "#08090b"] as [string, string];
+  const surface = [cpcHex.secondary, cpcHex.background] as [string, string];
   const secondaryCodes = [...new Set(data.secondaryPositions.filter((p) => p !== data.mainPosition))];
 
   const handleShare = async () => {
@@ -293,7 +294,7 @@ function FullBody({
               left: -18,
               right: -18,
               borderRadius: 9999,
-              backgroundColor: "#39ff8a",
+              backgroundColor: cpcHex.accent,
               opacity: 0.18,
             }}
           />
@@ -306,7 +307,7 @@ function FullBody({
               left: -8,
               right: -8,
               borderRadius: 9999,
-              backgroundColor: "#39ff8a",
+              backgroundColor: cpcHex.accent,
               opacity: 0.12,
             }}
           />
@@ -381,7 +382,7 @@ function FullBody({
 
       {data.currentStreak > 0 ? (
         <View className="mt-3 flex-row items-center justify-center gap-1">
-          <Flame size={14} color="#39ff8a" />
+          <Flame size={14} color={cpcHex.accent} />
           <Text className="text-xs font-bold text-accent">{data.currentStreak} de suite</Text>
         </View>
       ) : null}

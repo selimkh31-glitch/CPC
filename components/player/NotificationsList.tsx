@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
-import { Bell, ChevronRight } from "lucide-react-native";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { NotificationRow } from "@/components/ui/NotificationRow";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import {
@@ -21,9 +21,8 @@ import {
   tournamentRoundScheduledNotificationNav,
 } from "@/lib/safety";
 import { toast } from "@/lib/toast";
-import { timeAgo } from "@/lib/utils";
 import { effectiveAppMode } from "@/lib/appMode";
-import type { NotificationRow } from "@/lib/types";
+import type { NotificationRow as NotificationRowType } from "@/lib/types";
 
 /** Liste des notifications in-app — extraite de app/notifications.tsx pour l'onglet Activité. */
 export function NotificationsList() {
@@ -45,7 +44,7 @@ export function NotificationsList() {
     setPendingNav(null);
   }, [pendingNav, mode]);
 
-  const open = (item: NotificationRow) => {
+  const open = (item: NotificationRowType) => {
     if (!item.read_at) markRead.mutate(item.id);
     const recruitment = recruitmentNotificationNav(item.type, item.data);
     if (recruitment) {
@@ -114,25 +113,14 @@ export function NotificationsList() {
         </Button>
       )}
       {data.map((item) => (
-        <Pressable
+        <NotificationRow
           key={item.id}
+          title={notificationTitle(item.type, item.title)}
+          body={item.body}
+          at={item.created_at}
+          read={Boolean(item.read_at)}
           onPress={() => open(item)}
-          className={`min-h-[44px] rounded-2xl border p-3 active:opacity-80 ${
-            item.read_at ? "border-border bg-bg-card" : "border-accent/30 bg-accent/10"
-          }`}
-          accessibilityRole="button"
-          accessibilityLabel={notificationTitle(item.type, item.title)}
-        >
-          <View className="flex-row items-start gap-2">
-            <Bell size={16} color={item.read_at ? "#9aa0a8" : "#39ff8a"} />
-            <View className="flex-1">
-              <Text className="font-bold text-fg">{notificationTitle(item.type, item.title)}</Text>
-              <Text className="mt-0.5 text-sm text-fg-muted">{item.body}</Text>
-              <Text className="mt-1 text-xs text-fg-subtle">{timeAgo(item.created_at)}</Text>
-            </View>
-            <ChevronRight size={16} color="#666c74" />
-          </View>
-        </Pressable>
+        />
       ))}
     </View>
   );

@@ -238,12 +238,14 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.false(root.includes("nativewind"), "root does not import nativewind");
   const theme = read("lib/theme.ts");
   const tw = read("tailwind.config.js");
+  const hex = read("lib/design/cpc-hex.cjs");
   assert.true(theme.includes('PLAYER: "#4DA3FF"'), "joueur blue");
-  assert.true(theme.includes('CLUB: "#39ff8a"'), "club green");
+  assert.true(theme.includes("CLUB: cpcHex.accent"), "club accent token");
   assert.true(theme.includes("export function useModeAccent"), "useModeAccent");
   assert.false(theme.includes("vars("), "theme no vars()");
   assert.false(theme.includes("nativewind"), "theme no nativewind");
-  assert.true(tw.includes('DEFAULT: "#39ff8a"'), "tailwind accent stays hex green");
+  assert.true(hex.includes('accent: "#54e182"'), "CPC accent hex");
+  assert.true(tw.includes("cpcHex.accent"), "tailwind accent from CPC hex");
   assert.false(tw.includes("--cpc-accent"), "tailwind no css var accent");
   assert.false(tw.includes("<alpha-value>"), "tailwind no rgb var accent");
   const playerTabs = read("app/(player)/(tabs)/_layout.tsx");
@@ -252,7 +254,7 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.true(clubTabsLayout.includes("useModeAccent"), "club tab tint");
   const glow = read("components/ui/Glow.tsx");
   assert.true(glow.includes("useModeAccent"), "glow live follows mode");
-  assert.true(glow.includes('win: "#39ff8a"'), "glow win stays result green");
+  assert.true(glow.includes("win: cpcHex.success"), "glow win stays result green");
   assert.true(read("components/club/ClubDiscoveryToggle.tsx").includes("useModeAccent"), "switch track follows mode");
   assert.false(read("app/(auth)/login.tsx").includes("AppMenuHeader"), "no menu on login");
   assert.false(read("app/onboarding.tsx").includes("AppMenuHeader"), "no menu on onboarding");
@@ -274,6 +276,12 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.true(livePlayer.includes("ModeSegmentToggle"), "player Matchmaking has mode toggle");
   assert.true(liveClub.includes("ModeSegmentToggle"), "club Matchmaking has mode toggle");
   assert.false(livePlayer.includes("font-display text-3xl text-fg\">Profil"), "no second Profil title on LIVE");
+});
+
+test("tokens CPC copiés à l'identique", () => {
+  const tokens = read("lib/design/cpc-tokens.ts");
+  const spec = read("docs/ux-handoff/cpc-tokens.ts");
+  assert.equal(tokens, spec, "identical copy");
 });
 
 test("Accueil partagé : ClubPro Card, Mon club, À traiter, CTA Matchmaking", () => {

@@ -52,7 +52,7 @@ export function ClubCard({
 
   if (density === "mini") {
     return (
-      <View className={cn("rounded-xl border bg-bg-card px-2.5 py-1.5", stateBorderClass(state), className)}>
+      <View className={cn("overflow-hidden border bg-bg-card px-2.5 py-1.5", stateBorderClass(state), className)}>
         <MiniBody data={data} onPress={press} rightSlot={rightSlot} />
         {footer}
       </View>

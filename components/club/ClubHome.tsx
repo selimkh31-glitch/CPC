@@ -1,6 +1,6 @@
 import { Alert, ScrollView, Text, View } from "react-native";
 import { Card } from "@/components/ui/Card";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { LiveBadge } from "@/components/ui/LiveBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
 import { ClubCard } from "@/components/club/ClubCard";
@@ -135,9 +135,8 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
         <Text className="mb-2 font-display text-lg text-fg">Recrutement LIVE</Text>
         {activeSession ? (
           <>
-            <View className="mb-3 flex-row items-center gap-1.5">
-              <PulseDot />
-              <Text className="text-xs font-extrabold text-accent">LIVE</Text>
+            <View className="mb-3">
+              <LiveBadge />
             </View>
             {neededLine ? <Text className="mb-3 text-sm text-fg">Cherche {neededLine}</Text> : null}
             {activeSession.note && <Text className="text-sm text-fg-muted">{activeSession.note}</Text>}

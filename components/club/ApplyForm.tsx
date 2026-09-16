@@ -69,7 +69,7 @@ export function ApplyForm({ sessionId, neededPositions }: { sessionId: string; n
   }
 
   return (
-    <View className="gap-3 rounded-xl border border-border bg-bg-elevated p-3">
+    <View className="gap-3 border border-border bg-bg-elevated p-3">
       <Text className="text-xs font-bold uppercase tracking-wide text-fg-muted">Poste visé</Text>
       <ChipSelect
         single

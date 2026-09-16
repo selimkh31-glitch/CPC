@@ -6,8 +6,11 @@ import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formatio
 import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { canPressEmptyFormationSlot } from "@/lib/sessionState";
 import type { SlotAssignmentRow } from "@/lib/types";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
-const SLOT_SIZE = 44;
+const SLOT_W = cpcTokens.geometry.formationSlotWidth;
+const SLOT_H = cpcTokens.geometry.formationSlotHeight;
 
 /**
  * Terrain visuel réutilisable (owner ET joueur, lecture ou interaction selon
@@ -44,15 +47,15 @@ export function FormationPitch({
 
   return (
     <View
-      className="w-full overflow-hidden rounded-2xl border border-border bg-[#0d2818]"
-      style={{ aspectRatio: 0.72 }}
+      className="w-full overflow-hidden border border-pitch-line/20 bg-pitch"
+      style={{ aspectRatio: 0.72, borderRadius: cpcTokens.radius.card, backgroundColor: cpcHex.pitch }}
     >
       {/* Lignes de terrain minimalistes — pas d'asset graphique. */}
-      <View className="absolute inset-4 rounded-lg border border-white/10" />
-      <View className="absolute left-4 right-4 top-1/2 h-px bg-white/10" />
+      <View className="absolute inset-4 border" style={{ borderColor: cpcHex.pitchLine, opacity: 0.25 }} />
+      <View className="absolute left-4 right-4 top-1/2 h-px" style={{ backgroundColor: cpcHex.pitchLine, opacity: 0.25 }} />
       <View
-        className="absolute self-center rounded-full border border-white/10"
-        style={{ top: "50%", width: 70, height: 70, marginTop: -35 }}
+        className="absolute self-center rounded-full border"
+        style={{ top: "50%", width: 70, height: 70, marginTop: -35, borderColor: cpcHex.pitchLine, opacity: 0.25 }}
       />
 
       {slots.map((slot) => (
@@ -131,9 +134,10 @@ function PitchSlot({
       style={{
         left: `${slot.x}%`,
         top: `${slot.y}%`,
-        width: SLOT_SIZE,
-        marginLeft: -SLOT_SIZE / 2,
-        marginTop: -SLOT_SIZE / 2 - 10,
+        width: SLOT_W,
+        height: SLOT_H,
+        marginLeft: -SLOT_W / 2,
+        marginTop: -SLOT_H / 2 - 10,
       }}
     >
       {occupant?.user ? (

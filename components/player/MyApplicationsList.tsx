@@ -110,7 +110,7 @@ export function MyApplicationsList() {
         );
         if (!display) {
           return (
-            <View key={app.id} className="rounded-2xl border border-accent/30 bg-bg-card px-3 py-2">
+            <View key={app.id} className="border border-accent/30 bg-bg-card px-3 py-2">
               <View className="min-h-[44px] flex-row items-center justify-end">{rightSlot}</View>
               {footer}
             </View>

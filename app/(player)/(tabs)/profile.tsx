@@ -12,6 +12,9 @@ import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { LeaguesLink } from "@/components/leagues/LeaguesLink";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
@@ -39,9 +42,9 @@ export default function ProfileTabScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={{ padding: cpcTokens.geometry.contentPadding, paddingBottom: 32 }}>
         <View className="mb-4 flex-row items-center justify-between">
-          <Text className="font-display text-3xl text-fg">Profil</Text>
+          <Text className="font-display text-displaySmall text-fg">Profil</Text>
           <Pressable
             accessibilityLabel="Déconnexion"
             hitSlop={8}
@@ -51,7 +54,7 @@ export default function ProfileTabScreen() {
             }}
             className="min-h-[44px] min-w-[44px] items-center justify-center"
           >
-            <LogOut size={20} color="#9aa0a8" />
+            <LogOut size={cpcTokens.icon.md} color={cpcHex.textMuted} />
           </Pressable>
         </View>
 
@@ -75,7 +78,7 @@ export default function ProfileTabScreen() {
                 : "mb-8 min-h-[44px] flex-row items-center self-start gap-2 py-1 active:opacity-80"
             }
           >
-            <Crown size={16} color={proEntry.looksLikeStore ? "#ae8bff" : "#9aa0a8"} />
+            <Crown size={16} color={proEntry.looksLikeStore ? "#ae8bff" : cpcHex.textMuted} />
             <View className="items-start">
               <Text className={proEntry.looksLikeStore ? "font-bold text-pro-200" : "text-sm text-fg-subtle"}>
                 {proEntry.title}
@@ -87,7 +90,7 @@ export default function ProfileTabScreen() {
           </Pressable>
         )}
 
-        <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Réglages</Text>
+        <SectionHeader title="Réglages" className="mb-2" />
         <View className="mb-6">
           <SocialShortcuts />
           <View className="mt-2">
@@ -111,7 +114,7 @@ export default function ProfileTabScreen() {
             }}
             className="min-h-[44px] flex-row items-center gap-1 px-1"
           >
-            <Plus size={14} color="#39ff8a" />
+            <Plus size={14} color={cpcHex.accent} />
             <Text className="text-sm font-bold text-accent">Créer un club</Text>
           </Pressable>
         </View>

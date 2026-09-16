@@ -2,13 +2,15 @@ import { Pressable, ScrollView, Text, View, type ScrollViewProps } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { cn } from "@/lib/utils";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ScreenProps extends ScrollViewProps {
   scroll?: boolean;
   className?: string;
 }
 
-/** Conteneur d'écran standard — safe areas gérées, fond dark e-sport, scroll optionnel. */
+/** Conteneur d'écran — safe areas, fond CPC, scroll optionnel. */
 export function Screen({ children, scroll = true, className, contentContainerStyle, ...props }: ScreenProps) {
   const insets = useSafeAreaInsets();
 
@@ -23,7 +25,10 @@ export function Screen({ children, scroll = true, className, contentContainerSty
   return (
     <ScrollView
       className={cn("flex-1 bg-bg", className)}
-      contentContainerStyle={[{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: 32 }, contentContainerStyle]}
+      contentContainerStyle={[
+        { paddingTop: insets.top + 8, paddingHorizontal: cpcTokens.geometry.contentPadding, paddingBottom: 32 },
+        contentContainerStyle,
+      ]}
       keyboardShouldPersistTaps="handled"
       {...props}
     >
@@ -34,33 +39,39 @@ export function Screen({ children, scroll = true, className, contentContainerSty
 
 export function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <View className="items-center rounded-2xl border border-dashed border-border py-16">
-      <Text className="text-fg-muted text-center px-6">{title}</Text>
-      {subtitle && <Text className="text-fg-subtle text-center text-xs mt-1 px-6">{subtitle}</Text>}
+    <View className="items-center border border-dashed border-border py-16">
+      <Text className="px-6 text-center font-sans text-body text-fg-muted">{title}</Text>
+      {subtitle && <Text className="mt-1 px-6 text-center font-sans text-caption text-fg-subtle">{subtitle}</Text>}
     </View>
   );
 }
 
-/**
- * État d'erreur explicite pour une query React Query en échec (réseau, RLS,
- * Edge Function down...) — jamais laisser un écran bloqué indéfiniment sur un
- * skeleton. `onRetry` doit être la fonction `refetch()` de la query concernée.
- */
 export function ErrorState({ message = "Une erreur est survenue.", onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <View className="items-center rounded-2xl border border-danger/30 bg-danger/5 py-10 px-6">
-      <Text className="text-center text-fg">{message}</Text>
+    <View className="items-center border border-danger/30 bg-danger/5 px-6 py-10">
+      <Text className="text-center font-sans text-body text-fg">{message}</Text>
       {onRetry && (
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onRetry();
           }}
-          className="mt-3 min-h-[44px] items-center justify-center rounded-xl border border-border bg-bg-elevated px-4 active:opacity-80"
+          className="mt-3 min-h-[44px] items-center justify-center border border-border bg-bg-elevated px-4 active:opacity-80"
+          style={{ borderRadius: cpcTokens.radius.control }}
         >
           <Text className="text-sm font-bold text-fg">Réessayer</Text>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+export function SkeletonList({ rows = 3 }: { rows?: number }) {
+  return (
+    <View className="gap-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="h-16" />
+      ))}
     </View>
   );
 }

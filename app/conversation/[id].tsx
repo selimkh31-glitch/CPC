@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ChatMessage } from "@/components/ui/ChatMessage";
+import { ChatComposer } from "@/components/ui/ChatComposer";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useConversation, useLoadOlderMessages, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/hooks/useChat";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
@@ -16,9 +16,8 @@ import {
   conversationListLabel,
   isDirectPeerBlocked,
 } from "@/lib/social";
-import { cn, timeAgo } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import type { MessageRow } from "@/lib/types";
+import { timeAgo } from "@/lib/utils";
 
 /**
  * Fil unique DM / groupe / club — même composer. Distinct seulement en en-tête.
@@ -71,7 +70,7 @@ export default function ConversationThreadScreen() {
             <Text numberOfLines={1} className="font-display text-base text-fg">
               {title}
             </Text>
-            {kind ? <Text className="text-[11px] text-fg-subtle">{kind}</Text> : null}
+            {kind ? <Text className="font-sans text-eyebrow text-fg-subtle">{kind}</Text> : null}
           </View>
         ),
       }}
@@ -111,7 +110,16 @@ export default function ConversationThreadScreen() {
         contentContainerStyle={{ padding: 20, gap: 10, paddingBottom: 16 }}
         onStartReached={() => loadOlder.mutate()}
         onStartReachedThreshold={0.3}
-        renderItem={({ item }) => <MessageBubble message={item} isOwn={item.sender_id === profile?.id} />}
+        renderItem={({ item }) => (
+          <ChatMessage
+            body={item.body}
+            isOwn={item.sender_id === profile?.id}
+            sender={item.sender?.username ?? "…"}
+            at={timeAgo(item.created_at)}
+            deleted={Boolean(item.deleted_at)}
+            deletedLabel={CHAT_UX_COPY.deleted}
+          />
+        )}
         ListEmptyComponent={<EmptyState title={CHAT_UX_COPY.threadEmptyTitle} />}
       />
       {peerBlocked ? (
@@ -119,49 +127,17 @@ export default function ConversationThreadScreen() {
           <Text className="text-sm text-fg-muted">{BLOCKED_DM_COPY}</Text>
         </View>
       ) : (
-        <View
-          className="flex-row items-center gap-2 border-t border-border bg-bg px-3 pt-3"
-          style={{ paddingBottom: insets.bottom + 12 }}
-        >
-          <Input
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={CHAT_UX_COPY.composerPlaceholder}
-            className="min-h-[48px] flex-1"
-            onSubmitEditing={handleSend}
-            returnKeyType="send"
-            accessibilityLabel={CHAT_UX_COPY.composerPlaceholder}
-          />
-          <Button
-            className="min-h-[48px] px-5"
-            disabled={!draft.trim() || send.isPending}
-            loading={send.isPending}
-            onPress={handleSend}
-            accessibilityLabel={CHAT_UX_COPY.send}
-          >
-            {CHAT_UX_COPY.send}
-          </Button>
-        </View>
+        <ChatComposer
+          value={draft}
+          onChangeText={setDraft}
+          onSend={handleSend}
+          placeholder={CHAT_UX_COPY.composerPlaceholder}
+          sendLabel={CHAT_UX_COPY.send}
+          disabled={send.isPending}
+          loading={send.isPending}
+          bottomInset={insets.bottom}
+        />
       )}
     </KeyboardAvoidingView>
-  );
-}
-
-function MessageBubble({ message, isOwn }: { message: MessageRow; isOwn: boolean }) {
-  if (message.deleted_at) {
-    return (
-      <View className={cn("max-w-[80%] rounded-2xl px-3 py-2 bg-bg-elevated", isOwn ? "self-end" : "self-start")}>
-        <Text className="text-xs italic text-fg-subtle">{CHAT_UX_COPY.deleted}</Text>
-      </View>
-    );
-  }
-  return (
-    <View className={cn("max-w-[80%] rounded-[20px] px-3.5 py-2.5", isOwn ? "self-end bg-accent/20" : "self-start bg-bg-elevated")}>
-      {!isOwn && (
-        <Text className="mb-1 text-xs font-semibold text-fg-muted">{message.sender?.username ?? "…"}</Text>
-      )}
-      <Text className="text-[15px] leading-5 text-fg">{message.body}</Text>
-      <Text className="mt-1 text-[10px] text-fg-subtle">{timeAgo(message.created_at)}</Text>
-    </View>
   );
 }

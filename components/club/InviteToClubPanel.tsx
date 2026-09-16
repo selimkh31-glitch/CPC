@@ -12,6 +12,7 @@ import { buildPlayerCardData, PLAYER_CARD_COPY } from "@/lib/playerCard";
 import { useClubInvitations, useInvitePlayerToClub } from "@/lib/hooks/useInvitations";
 import { useInvitableClubPlayers } from "@/lib/hooks/usePlayerSearch";
 import { toast } from "@/lib/toast";
+import { cpcHex } from "@/lib/design/cpc-native";
 import type { ClubMemberRow, InvitationStatus } from "@/lib/types";
 
 /**
@@ -105,7 +106,7 @@ export function InviteToClubPanel({ clubId, members }: { clubId: string; members
   return (
     <Card className="p-3">
       <CardHeader className="mb-2">
-        <CardTitle icon={<UserPlus size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+        <CardTitle icon={<UserPlus size={16} color={cpcHex.textMuted} />} className="font-sans-medium text-bodySmall normal-case tracking-normal text-fg-muted">
           Inviter au club
         </CardTitle>
       </CardHeader>

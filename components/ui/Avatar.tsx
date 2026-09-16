@@ -1,10 +1,16 @@
 import { Text, View } from "react-native";
 import { cn } from "@/lib/utils";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 type AvatarSize = "sm" | "md" | "lg" | "xl";
 type AvatarTone = "neutral" | "accent" | "mvp";
 
-const SIZE_PX: Record<AvatarSize, number> = { sm: 32, md: 44, lg: 64, xl: 88 };
+const SIZE_PX: Record<AvatarSize, number> = {
+  sm: cpcTokens.avatar.sm,
+  md: cpcTokens.avatar.md,
+  lg: cpcTokens.avatar.lg,
+  xl: 88,
+};
 const SIZE_TEXT: Record<AvatarSize, string> = { sm: "text-[10px]", md: "text-sm", lg: "text-xl", xl: "text-2xl" };
 const TONE_BORDER: Record<AvatarTone, string> = {
   neutral: "border-border",
@@ -17,15 +23,6 @@ const TONE_TEXT: Record<AvatarTone, string> = {
   mvp: "text-rarity-gold",
 };
 
-/**
- * Avatar joueur générique par initiales (Phase G.2 section 4) — formalise le
- * pattern déjà dessiné à la main dans components/club/FormationPitch.tsx
- * (cercle + initiales + bordure accent si occupé) pour le rendre réutilisable
- * ailleurs : sélecteur MVP (G.5), mini roster LIVE (G.3), liste MATCH HISTORY
- * (G.7). FormationPitch n'est PAS modifié dans cette phase — ce composant est
- * neuf, à adopter dans les phases suivantes si jugé pertinent, jamais
- * rétrofitté ici (pas de changement du parcours actuel).
- */
 export function Avatar({
   username,
   size = "md",

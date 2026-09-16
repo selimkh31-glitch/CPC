@@ -12,6 +12,7 @@ import { useApplications, useRespondApplication } from "@/lib/hooks/useApplicati
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { toast } from "@/lib/toast";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 /** Candidatures entrantes — MINI Player Card + accepter/refuser. */
 export function ApplicationsPanel({ clubId }: { clubId: string }) {
@@ -45,10 +46,10 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
   return (
     <Card className="p-3">
       <CardHeader className="mb-2">
-        <CardTitle icon={<Inbox size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+        <CardTitle icon={<Inbox size={16} color={cpcHex.textMuted} />} className="font-sans-medium text-bodySmall normal-case tracking-normal text-fg-muted">
           Ils veulent rentrer
         </CardTitle>
-        <Text className="text-[12px] text-fg-subtle">{pending.length} en attente</Text>
+        <Text className="font-sans text-bodySmall text-fg-subtle">{pending.length} en attente</Text>
       </CardHeader>
 
       {isLoading ? (
@@ -62,7 +63,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
           {pending.map((app) => {
             const actions = (
               <View className="mt-2 gap-1">
-                <Text className="text-[11px] text-fg-subtle">{timeAgo(app.created_at)}</Text>
+                <Text className="font-sans text-caption text-fg-subtle">{timeAgo(app.created_at)}</Text>
                 {app.message ? (
                   <Text numberOfLines={1} className="text-sm text-fg-muted">
                     &quot;{app.message}&quot;
@@ -86,7 +87,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                     loading={actingId === app.id && actingStatus === "DECLINED"}
                     disabled={Boolean(actingId)}
                     onPress={() => act(app.id, "DECLINED")}
-                    icon={<X size={16} color="#9aa0a8" />}
+                    icon={<X size={16} color={cpcHex.textMuted} />}
                     className="min-h-[44px] flex-1 px-2.5"
                     accessibilityLabel="Refuser"
                   >
@@ -98,7 +99,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
 
             if (!app.user) {
               return (
-                <View key={app.id} className="rounded-2xl border border-border bg-bg-elevated p-3">
+                <View key={app.id} className="border border-border bg-bg-elevated p-3">
                   <Text className="font-semibold text-fg-muted">Joueur</Text>
                   {actions}
                 </View>

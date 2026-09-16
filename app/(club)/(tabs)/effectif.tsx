@@ -1,9 +1,9 @@
 import { useCallback, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/Screen";
+import { AppShell } from "@/components/nav/AppShell";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
 import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
@@ -47,11 +47,9 @@ export default function ClubTab() {
   );
 
   const shell = (body: ReactNode) => (
-    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }} keyboardShouldPersistTaps="handled">
-        {body}
-      </ScrollView>
-    </SafeAreaView>
+    <AppShell edges={[]} contentContainerStyle={{ gap: 20 }}>
+      {body}
+    </AppShell>
   );
 
   if (isLoading) {

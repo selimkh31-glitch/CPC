@@ -11,6 +11,7 @@ import { buildPlayerCardData } from "@/lib/playerCard";
 import { timeAgo } from "@/lib/utils";
 import { useCancelInvitation, useClubInvitations } from "@/lib/hooks/useInvitations";
 import { toast } from "@/lib/toast";
+import { cpcHex } from "@/lib/design/cpc-native";
 import type { InvitationStatus } from "@/lib/types";
 
 const STATUS_LABELS: Record<InvitationStatus, string> = {
@@ -57,10 +58,10 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
   return (
     <Card className="p-3">
       <CardHeader className="mb-2">
-        <CardTitle icon={<Send size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+        <CardTitle icon={<Send size={16} color={cpcHex.textMuted} />} className="font-sans-medium text-bodySmall normal-case tracking-normal text-fg-muted">
           Invitations envoyées
         </CardTitle>
-        <Text className="text-[12px] text-fg-subtle">{invitations?.length ?? 0}</Text>
+        <Text className="font-sans text-bodySmall text-fg-subtle">{invitations?.length ?? 0}</Text>
       </CardHeader>
 
       {isLoading ? (
@@ -96,7 +97,7 @@ export function ClubInvitationsPanel({ clubId }: { clubId: string }) {
             );
             if (!inv.user) {
               return (
-                <View key={inv.id} className="flex-row items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated p-3">
+                <View key={inv.id} className="flex-row items-center justify-between gap-2 border border-border bg-bg-elevated p-3">
                   <View className="shrink flex-1">
                     <Text numberOfLines={1} className="font-bold text-fg">
                       Joueur
