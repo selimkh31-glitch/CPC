@@ -2,18 +2,18 @@ import { View, type ViewProps } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 import { cn } from "@/lib/utils";
+import { useModeAccent } from "@/lib/theme";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 type CinematicTone = "neutral" | "accent" | "win" | "draw" | "loss";
 
-// Deux couleurs [haut, bas] pour un dégradé subtil teinté par tone, qui
-// retombe toujours sur la surface carte standard — même technique que
-// RARITY_GRADIENT dans components/profile/ClubProCard.tsx, généralisée.
 const TONE_GRADIENT: Record<CinematicTone, [string, string]> = {
-  neutral: ["#16191d", "#131519"],
-  accent: ["#39ff8a26", "#131519"],
-  win: ["#39ff8a33", "#131519"],
-  draw: ["#f5a62333", "#131519"],
-  loss: ["#ff4d4f26", "#131519"],
+  neutral: [cpcHex.elevated, cpcHex.card],
+  accent: [`${cpcHex.accent}26`, cpcHex.card],
+  win: [`${cpcHex.success}33`, cpcHex.card],
+  draw: [`${cpcHex.warning}33`, cpcHex.card],
+  loss: [`${cpcHex.error}26`, cpcHex.card],
 };
 
 const TONE_BORDER: Record<CinematicTone, string> = {
@@ -39,9 +39,11 @@ export function CinematicCard({
   children,
   ...props
 }: ViewProps & { tone?: CinematicTone; animateIn?: boolean; className?: string }) {
+  const modeAccent = useModeAccent();
+  const gradient: [string, string] = tone === "accent" ? [`${modeAccent}26`, cpcHex.card] : TONE_GRADIENT[tone];
   const content = (
-    <View className={cn("overflow-hidden rounded-3xl border-2", TONE_BORDER[tone])} {...props}>
-      <LinearGradient colors={TONE_GRADIENT[tone]} className={cn("p-5", className)}>
+    <View className={cn("overflow-hidden border-2", TONE_BORDER[tone])} style={{ borderRadius: cpcTokens.radius.card }} {...props}>
+      <LinearGradient colors={gradient} className={cn("p-5", className)}>
         {children}
       </LinearGradient>
     </View>

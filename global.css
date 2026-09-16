@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --cpc-background: #04080d;
+  --cpc-elevated: #080e14;
+  --cpc-card: #0c1219;
+  --cpc-secondary: #141b23;
+  --cpc-border: #2a3139;
+  --cpc-text-primary: #f1f6f8;
+  --cpc-text-secondary: #e7ecf0;
+  --cpc-text-muted: #919da7;
+  --cpc-accent: #54e182;
+  --cpc-accent-foreground: #020a05;
+  --cpc-live: #f94144;
+  --cpc-success: #5cd481;
+  --cpc-warning: #fcb52c;
+  --cpc-error: #ea3c3f;
+  --cpc-disabled: #515962;
+  --cpc-overlay: rgba(0, 0, 1, 0.8);
+  --cpc-pitch: #0b2e1a;
+  --cpc-pitch-deep: #021c0d;
+  --cpc-pitch-line: #c4e0cc;
+  --cpc-header: 64px;
+  --cpc-bottom-nav: 78px;
+  --cpc-touch: 44px;
+}

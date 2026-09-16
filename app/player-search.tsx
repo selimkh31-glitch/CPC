@@ -1,7 +1,8 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
+import { AppShell } from "@/components/nav/AppShell";
 import { PlayerResultCard } from "@/components/club/PlayerResultCard";
 import { useClub } from "@/lib/hooks/useClubs";
 import { usePlayerSearch } from "@/lib/hooks/usePlayerSearch";
@@ -22,10 +23,10 @@ export default function PlayerSearchScreen() {
   const positionLabel = positionCode ? (POSITION_LABELS[positionCode] ?? positionCode) : "";
 
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 12 }}>
+    <AppShell contentContainerStyle={{ gap: 12 }}>
       <View>
-        <Text className="font-display text-2xl text-fg">Rechercher un joueur</Text>
-        <Text className="text-sm text-fg-muted">Pour le poste {positionLabel}</Text>
+        <Text className="font-display text-title text-fg">Rechercher un joueur</Text>
+        <Text className="font-sans text-bodySmall text-fg-muted">Pour le poste {positionLabel}</Text>
       </View>
 
       {isLoading ? (
@@ -59,6 +60,6 @@ export default function PlayerSearchScreen() {
           />
         ))
       )}
-    </ScrollView>
+    </AppShell>
   );
 }

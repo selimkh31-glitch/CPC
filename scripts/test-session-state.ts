@@ -4,6 +4,8 @@
  *
  * Lancer : npx tsx scripts/test-session-state.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   benchMembers,
   canMutateClub,
@@ -17,6 +19,7 @@ import {
   rosterFillLabel,
   startingUserIds,
   canPressEmptyFormationSlot,
+  neededPositionsFromEmptySlots,
   type LiveSessionFields,
 } from "../lib/sessionState";
 import type { ClubMemberRow, MatchCheckinRow, SlotAssignmentRow } from "../lib/types";
@@ -144,7 +147,7 @@ test("titres FR — Recrutement LIVE / Hors ligne / Match lancé, jamais OPEN ni
 test("formatNeededPositionsLine — une ligne ; vide -> null", () => {
   assert.equal(formatNeededPositionsLine([]), null, "vide");
   assert.equal(formatNeededPositionsLine(null), null, "null");
-  assert.equal(formatNeededPositionsLine(["ST", "CM"]), "Attaquant · Milieu central", "labels");
+  assert.equal(formatNeededPositionsLine(["ST", "CM"]), "ST · CM", "codes");
 });
 
 test("canMutateClub — OWNER/MANAGER seulement", () => {
@@ -182,6 +185,31 @@ test("canPressEmptyFormationSlot — pas de CTA morte sans handler", () => {
   assert.equal(canPressEmptyFormationSlot(true, false), false, "sans handler");
   assert.equal(canPressEmptyFormationSlot(false, true), false, "lecture seule");
   assert.equal(canPressEmptyFormationSlot(false, false), false, "ni l'un ni l'autre");
+});
+
+test("neededPositionsFromEmptySlots — postes vides du terrain, doublons conservés", () => {
+  assert.deepEqual(neededPositionsFromEmptySlots(null, []), [], "pas de formation");
+  const empty433 = neededPositionsFromEmptySlots("4-3-3", []);
+  assert.equal(empty433.length, 11, "11 vacants");
+  assert.equal(empty433.filter((p) => p === "CB").length, 2, "deux CB");
+  const filled: SlotAssignmentRow[] = [
+    { id: "a1", club_id: "c1", slot_id: "GK", user_id: "u1", assigned_at: "t" },
+    { id: "a2", club_id: "c1", slot_id: "ST", user_id: "u2", assigned_at: "t" },
+  ];
+  const needed = neededPositionsFromEmptySlots("4-3-3", filled);
+  assert.equal(needed.includes("GK"), false, "GK pris");
+  assert.equal(needed.includes("ST"), false, "ST pris");
+  assert.equal(needed.filter((p) => p === "CB").length, 2, "CB toujours doublon");
+  assert.equal(needed.length, 9, "9 vacants");
+});
+
+test("feuille : plus de chrome Banc dans ClubLiveFeuille / ClubHome", () => {
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
+  assert.equal(feuille.includes(">Banc<"), false, "feuille no Banc");
+  assert.equal(home.includes(">Banc<"), false, "home no Banc");
+  assert.equal(feuille.includes("benchMembers"), false, "feuille no bench UI helper");
+  assert.equal(home.includes("benchMembers"), false, "home no bench UI helper");
 });
 
 console.log(`\n${passed} test(s) passés.`);

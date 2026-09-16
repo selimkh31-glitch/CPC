@@ -13,6 +13,7 @@ import {
   countPlayerCpcMatches,
   formatMatchHistoryDate,
   formatMatchScore,
+  isEmptyMatchHistoryReadError,
   isPersistedMatchOutcome,
   type MatchHistoryResultInput,
 } from "../lib/matchHistory";
@@ -69,7 +70,7 @@ test("join documenté : participations PRESENT → match_results, pas mvp/slot_a
 });
 
 test("copy vide exacte — jamais un faux 0-0", () => {
-  assert.equal(MATCH_HISTORY_COPY.empty, "Pas encore de match enregistré", "empty");
+  assert.equal(MATCH_HISTORY_COPY.empty, "Pas encore de matchs", "empty");
   assert.false(MATCH_HISTORY_COPY.empty.toLowerCase().includes("0-0"), "pas 0-0");
   assert.false(MATCH_HISTORY_COPY.empty.includes("0 — 0"), "pas 0 — 0");
 });
@@ -296,6 +297,15 @@ test("noms manquants ou placeholder → omis, jamais Club Pro Clubs", () => {
   const src = readFileSync(`${process.cwd()}/lib/matchHistory.ts`, "utf8");
   assert.true(src.includes("tournamentClubDisplayName"), "shared helper");
   assert.false(src.includes('"Club Pro Clubs"'), "no fallback literal");
+});
+
+test("0 rows / PGRST116 = vide, jamais ErrorState ; pas d'order referencedTable", () => {
+  assert.true(isEmptyMatchHistoryReadError({ code: "PGRST116" }), "pgrst");
+  assert.true(isEmptyMatchHistoryReadError({ message: "could not find a relationship" }), "relationship");
+  assert.false(isEmptyMatchHistoryReadError({ code: "42501", message: "permission denied" }), "rls");
+  const hook = readFileSync(`${process.cwd()}/lib/hooks/useMatchHistory.ts`, "utf8");
+  assert.false(hook.includes("referencedTable"), "no referencedTable order");
+  assert.true(hook.includes("isEmptyMatchHistoryReadError"), "gone-read");
 });
 
 console.log(`\n${passed} test(s) passés.`);

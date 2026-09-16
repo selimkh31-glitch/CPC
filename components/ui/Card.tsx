@@ -1,9 +1,15 @@
 import { View, Text, type ViewProps } from "react-native";
 import { cn } from "@/lib/utils";
+import { cpcCardShadow } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
-export function Card({ className, ...props }: ViewProps & { className?: string }) {
+export function Card({ className, style, ...props }: ViewProps & { className?: string }) {
   return (
-    <View className={cn("rounded-2xl border border-border bg-bg-card p-4", className)} {...props} />
+    <View
+      className={cn("border border-border bg-bg-card p-4", className)}
+      style={[{ borderRadius: cpcTokens.radius.card }, cpcCardShadow, style]}
+      {...props}
+    />
   );
 }
 

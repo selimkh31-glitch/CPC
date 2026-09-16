@@ -20,6 +20,7 @@ import {
   useSetGroupMemberRole,
 } from "@/lib/hooks/useGroups";
 import { toast } from "@/lib/toast";
+import { CHAT_UX_COPY } from "@/lib/social";
 import type { GroupMemberRow } from "@/lib/types";
 
 /**
@@ -101,60 +102,71 @@ export default function GroupDetailScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-      <Stack.Screen options={{ title: group.name }} />
+    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 20, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <View className="max-w-[220px] items-center">
+              <Text numberOfLines={1} className="font-display text-base text-fg">
+                {group.name}
+              </Text>
+              <Text className="text-[11px] text-fg-subtle">{CHAT_UX_COPY.kindGroup}</Text>
+            </View>
+          ),
+        }}
+      />
       <Card className="mb-4">
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-2">
             <Text className="font-display text-2xl text-fg">{group.name}</Text>
             {group.description && <Text className="mt-1 text-sm text-fg-muted">{group.description}</Text>}
-            <Text className="mt-2 text-xs text-fg-subtle">Groupe social — distinct d&apos;un club Pro Clubs.</Text>
+            <Text className="mt-1 text-sm text-fg-subtle">{CHAT_UX_COPY.kindGroup}</Text>
           </View>
           <Badge tone="neutral">{group.visibility === "PUBLIC" ? "Public" : "Privé"}</Badge>
         </View>
 
-        <View className="mt-4 gap-2">
+        <View className="mt-5 gap-2">
           {!isMember && (
             <Button
-              className="min-h-[44px]"
+              className="min-h-[48px]"
               loading={join.isPending}
               onPress={() =>
                 join.mutate(group.id, {
-                  onError: (err: any) => toast.error(err.message ?? "Impossible de rejoindre ce groupe."),
+                  onError: (err: any) => toast.error(err.message ?? "Impossible de rejoindre."),
                 })
               }
             >
-              Rejoindre le groupe
+              {CHAT_UX_COPY.join}
             </Button>
           )}
 
           {isMember && conversationId && (
             <Button
-              variant="secondary"
-              className="min-h-[44px]"
-              icon={<MessageCircle size={16} color="#f4f5f7" />}
+              className="min-h-[48px]"
+              icon={<MessageCircle size={16} color="#08090b" />}
               onPress={() => router.push(`/conversation/${conversationId}`)}
             >
-              Ouvrir le chat du groupe
+              {CHAT_UX_COPY.write}
             </Button>
           )}
 
           {isMember && !isOwner && (
-            <Button variant="danger" icon={<LogOut size={16} color="#ff4d4f" />} loading={leave.isPending} onPress={confirmLeave}>
-              Quitter le groupe
+            <Button variant="ghost" className="min-h-[44px]" icon={<LogOut size={16} color="#9aa0a8" />} loading={leave.isPending} onPress={confirmLeave}>
+              Quitter
             </Button>
           )}
 
           {isOwner && (
-            <Button variant="danger" icon={<Trash2 size={16} color="#ff4d4f" />} loading={del.isPending} onPress={confirmDelete}>
-              Supprimer le groupe
+            <Button variant="ghost" className="min-h-[44px]" icon={<Trash2 size={16} color="#ff4d4f" />} loading={del.isPending} onPress={confirmDelete}>
+              Supprimer
             </Button>
           )}
         </View>
       </Card>
 
-      <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">
-        Membres{members ? ` (${members.length})` : ""}
+      <Text className="mb-3 text-sm text-fg-subtle">
+        {CHAT_UX_COPY.whoIsIn}
+        {members ? ` · ${members.length}` : ""}
       </Text>
 
       {membersLoading ? (

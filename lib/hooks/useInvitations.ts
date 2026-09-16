@@ -254,19 +254,38 @@ export function useMyInvitations(userId: string | null) {
   return query;
 }
 
+/** Owner/manager annule une invitation PENDING via `cancel-invitation`. */
+export function useCancelInvitation(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { invitationId: string }) =>
+      callEdgeFunction<{ invitation: InvitationRow }>("cancel-invitation", {
+        invitationId: vars.invitationId,
+      }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club-invitations", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["my-invitations"] });
+    },
+    onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+  });
+}
+
 /** Le joueur invité accepte/refuse, via l'Edge Function `respond-invitation`. */
 export function useRespondInvitation(userId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: { invitationId: string; status: "ACCEPTED" | "DECLINED" }) =>
-      callEdgeFunction("respond-invitation", vars),
-    onSuccess: () => {
+      callEdgeFunction<{ invitation?: { club_id?: string } }>("respond-invitation", vars),
+    onSuccess: (data) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["my-invitations", userId] });
       // L'acceptation crée un club_members MEMBER (accept_invitation, 0007_match_sheet_rls.sql).
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["club"] });
       queryClient.invalidateQueries({ queryKey: ["club-invitations"] });
+      const clubId = data?.invitation?.club_id;
+      if (clubId) queryClient.invalidateQueries({ queryKey: ["club", clubId] });
     },
   });
 }

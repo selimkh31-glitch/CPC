@@ -1,10 +1,8 @@
 import { Alert, ScrollView, Text, View } from "react-native";
-import { Users } from "lucide-react-native";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { Card } from "@/components/ui/Card";
+import { LiveBadge } from "@/components/ui/LiveBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
-import { PlayerCard } from "@/components/player/PlayerCard";
 import { ClubCard } from "@/components/club/ClubCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { MyDepartureStatusCard } from "@/components/club/MyDepartureStatusCard";
@@ -16,8 +14,7 @@ import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { benchMembers, formatNeededPositionsLine } from "@/lib/sessionState";
-import { buildPlayerCardData } from "@/lib/playerCard";
+import { formatNeededPositionsLine } from "@/lib/sessionState";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import type { FormationId, FormationSlot } from "@/lib/formations";
 
@@ -33,10 +30,9 @@ import type { FormationId, FormationSlot } from "@/lib/formations";
  *   - app/match-sheet.tsx : wrapper fin conservant le header natif/retour,
  *     pour les entrées externes (page publique d'un club, raccourci "Mes
  *     clubs" du profil pour une ligne MEMBER/MANAGER).
- * Le switch vers Mode Club (pour OWNER/MANAGER) vit dans l'écran appelant
- * (ModeSwitch, à côté de ClubHome) — jamais dans ce composant lui-même, pour
- * qu'il reste une vue joueur pure quel que soit le club affiché (y compris un
- * club où le viewer n'est ni membre ni gestionnaire).
+ * La bascule vers Mode Manager vit uniquement sur Profil (et onglet Club
+ * côté manager) — jamais dans ce composant, pour qu'il reste une vue joueur
+ * pure quel que soit le club affiché.
  */
 export function ClubHome({ clubId }: { clubId: string | null }) {
   const { session } = useAuth();
@@ -52,10 +48,18 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
     );
   }
 
-  if (isLoading || !club) {
+  if (isLoading) {
     return (
       <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, gap: 12 }}>
         <Skeleton className="h-[420px]" />
+      </ScrollView>
+    );
+  }
+
+  if (!club) {
+    return (
+      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+        <EmptyState title="Ce club n'est plus là." subtitle="Il a été retiré, ou tu n'y as plus accès." />
       </ScrollView>
     );
   }
@@ -65,9 +69,6 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
   const activeSession = findActiveLiveSession(club.sessions, now);
-  // Banc — tout membre sans slot_assignment, dérivé de l'existant : aucune
-  // nouvelle table/requête, réutilise club_members + slot_assignments.
-  const bench = benchMembers(club.members, assignments);
   const neededLine = activeSession ? formatNeededPositionsLine(activeSession.needed_positions) : null;
   const managers = (club.members ?? []).filter((m) => m.role === "MANAGER");
   const cardData = buildClubCardDataFromHydratedClub(club, {
@@ -134,9 +135,8 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
         <Text className="mb-2 font-display text-lg text-fg">Recrutement LIVE</Text>
         {activeSession ? (
           <>
-            <View className="mb-3 flex-row items-center gap-1.5">
-              <PulseDot />
-              <Text className="text-xs font-extrabold text-accent">LIVE</Text>
+            <View className="mb-3">
+              <LiveBadge />
             </View>
             {neededLine ? <Text className="mb-3 text-sm text-fg">Cherche {neededLine}</Text> : null}
             {activeSession.note && <Text className="text-sm text-fg-muted">{activeSession.note}</Text>}
@@ -161,42 +161,16 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
           assignments={assignments}
           onEmptySlotPress={onEmptySlotPress}
           currentUserId={session?.user.id ?? null}
+          clubId={club.id}
           // Foundation #2.1 — Mode Joueur : jamais d'affordance de
-          // recrutement. `interactive={false}` supprime le "+"/l'indice
-          // "Rechercher" sur les slots vides (voir FormationPitch/PitchSlot) ;
-          // le tap sur un titulaire (-> profil) reste inchangé, ce prop ne
-          // désactive que la partie "slot vide" du composant.
+          // recrutement. `interactive={false}` supprime le "+" sur les slots
+          // vides ; le code de poste reste visible, l'indice n'est plus
+          // affiché (a11y seulement). Le tap sur un titulaire (-> profil)
+          // reste inchangé, ce prop ne désactive que la partie "slot vide".
           interactive={false}
         />
       ) : (
         <EmptyState title="Ce club n'a pas encore configuré sa formation." />
-      )}
-
-      {/* 4. Effectif / banc */}
-      {bench.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle icon={<Users size={18} color="#f4f5f7" />}>Banc</CardTitle>
-            <Text className="text-sm text-fg-muted">{bench.length}</Text>
-          </CardHeader>
-          <View className="gap-2">
-            {bench.map((m) =>
-              m.user ? (
-                <PlayerCard
-                  key={m.user_id}
-                  data={buildPlayerCardData(m.user, { clubName: club.name })}
-                  variant="mini"
-                />
-              ) : (
-                <View key={m.user_id} className="min-h-[44px] justify-center rounded-2xl border border-border bg-bg-elevated px-3 py-2">
-                  <Text numberOfLines={1} className="text-sm text-fg-muted">
-                    Joueur
-                  </Text>
-                </View>
-              )
-            )}
-          </View>
-        </Card>
       )}
 
       {/* 5. Mon statut — engagement/départ, MEMBER et MANAGER (jamais OWNER, section 9).

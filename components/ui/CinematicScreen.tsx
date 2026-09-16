@@ -2,14 +2,16 @@ import { View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { cn } from "@/lib/utils";
+import { useModeAccent } from "@/lib/theme";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 type AmbientTone = "none" | "accent" | "win" | "draw" | "loss";
 
 const AMBIENT_COLORS: Record<Exclude<AmbientTone, "none">, string> = {
-  accent: "#39ff8a",
-  win: "#39ff8a",
-  draw: "#f5a623",
-  loss: "#ff4d4f",
+  accent: cpcHex.accent,
+  win: cpcHex.success,
+  draw: cpcHex.warning,
+  loss: cpcHex.error,
 };
 
 /**
@@ -40,12 +42,14 @@ export function CinematicScreen({
   children: React.ReactNode;
 }) {
   const Container = safeArea ? SafeAreaView : View;
+  const modeAccent = useModeAccent();
+  const wash = ambient === "none" ? null : ambient === "accent" ? modeAccent : AMBIENT_COLORS[ambient];
   return (
     <Container className={cn("flex-1 bg-bg", className)}>
-      {ambient !== "none" && (
+      {wash && (
         <LinearGradient
           pointerEvents="none"
-          colors={[`${AMBIENT_COLORS[ambient]}22`, "transparent"]}
+          colors={[`${wash}22`, "transparent"]}
           style={{ position: "absolute", top: 0, left: 0, right: 0, height: 320 }}
         />
       )}

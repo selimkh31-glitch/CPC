@@ -44,10 +44,10 @@ export function MyApplicationsList() {
   const withdraw = useWithdrawApplication();
 
   const onStatusChange = useCallback((status: string) => {
-    if (status === "ACCEPTED") toast.success("Une de tes candidatures a été acceptée !");
-    if (status === "REJECTED" || status === "DECLINED") toast.info("Une de tes candidatures a été refusée.");
-    if (status === "EXPIRED") toast.info("Une candidature a expiré avec le LIVE.");
-    if (status === "CANCELLED") toast.info("Une candidature a été annulée (club hors LIVE).");
+    if (status === "ACCEPTED") toast.success("Un club t'a dit oui.");
+    if (status === "REJECTED" || status === "DECLINED") toast.info("Un club a dit non.");
+    if (status === "EXPIRED") toast.info("Trop tard — c'est fini.");
+    if (status === "CANCELLED") toast.info("Le club n'est plus en LIVE.");
   }, []);
   useMyApplicationStatusUpdates(userId, onStatusChange);
 
@@ -61,11 +61,16 @@ export function MyApplicationsList() {
   }
 
   if (isError) {
-    return <ErrorState message="Impossible de charger tes candidatures." onRetry={refetch} />;
+    return <ErrorState message="Impossible de charger tes demandes." onRetry={refetch} />;
   }
 
   if (!applications || applications.length === 0) {
-    return <EmptyState title="Tu n'as encore postulé à aucune session." />;
+    return (
+      <EmptyState
+        title="Tu n'as encore postulé nulle part."
+        subtitle="Passe par LIVE pour trouver un club et postuler."
+      />
+    );
   }
 
   return (
@@ -86,26 +91,26 @@ export function MyApplicationsList() {
             ) : null}
             {app.status === "PENDING" ? (
               <Button
-                variant="secondary"
-                className="mt-3"
+                variant="ghost"
+                className="mt-3 min-h-[44px]"
                 loading={withdraw.isPending && withdraw.variables === app.id}
                 disabled={withdraw.isPending}
                 onPress={() => {
                   if (withdraw.isPending) return;
                   withdraw.mutate(app.id, {
-                    onSuccess: () => toast.info("Candidature retirée."),
+                    onSuccess: () => toast.info("C'est retiré."),
                     onError: (err: any) => toast.error(err.message ?? "Erreur"),
                   });
                 }}
               >
-                Retirer ma candidature
+                Retirer
               </Button>
             ) : null}
           </View>
         );
         if (!display) {
           return (
-            <View key={app.id} className="rounded-2xl border border-accent/30 bg-bg-card px-3 py-2">
+            <View key={app.id} className="border border-accent/30 bg-bg-card px-3 py-2">
               <View className="min-h-[44px] flex-row items-center justify-end">{rightSlot}</View>
               {footer}
             </View>

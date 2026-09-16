@@ -13,7 +13,7 @@ import type { ClubRole, ClubRow } from "@/lib/types";
  * étendue pour Foundation #1 Mode Joueur/Mode Club) — réutilisée par le
  * profil (raccourci secondaire), par le sélecteur de club géré en Mode Club
  * (app/(club)/_layout.tsx) et par l'ancien sélecteur "plusieurs clubs" côté
- * Mode Joueur (retiré de clubs.tsx, remplacé par le switch — voir ModeSwitch).
+ * Mode Joueur (retiré de clubs.tsx ; bascule « Passer en manager » sur Profil).
  *
  * Deux comportements au tap d'une ligne OWNER/MANAGER, selon ce que
  * l'appelant fournit :

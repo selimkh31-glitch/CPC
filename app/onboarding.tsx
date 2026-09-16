@@ -7,6 +7,7 @@ import { ChevronLeft } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { ChipSelect } from "@/components/ui/ChipSelect";
+import { cpcHex } from "@/lib/design/cpc-native";
 import {
   LANGUAGES, LANGUAGE_LABELS, PLATFORMS, PLATFORM_LABELS,
   PLAY_STYLES, PLAY_STYLE_LABELS, POSITIONS, POSITION_LABELS,
@@ -87,7 +88,7 @@ export default function OnboardingScreen() {
       <View className="mt-2 flex-row items-center gap-3">
         {step > 0 && (
           <Pressable onPress={back} hitSlop={12}>
-            <ChevronLeft size={22} color="#9aa0a8" />
+            <ChevronLeft size={22} color={cpcHex.textMuted} />
           </Pressable>
         )}
         <View className="flex-1 flex-row gap-1">

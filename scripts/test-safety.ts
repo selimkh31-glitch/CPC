@@ -3,6 +3,8 @@
  * href notifications, sources EA/CPC sans identité joueur inventée.
  * Lancer : npx tsx scripts/test-safety.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   isNotificationType,
   isReportReason,
@@ -88,12 +90,14 @@ test("notificationHref — apply/invite/accept/decline ont une cible réelle", (
   assert.equal(notificationHref("APPLICATION_ACCEPTED", {}), "/my-applications", "accepted");
   assert.equal(notificationHref("APPLICATION_DECLINED", {}), "/my-applications", "declined");
   assert.equal(notificationHref("INVITATION_RECEIVED", {}), "/my-invitations", "inv recv");
+  assert.equal(notificationHref("INVITATION_CANCELLED", {}), "/my-invitations", "inv cancelled");
   assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "c2" }), "/candidatures", "inv acc");
   assert.equal(notificationHref("INVITATION_DECLINED", { clubId: "c2" }), "/candidatures", "inv dec");
   assert.equal(notificationHref("INVITATION_ACCEPTED", {}), "/candidatures", "inv acc no club");
   assert.equal(notificationHref("INVITATION_DECLINED", {}), "/candidatures", "inv dec no club");
   assert.equal(notificationHref("INVITATION_ACCEPTED", { clubId: "" }), "/candidatures", "inv acc empty club");
   assert.true(isNotificationType("APPLICATION_RECEIVED"), "known type");
+  assert.true(isNotificationType("INVITATION_CANCELLED"), "cancel type");
   assert.false(isNotificationType("RANDOM"), "unknown type");
 });
 
@@ -112,6 +116,19 @@ test("inAppNotificationHref — APPLICATION_RECEIVED va à Recrutement (accepter
     inAppNotificationHref("MESSAGE_RECEIVED", { conversationId: "conv-1" }, "CLUB"),
     "/conversation/conv-1",
     "dm inchangé"
+  );
+});
+
+test("inAppNotificationHref — INVITATION_CANCELLED va aux invitations joueur", () => {
+  assert.equal(
+    inAppNotificationHref("INVITATION_CANCELLED", { clubId: "c2" }, "PLAYER"),
+    "/my-invitations",
+    "player"
+  );
+  assert.equal(
+    inAppNotificationHref("INVITATION_CANCELLED", { clubId: "c2" }, "CLUB"),
+    "/my-invitations",
+    "club mode still player dest"
   );
 });
 
@@ -556,4 +573,53 @@ test("shouldHideContactCta — même règle profils ; pas de user = pas de CTA �
   assert.false(shouldHideContactCta("z", ["x"]), "libre");
   assert.false(shouldHideContactCta(null, ["x"]), "pas de participant user");
   assert.false(shouldHideContactCta("x", null), "pas de blocs");
+});
+
+test("signalements / blocs : FK PostgREST réelles, pas *_id_fkey inventé", () => {
+  const src = readFileSync(`${process.cwd()}/lib/hooks/useSafety.ts`, "utf8");
+  assert.true(src.includes("users!user_reports_reported_fkey"), "reports fkey");
+  assert.true(src.includes("users!user_blocks_blocked_fkey"), "blocks fkey");
+  assert.false(src.includes("user_reports_reported_id_fkey"), "pas reported_id_fkey");
+  assert.false(src.includes("user_blocks_blocked_id_fkey"), "pas blocked_id_fkey");
+  assert.true(src.includes('.from("user_reports")'), "reports query");
+});
+
+test("retirer de la feuille sans Bloquer ; check-in ne swallow pas", () => {
+  const profile = readFileSync(`${process.cwd()}/components/profile/ProfileContent.tsx`, "utf8");
+  assert.true(profile.includes("Retirer de la feuille"), "cta");
+  assert.true(profile.includes("useClearSlotAssignment"), "mutates slots");
+  assert.true(profile.includes("Bloquer"), "block stays");
+  const checkin = readFileSync(`${process.cwd()}/components/club/MatchCheckinPanel.tsx`, "utf8");
+  assert.true(checkin.includes("CHECKIN_NEEDS_LIVE_COPY"), "toast if no session");
+  assert.true(checkin.includes("launch.mutate"), "calls Edge");
+  assert.true(checkin.includes("onError"), "surfaces Edge error");
+  const depart = readFileSync(`${process.cwd()}/components/club/MyDepartureStatusCard.tsx`, "utf8");
+  assert.true(depart.includes("Confirmer"), "in-card confirm");
+  assert.true(depart.includes("requestDeparture.mutate"), "mutates");
+  assert.false(depart.includes("Alert.alert"), "not Alert-only");
+});
+
+test("0 match : Quitter le club immédiat, jamais OWNER, pas no_match_played", () => {
+  const depart = readFileSync(`${process.cwd()}/components/club/MyDepartureStatusCard.tsx`, "utf8");
+  const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
+  const hook = readFileSync(`${process.cwd()}/lib/hooks/useDepartures.ts`, "utf8");
+  const edge = readFileSync(`${process.cwd()}/supabase/functions/request-departure/index.ts`, "utf8");
+  const sql = readFileSync(`${process.cwd()}/supabase/migrations/0031_request_departure_zero_matches.sql`, "utf8");
+  assert.true(depart.includes("Quitter le club"), "cta");
+  assert.true(depart.includes("Tu n'as pas encore joué. Tu quittes tout de suite."), "zero copy");
+  assert.true(depart.includes("leftImmediately"), "reads immediate flag");
+  assert.true(depart.includes("Tu as quitté le club."), "immediate toast");
+  assert.false(depart.includes("Tu dois avoir joué au moins 1 match"), "no gate copy");
+  assert.true(home.includes("role !== \"OWNER\""), "owner never sees card");
+  assert.true(hook.includes('queryKey: ["my-memberships"]'), "invalidate memberships");
+  assert.true(hook.includes("leftImmediately"), "typed flag");
+  assert.true(edge.includes("leftImmediately"), "edge returns flag");
+  assert.true(edge.includes("ACCEPTED_NOW"), "skip 3 min push");
+  assert.true(edge.includes("no_match_played"), "old DB mapping kept");
+  assert.true(sql.includes("ACCEPTED_NOW"), "historize now");
+  assert.true(sql.includes("initiated_by, requested_at, responded_at"), "player now");
+  assert.true(sql.includes("release_club_member"), "reuses 0012 helper");
+  assert.false(sql.includes("raise exception 'no_match_played'"), "no trap");
+  assert.true(sql.includes("owner_cannot_request_departure"), "owner still blocked");
+  assert.true(sql.includes("grant execute on function public.request_departure(uuid, uuid) to service_role"), "service_role only");
 });

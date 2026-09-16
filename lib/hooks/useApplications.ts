@@ -5,6 +5,74 @@ import { supabase } from "@/lib/supabase/client";
 import { callEdgeFunction } from "@/lib/api/edge";
 import { USER_PUBLIC_COLUMNS, type ApplicationRow } from "@/lib/types";
 
+type RealtimePayloadListener = (payload: any) => void;
+
+export type SharedChannelEntry = {
+  channel: ReturnType<typeof supabase.channel>;
+  listeners: Set<RealtimePayloadListener>;
+  refCount: number;
+};
+
+type SharedChannelRegistry = Map<string, SharedChannelEntry>;
+
+/** Topic leftover from a previous subscribe — `foo`, `realtime:foo`, or `*:foo`. */
+export function isLeftoverRealtimeTopic(channelTopic: string, topic: string): boolean {
+  return channelTopic === topic || channelTopic === `realtime:${topic}` || channelTopic.endsWith(`:${topic}`);
+}
+
+/**
+ * Retire tout canal déjà connu du client Realtime pour ce topic, sinon
+ * `supabase.channel(topic)` réutilise l'instance et un second `.on()` après
+ * `.subscribe()` plante : "cannot add postgres_changes callbacks ... after subscribe()".
+ */
+export function dropLeftoverChannel(topic: string) {
+  for (const ch of [...supabase.getChannels()]) {
+    const t = typeof (ch as { topic?: string }).topic === "string" ? (ch as { topic: string }).topic : "";
+    if (isLeftoverRealtimeTopic(t, topic)) supabase.removeChannel(ch);
+  }
+}
+
+export function acquireSharedChannel(
+  registry: SharedChannelRegistry,
+  key: string,
+  topic: string,
+  table: string,
+  filter: string
+): SharedChannelEntry {
+  let entry = registry.get(key);
+  if (!entry) {
+    dropLeftoverChannel(topic);
+    const listeners = new Set<RealtimePayloadListener>();
+    const channel = supabase
+      .channel(topic)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table, filter },
+        (payload) => listeners.forEach((listener) => listener(payload))
+      )
+      .subscribe();
+    entry = { channel, listeners, refCount: 0 };
+    registry.set(key, entry);
+  }
+  entry.refCount += 1;
+  return entry;
+}
+
+export function releaseSharedChannel(
+  registry: SharedChannelRegistry,
+  key: string,
+  listener: RealtimePayloadListener
+) {
+  const entry = registry.get(key);
+  if (!entry) return;
+  entry.listeners.delete(listener);
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    supabase.removeChannel(entry.channel);
+    registry.delete(key);
+  }
+}
+
 /**
  * Registre module-level des canaux `applications-${clubId}` — même nécessité
  * que `myDepartureChannels`/`clubDeparturesChannels` (lib/hooks/useDepartures.ts,
@@ -12,47 +80,32 @@ import { USER_PUBLIC_COLUMNS, type ApplicationRow } from "@/lib/types";
  * MatchContextCards (Match Day Cockpit, tab MATCH — reste monté en
  * arrière-plan par le tab navigator Expo Router) ET par ApplicationsPanel
  * (tab CANDIDATURES), pour le même clubId, potentiellement en même temps.
- * `supabase.channel(topic)` réutilise l'instance existante pour un topic déjà
- * connu du client Realtime : un second `.on(...)` sur ce même canal, une fois
- * `.subscribe()` déjà passé côté premier mount, fait planter Realtime
- * ("cannot add postgres_changes callbacks ... after subscribe()"). Un seul
- * canal réel par clubId est donc créé ici (un seul `.on()` avant l'unique
- * `.subscribe()`), partagé par référence-comptage entre tous les hooks
- * montés ; chaque mount ajoute juste son propre listener dans un Set.
+ * Un seul canal réel par clubId (un seul `.on()` avant l'unique `.subscribe()`).
  */
-const applicationsChannels = new Map<
-  string,
-  { channel: ReturnType<typeof supabase.channel>; listeners: Set<(payload: any) => void>; refCount: number }
->();
+const applicationsChannels: SharedChannelRegistry = new Map();
+
+/**
+ * HomeScreen (Accueil / Club) ET MyApplicationsList (Activité) montent
+ * `useMyApplications` pour le même userId — même crash si chacun
+ * `.channel().on().subscribe()`.
+ */
+const myApplicationsListChannels: SharedChannelRegistry = new Map();
+
+/** `useMyApplicationStatusUpdates` — topic `my-applications-${userId}`. */
+const myApplicationStatusChannels: SharedChannelRegistry = new Map();
 
 function acquireApplicationsChannel(clubId: string) {
-  let entry = applicationsChannels.get(clubId);
-  if (!entry) {
-    const listeners = new Set<(payload: any) => void>();
-    const channel = supabase
-      .channel(`applications-${clubId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "applications", filter: `club_id=eq.${clubId}` },
-        (payload) => listeners.forEach((listener) => listener(payload))
-      )
-      .subscribe();
-    entry = { channel, listeners, refCount: 0 };
-    applicationsChannels.set(clubId, entry);
-  }
-  entry.refCount += 1;
-  return entry;
+  return acquireSharedChannel(
+    applicationsChannels,
+    clubId,
+    `applications-${clubId}`,
+    "applications",
+    `club_id=eq.${clubId}`
+  );
 }
 
-function releaseApplicationsChannel(clubId: string, listener: (payload: any) => void) {
-  const entry = applicationsChannels.get(clubId);
-  if (!entry) return;
-  entry.listeners.delete(listener);
-  entry.refCount -= 1;
-  if (entry.refCount <= 0) {
-    supabase.removeChannel(entry.channel);
-    applicationsChannels.delete(clubId);
-  }
+function releaseApplicationsChannel(clubId: string, listener: RealtimePayloadListener) {
+  releaseSharedChannel(applicationsChannels, clubId, listener);
 }
 
 /** Candidatures entrantes d'un club en temps réel, triées fiabilité d'abord (section 3.B/D/E). Alimente ApplicationsPanel ET MatchContextCards. */
@@ -130,17 +183,18 @@ export function useMyApplications(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-applications-list-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
-        () => queryClient.invalidateQueries({ queryKey: ["my-applications", userId] })
-      )
-      .subscribe();
+    const listener = () => queryClient.invalidateQueries({ queryKey: ["my-applications", userId] });
+    const entry = acquireSharedChannel(
+      myApplicationsListChannels,
+      userId,
+      `my-applications-list-${userId}`,
+      "applications",
+      `user_id=eq.${userId}`
+    );
+    entry.listeners.add(listener);
 
     return () => {
-      supabase.removeChannel(channel);
+      releaseSharedChannel(myApplicationsListChannels, userId, listener);
     };
   }, [userId, queryClient]);
 
@@ -173,23 +227,25 @@ export function useWithdrawApplication() {
 export function useMyApplicationStatusUpdates(userId: string | null, onChange: (status: string) => void) {
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-applications-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "applications", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const status = (payload.new as { status: string }).status;
-          Haptics.notificationAsync(
-            status === "ACCEPTED" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
-          );
-          onChange(status);
-        }
-      )
-      .subscribe();
+    const listener = (payload: any) => {
+      const status = (payload?.new as { status?: string } | undefined)?.status;
+      if (!status) return;
+      Haptics.notificationAsync(
+        status === "ACCEPTED" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+      );
+      onChange(status);
+    };
+    const entry = acquireSharedChannel(
+      myApplicationStatusChannels,
+      userId,
+      `my-applications-${userId}`,
+      "applications",
+      `user_id=eq.${userId}`
+    );
+    entry.listeners.add(listener);
 
     return () => {
-      supabase.removeChannel(channel);
+      releaseSharedChannel(myApplicationStatusChannels, userId, listener);
     };
   }, [userId, onChange]);
 }

@@ -87,7 +87,7 @@ function clubIdFromData(data: Record<string, unknown> | null | undefined): strin
  * accepte/refuse — jamais la page publique `/club/[id]` (pas d'actions).
  * INVITATION_ACCEPTED / INVITATION_DECLINED → même Recrutement (destinataire =
  * le manager qui a invité ; ClubInvitationsPanel montre le statut). Pas `/club/[id]`.
- * INVITATION_RECEIVED → `/my-invitations` (bouton Accepter côté joueur).
+ * INVITATION_RECEIVED / INVITATION_CANCELLED → `/my-invitations` (côté joueur).
  */
 export function recruitmentNotificationNav(
   type: string,
@@ -102,6 +102,7 @@ export function recruitmentNotificationNav(
     case "APPLICATION_DECLINED":
       return { href: "/my-applications", selectClubId: null, requireClubMode: false };
     case "INVITATION_RECEIVED":
+    case "INVITATION_CANCELLED":
       return { href: "/my-invitations", selectClubId: null, requireClubMode: false };
     default:
       return null;

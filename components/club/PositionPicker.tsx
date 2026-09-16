@@ -4,6 +4,8 @@ import { Check, ChevronDown, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { POSITIONS, POSITION_LABELS } from "@/lib/constants";
 import { formatNeededPositionsLine } from "@/lib/sessionState";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
  * Multi-sélection de postes en une ligne + feuille — pas un mur de chips.
@@ -42,17 +44,22 @@ export function PositionPicker({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           setOpen(true);
         }}
-        className="min-h-[44px] flex-row items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
+        className="min-h-[44px] flex-row items-center justify-between gap-2 border border-border bg-bg-elevated px-3 active:opacity-80"
+        style={{ borderRadius: cpcTokens.radius.control }}
       >
         <Text numberOfLines={2} className={`flex-1 text-sm font-semibold ${summary ? "text-fg" : "text-fg-muted"}`}>
           {summary ?? placeholder}
         </Text>
-        <ChevronDown size={16} color="#9aa0a8" />
+        <ChevronDown size={16} color={cpcHex.textMuted} />
       </Pressable>
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable className="flex-1 justify-end bg-black/50" onPress={() => setOpen(false)}>
-          <Pressable className="max-h-[80%] rounded-t-3xl border-t border-border bg-bg-card px-4 pb-8 pt-4" onPress={() => {}}>
+        <Pressable className="flex-1 justify-end" style={{ backgroundColor: cpcHex.overlay }} onPress={() => setOpen(false)}>
+          <Pressable
+            className="max-h-[80%] border-t border-border bg-bg-card px-4 pb-8 pt-4"
+            style={{ borderTopLeftRadius: cpcTokens.radius.sheet, borderTopRightRadius: cpcTokens.radius.sheet }}
+            onPress={() => {}}
+          >
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="font-display text-lg uppercase tracking-wide text-fg">Postes recherchés</Text>
               <Pressable
@@ -61,7 +68,7 @@ export function PositionPicker({
                 onPress={() => setOpen(false)}
                 className="h-11 w-11 items-center justify-center"
               >
-                <X size={20} color="#9aa0a8" />
+                <X size={20} color={cpcHex.textMuted} />
               </Pressable>
             </View>
             <ScrollView className="max-h-[70%]" keyboardShouldPersistTaps="handled">
@@ -72,14 +79,15 @@ export function PositionPicker({
                     <Pressable
                       key={code}
                       onPress={() => toggle(code)}
-                      className={`min-h-[44px] flex-row items-center justify-between rounded-xl px-4 active:opacity-80 ${
+                      className={`min-h-[44px] flex-row items-center justify-between px-4 active:opacity-80 ${
                         selected ? "bg-accent/15" : "bg-bg-elevated"
                       }`}
+                      style={{ borderRadius: cpcTokens.radius.control }}
                     >
                       <Text className={`font-semibold ${selected ? "text-accent" : "text-fg"}`}>
                         {code} · {POSITION_LABELS[code]}
                       </Text>
-                      {selected ? <Check size={18} color="#39ff8a" /> : null}
+                      {selected ? <Check size={18} color={cpcHex.accent} /> : null}
                     </Pressable>
                   );
                 })}

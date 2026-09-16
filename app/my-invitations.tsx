@@ -1,11 +1,11 @@
-import { ScrollView } from "react-native";
 import { MyInvitationsList } from "@/components/player/MyInvitationsList";
+import { AppShell } from "@/components/nav/AppShell";
 
 /** Route stack inchangée (header natif via app/_layout.tsx) — contenu dans MyInvitationsList. */
 export default function MyInvitationsScreen() {
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+    <AppShell>
       <MyInvitationsList />
-    </ScrollView>
+    </AppShell>
   );
 }

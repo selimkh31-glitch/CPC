@@ -34,9 +34,24 @@ export const PLAYER_MATCH_HISTORY_LOOKBACK = 40;
 
 export const MATCH_HISTORY_COPY = {
   title: "Derniers matchs",
-  empty: "Pas encore de match enregistré",
+  empty: "Pas encore de matchs",
   loadError: "Impossible de charger l'historique des matchs.",
 } as const;
+
+/** 0 rows / relation PostgREST cassée = liste vide, jamais un ErrorState. */
+export function isEmptyMatchHistoryReadError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: string | number; message?: string; details?: string; hint?: string };
+  if (e.code === "PGRST116" || e.code === "PGRST200" || e.code === "PGRST108") return true;
+  const blob = `${e.code ?? ""} ${e.message ?? ""} ${e.details ?? ""} ${e.hint ?? ""}`;
+  return (
+    /PGRST116|PGRST200|PGRST108/i.test(blob) ||
+    /0 rows/i.test(blob) ||
+    /\(or no\) rows/i.test(blob) ||
+    /could not find a relationship/i.test(blob) ||
+    /launched_at/i.test(blob)
+  );
+}
 
 /** Join documenté — profil joueur / ClubPro Card. */
 export const PLAYER_MATCH_HISTORY_JOIN =

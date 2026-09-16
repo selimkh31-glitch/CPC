@@ -3,13 +3,32 @@
  * Aucun I/O : RLS, Edge start-direct-conversation / start-club-conversation /
  * create-group et le realtime messages restent la source de vérité.
  */
-import type { ClubRole, ConversationRole, ConversationRow, GroupMemberRow, UserRow } from "@/lib/types";
+import type { ClubRole, ConversationRole, ConversationRow, GroupMemberRow, MessageRow, UserRow } from "@/lib/types";
 
 /** Copy honnête : un blocage (les deux sens) interdit le DM, sans le cacher. */
 export const BLOCKED_DM_COPY = "Tu ne peux pas envoyer de message à ce joueur (blocage).";
 
-/** Entrée Club tab — conversation unique du club, pas un second chat. */
+/** Entrée Club tab — conversation unique du club, pas un second chat.
+ *  Fallback de titre seulement si le nom de club est vide / placeholder. */
 export const CLUB_CONVERSATION_COPY = "Conversation du club";
+
+/** Copy chat (tu, courte). Pas de jargon, pas de receipts / replies. */
+export const CHAT_UX_COPY = {
+  composerPlaceholder: "Message",
+  send: "Envoyer",
+  listEmptyTitle: "Personne n'a écrit.",
+  listEmptySubtitle: "Ouvre un profil. Les groupes et le club arrivent ici.",
+  threadEmptyTitle: "À toi d'écrire.",
+  deleted: "Message supprimé",
+  newGroup: "Nouveau groupe",
+  groupName: "Nom",
+  groupNamePlaceholder: "Les habitués du jeudi",
+  whoIsIn: "Qui est dedans",
+  write: "Écrire",
+  join: "Rejoindre",
+  kindGroup: "Groupe",
+  kindClub: "Club",
+} as const;
 
 const CLUB_ROLES_CAN_OPEN = new Set<ClubRole>(["OWNER", "MANAGER", "MEMBER"]);
 
@@ -86,7 +105,7 @@ function honestClubConversationName(name: string | null | undefined): string | n
 
 export function conversationListLabel(conversation: ConversationRow, selfUserId: string): string {
   if (conversation.type === "DIRECT") {
-    return getDirectConversationPeer(conversation, selfUserId)?.username ?? "Joueur Pro Clubs";
+    return getDirectConversationPeer(conversation, selfUserId)?.username ?? "Joueur";
   }
   if (conversation.type === "GROUP") {
     return honestGroupConversationName(conversation.group?.name) ?? "Groupe";
@@ -95,6 +114,39 @@ export function conversationListLabel(conversation: ConversationRow, selfUserId:
     return honestClubConversationName(conversation.club?.name) ?? CLUB_CONVERSATION_COPY;
   }
   return "Conversation";
+}
+
+/** Distinctif d'en-tête seulement — pas un 2e chat. DIRECT = le nom suffit. */
+export function conversationKindLabel(type: ConversationRow["type"]): string | null {
+  if (type === "GROUP") return CHAT_UX_COPY.kindGroup;
+  if (type === "CLUB") return CHAT_UX_COPY.kindClub;
+  return null;
+}
+
+/** Aperçu liste : corps réel, ou « Message supprimé ». Jamais un placeholder inventé. */
+export function conversationMessagePreview(
+  message: Pick<MessageRow, "body" | "deleted_at"> | null | undefined
+): string | null {
+  if (!message) return null;
+  if (message.deleted_at) return CHAT_UX_COPY.deleted;
+  const text = message.body.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > 80 ? `${text.slice(0, 79)}…` : text;
+}
+
+/** Non-lu = dernier message plus récent que `last_read_at` du self. Pas un receipt. */
+export function conversationIsUnread(input: {
+  selfUserId: string;
+  members?: ConversationRow["members"];
+  lastMessageAt?: string | null;
+}): boolean {
+  if (!input.lastMessageAt) return false;
+  const lastRead = input.members?.find((m) => m.user_id === input.selfUserId)?.last_read_at ?? null;
+  if (!lastRead) return true;
+  const messageMs = new Date(input.lastMessageAt).getTime();
+  const readMs = new Date(lastRead).getTime();
+  if (!Number.isFinite(messageMs) || !Number.isFinite(readMs)) return false;
+  return messageMs > readMs;
 }
 
 export function isDirectPeerBlocked(

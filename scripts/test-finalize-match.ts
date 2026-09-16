@@ -390,7 +390,7 @@ test("9. Notify href : competitionId → stack compétition, sinon /club/[id] ; 
 });
 
 test("10. History : PRESENT + résultat sur la carte ; club_id sur le profil ; vide honnête ; pas de faux 0-0", () => {
-  assert.equal(MATCH_HISTORY_COPY.empty, "Pas encore de match enregistré", "copy");
+  assert.equal(MATCH_HISTORY_COPY.empty, "Pas encore de matchs", "copy");
   const present = buildPlayerMatchHistory({
     participations: [{ match_checkin_id: "c1", status: "PRESENT" }],
     results: [

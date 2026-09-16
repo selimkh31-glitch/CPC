@@ -1,105 +1,85 @@
 import { useCallback, type ReactNode } from "react";
-import { ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { Pencil } from "lucide-react-native";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, ErrorState } from "@/components/ui/Screen";
-import { Button } from "@/components/ui/Button";
+import { ErrorState } from "@/components/ui/Screen";
+import { AppShell } from "@/components/nav/AppShell";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
-import { InviteToClubPanel } from "@/components/club/InviteToClubPanel";
-import { ModeSwitch } from "@/components/club/ModeSwitch";
+import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
+import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
+import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { ClubCard } from "@/components/club/ClubCard";
-import { ClubSessionStatus } from "@/components/club/ClubSessionStatus";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
 import { LeaguesLink } from "@/components/leagues/LeaguesLink";
+import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
-import { useMyMemberships } from "@/lib/hooks/useClubs";
+import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
-import { canMutateClub, clubSessionSnapshot } from "@/lib/sessionState";
+import { canMutateClub } from "@/lib/sessionState";
 
 /**
- * Club — identité, effectif réel, réglages. Feuille de match en push `/match` (secondaire).
+ * Club — identité manager. Recrutement LIVE et invitations sont ailleurs.
+ * Seule bascule « Passer en joueur » : ici, pas dans LIVE / Recrutement / tabs.
  */
 export default function ClubTab() {
   const { session } = useAuth();
   const now = useLiveClock();
-  const { setMode } = useAppMode();
-  const { data: club, isLoading, isError, refetch, isFetching } = useManagedClub();
-  const { data: memberships } = useMyMemberships(session?.user.id ?? null);
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
+  const { data: club, isLoading, isError, refetch } = useManagedClub();
   const {
-    data: activeCheckin,
-    isLoading: checkinLoading,
-    isError: checkinError,
-    refetch: refetchCheckin,
-  } = useActiveMatchCheckin(club?.id ?? null);
+    data: matchHistory,
+    isLoading: matchHistoryLoading,
+    isError: matchHistoryError,
+    refetch: refetchMatchHistory,
+  } = useClubMatchHistory(club?.id ?? null, club?.name);
 
   useFocusEffect(
     useCallback(() => {
+      if (!club) return;
       refetch();
-    }, [refetch])
+    }, [club, refetch])
   );
 
   const shell = (body: ReactNode) => (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }} keyboardShouldPersistTaps="handled">
-        <ModeSwitch managedClubs={managedClubs} />
-        {body}
-      </ScrollView>
-    </SafeAreaView>
+    <AppShell edges={[]} contentContainerStyle={{ gap: 20 }}>
+      {body}
+    </AppShell>
   );
 
-  if (isLoading || (isFetching && !club && !isError)) {
+  if (isLoading) {
     return shell(<Skeleton className="h-40" />);
-  }
-
-  if (isError) {
-    return shell(<ErrorState message="Impossible de charger ce club." onRetry={refetch} />);
   }
 
   if (!club) {
     return shell(
-      <View className="gap-4">
-        <EmptyState
-          title="Aucun club géré"
-          subtitle="Crée un club EA SPORTS FC 27 Pro Clubs en mode Joueur, ou fais-toi nommer manager."
-        />
-        <Button
-          variant="secondary"
-          onPress={() => {
-            setMode("PLAYER");
-            router.push("/create-club");
-          }}
-        >
-          Créer un club
-        </Button>
-        <Button variant="ghost" onPress={() => setMode("PLAYER")}>
-          Retour mode Joueur
-        </Button>
-        <CompetitionsLink />
-        <TournamentsLink />
-        <LeaguesLink />
-      </View>
+      <ManagedClubEmpty
+        extras={
+          <>
+            <ModeLifeToggle target="PLAYER" />
+            <DevTestAccountSwitcher />
+          </>
+        }
+      />
     );
+  }
+
+  if (isError) {
+    // Refetch focus a échoué : on garde l'onglet Club, pas un overlay qui coupe le LIVE.
   }
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = canMutateClub(myMembership?.role);
-  const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
   const isOwner = canEditClubIdentity(club.owner_id, session?.user.id);
 
   return shell(
     <>
+      {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <ClubCard
         data={buildClubCardDataFromHydratedClub(club, {
           members: club.members,
@@ -111,35 +91,30 @@ export default function ClubTab() {
         footer={
           <View className="gap-3">
             {isOwner ? (
-              <Button
-                variant="secondary"
-                className="min-h-[44px] w-full"
-                icon={<Pencil size={15} color="#f4f5f7" />}
-                accessibilityLabel="Modifier l'identité du club"
+              <Pressable
                 onPress={() => router.push("/edit-club")}
+                className="min-h-[44px] self-start justify-center"
+                accessibilityRole="button"
+                accessibilityLabel="Modifier le club"
               >
-                Modifier l'identité du club
-              </Button>
+                <Text className="text-sm text-fg-subtle">Modifier le club</Text>
+              </Pressable>
             ) : null}
-            <StartClubConversationButton clubId={club.id} role={myMembership?.role} />
+            <StartClubConversationButton clubId={club.id} role={myMembership?.role} clubName={club.name} />
           </View>
         }
       />
 
-      <ClubSessionStatus
-        snapshot={snapshot}
-        checkinLoading={checkinLoading}
-        checkinError={checkinError}
-        onRetryCheckin={() => refetchCheckin()}
-        matchSheetCta={{
-          label: snapshot.match.active ? "Ouvrir la feuille de match" : "Feuille de match",
-          onPress: () => router.push("/match"),
-        }}
+      <ModeLifeToggle target="PLAYER" />
+      <DevTestAccountSwitcher />
+
+      <MatchHistoryList
+        items={matchHistory}
+        loading={matchHistoryLoading}
+        error={matchHistoryError}
+        onRetry={refetchMatchHistory}
       />
-      <SocialShortcuts />
-      <CompetitionsLink />
-      <TournamentsLink />
-      <LeaguesLink />
+
       <MembersPanel
         clubId={club.id}
         clubName={club.name}
@@ -148,7 +123,13 @@ export default function ClubTab() {
         members={club.members ?? []}
       />
       {canManage && <DeparturesPanel clubId={club.id} members={club.members ?? []} />}
-      {canManage && <InviteToClubPanel clubId={club.id} members={club.members ?? []} />}
+
+      <View className="gap-2">
+        <SocialShortcuts />
+        <CompetitionsLink />
+        <TournamentsLink />
+        <LeaguesLink />
+      </View>
     </>
   );
 }

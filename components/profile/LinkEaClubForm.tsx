@@ -4,24 +4,31 @@ import { BadgeCheck } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { PLAYER_CARD_COPY } from "@/lib/playerCard";
 import { useLinkEaClub, useSearchEaClub, type EaClubCandidate } from "@/lib/hooks/useProfile";
 import { toast } from "@/lib/toast";
 
-const COPY = {
-  title: "Stats EA liées",
-  intro: "Lie ton club EA SPORTS FC 27 pour afficher tes vraies stats sur ta ClubPro Card.",
+export const LINK_EA_CLUB_COPY = {
+  title: PLAYER_CARD_COPY.linkClub,
+  intro: "Cherche le nom exact. Tu peux jouer sans.",
   placeholder: "Nom exact de ton club EA",
-  search: "Rechercher",
+  search: "Chercher",
   empty: "Aucun club trouvé pour ce nom.",
   unavailable: "Endpoints EA indisponibles pour le moment. Réessaie plus tard.",
-  hint: "Endpoints EA communautaires, non garantis : peut être temporairement indisponible.",
-  pick: "Choisis ton club (nom + identifiant EA).",
-  linkedSynced: "Club EA lié et stats synchronisées !",
+  hint: "Endpoints communautaires, non garantis. Pas un id joueur officiel.",
+  pick: "C'est lequel ?",
+  linkedSynced: "Club EA lié. Stats syncées.",
   linkedPending: "Club EA lié. Stats en attente de sync.",
-};
+} as const;
 
 /** Lien vers le club EA SPORTS FC : search → liste → confirm. Jamais de first-hit. */
-export function LinkEaClubForm() {
+export function LinkEaClubForm({
+  embedded = false,
+  onLinked,
+}: {
+  embedded?: boolean;
+  onLinked?: () => void;
+}) {
   const [eaClubName, setEaClubName] = useState("");
   const [candidates, setCandidates] = useState<EaClubCandidate[] | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -60,7 +67,10 @@ export function LinkEaClubForm() {
     link.mutate(
       { eaClubId: candidate.clubId, eaClubName: eaClubName.trim() },
       {
-        onSuccess: (data) => toast.success(data.synced ? COPY.linkedSynced : COPY.linkedPending),
+        onSuccess: (data) => {
+          toast.success(data.synced ? LINK_EA_CLUB_COPY.linkedSynced : LINK_EA_CLUB_COPY.linkedPending);
+          onLinked?.();
+        },
         onError: (err: unknown) => {
           setSelectedId(null);
           toast.error(err instanceof Error ? err.message : "Liaison impossible, réessaie plus tard.");
@@ -72,28 +82,30 @@ export function LinkEaClubForm() {
   const showEmpty = candidates !== null && candidates.length === 0;
   const pending = search.isPending || link.isPending;
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>{COPY.title}</CardTitle>
-      </CardHeader>
-      <Text className="mb-3 text-sm text-fg-muted">{COPY.intro}</Text>
+  const body = (
+    <>
+      {!embedded ? (
+        <CardHeader>
+          <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>{LINK_EA_CLUB_COPY.title}</CardTitle>
+        </CardHeader>
+      ) : null}
+      <Text className="mb-3 text-sm text-fg-muted">{LINK_EA_CLUB_COPY.intro}</Text>
       <View className="flex-row gap-2">
         <Input
           className="flex-1"
           value={eaClubName}
           onChangeText={onNameChange}
-          placeholder={COPY.placeholder}
+          placeholder={LINK_EA_CLUB_COPY.placeholder}
           editable={!link.isPending}
-          accessibilityLabel={COPY.placeholder}
+          accessibilityLabel={LINK_EA_CLUB_COPY.placeholder}
         />
         <Button loading={search.isPending} disabled={pending || !eaClubName.trim()} onPress={runSearch}>
-          {COPY.search}
+          {LINK_EA_CLUB_COPY.search}
         </Button>
       </View>
       {candidates !== null && candidates.length > 0 ? (
         <View className="mt-3 gap-2">
-          <Text className="text-xs text-fg-muted">{COPY.pick}</Text>
+          <Text className="text-xs text-fg-muted">{LINK_EA_CLUB_COPY.pick}</Text>
           {candidates.map((c) => {
             const selected = selectedId === c.clubId;
             return (
@@ -115,9 +127,14 @@ export function LinkEaClubForm() {
         </View>
       ) : null}
       {showEmpty ? (
-        <Text className="mt-3 text-sm text-fg-muted">{unavailable ? COPY.unavailable : COPY.empty}</Text>
+        <Text className="mt-3 text-sm text-fg-muted">
+          {unavailable ? LINK_EA_CLUB_COPY.unavailable : LINK_EA_CLUB_COPY.empty}
+        </Text>
       ) : null}
-      <Text className="mt-2 text-xs text-fg-subtle">{COPY.hint}</Text>
-    </Card>
+      <Text className="mt-2 text-xs text-fg-subtle">{LINK_EA_CLUB_COPY.hint}</Text>
+    </>
   );
+
+  if (embedded) return <View>{body}</View>;
+  return <Card>{body}</Card>;
 }

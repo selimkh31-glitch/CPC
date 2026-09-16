@@ -19,6 +19,8 @@ import {
   type LiveFiltersState,
   liveFiltersAreEmpty,
 } from "@/lib/liveFilters";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 export type { LiveFiltersState };
 export { EMPTY_LIVE_FILTERS };
@@ -83,11 +85,12 @@ export function LiveFilters({
           }}
           accessibilityRole="button"
           accessibilityLabel="Plus de filtres"
-          className={`min-h-[44px] flex-row items-center gap-1 rounded-xl border px-2.5 ${
+          className={`min-h-[44px] flex-row items-center gap-1 border px-2.5 ${
             secondaryActive ? "border-border bg-bg-card" : "border-border bg-bg-elevated"
           }`}
+          style={{ borderRadius: cpcTokens.radius.control }}
         >
-          <SlidersHorizontal size={14} color="#9aa0a8" />
+          <SlidersHorizontal size={cpcTokens.icon.xs} color={cpcHex.textMuted} />
           <Text className={`text-xs font-bold ${secondaryActive ? "text-fg" : "text-fg-muted"}`}>Filtres</Text>
         </Pressable>
       </View>
@@ -98,7 +101,8 @@ export function LiveFilters({
         <View className="gap-1.5">
           <Pressable
             onPress={() => onChange({ ...value, language: "" })}
-            className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${value.language === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
+            className={`min-h-[44px] justify-center px-4 py-3 ${value.language === "" ? "bg-bg-card" : "bg-bg-elevated"}`}
+            style={{ borderRadius: cpcTokens.radius.control }}
           >
             <Text className={`font-semibold ${value.language === "" ? "text-fg" : "text-fg-muted"}`}>Toutes</Text>
           </Pressable>
@@ -111,7 +115,8 @@ export function LiveFilters({
                   Haptics.selectionAsync();
                   onChange({ ...value, language: active ? "" : l });
                 }}
-                className={`min-h-[44px] justify-center rounded-xl px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
+                className={`min-h-[44px] justify-center px-4 py-3 ${active ? "bg-bg-card" : "bg-bg-elevated"}`}
+                style={{ borderRadius: cpcTokens.radius.control }}
               >
                 <Text className={`font-semibold ${active ? "text-fg" : "text-fg-muted"}`}>{LANGUAGE_LABELS[l]}</Text>
               </Pressable>

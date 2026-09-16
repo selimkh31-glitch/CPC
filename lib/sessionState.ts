@@ -9,7 +9,8 @@
  *
  * Effectif = `club_members` + `slot_assignments`. Jamais une 2e table roster.
  */
-import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
+import type { PositionCode } from "@/lib/constants";
+import { FORMATIONS, type FormationId } from "@/lib/formations";
 import { findActiveLiveSession, type LiveSessionLike } from "@/lib/live";
 import type { ClubMemberRow, ClubRole, MatchCheckinRow, SlotAssignmentRow } from "@/lib/types";
 
@@ -96,11 +97,58 @@ export function matchSheetTitle(match: MatchSheetState): string {
   return match.active ? "Match lancé" : "Pas de match lancé";
 }
 
-/** Une ligne, pas un mur de chips. Vide -> null (jamais « — » inventé). */
+export interface NumberedPositionSlot {
+  /** Clé d'affichage : CB, ou CB1/CB2/CB3 si le code est répété. */
+  slot: string;
+  /** Code brut pour le matching (toujours CB, jamais CB1). */
+  code: string;
+}
+
+/**
+ * Garde chaque slot. Un seul CB → « CB ». Trois CB → CB1, CB2, CB3.
+ * Ne déduplique pas : une formation 5-3-2 a bien 3 CB.
+ */
+export function numberedPositionSlots(
+  positions: readonly string[] | null | undefined
+): NumberedPositionSlot[] {
+  if (!positions?.length) return [];
+  const counts = new Map<string, number>();
+  for (const raw of positions) {
+    const code = typeof raw === "string" ? raw.trim() : "";
+    if (!code) continue;
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  const out: NumberedPositionSlot[] = [];
+  for (const raw of positions) {
+    const code = typeof raw === "string" ? raw.trim() : "";
+    if (!code) continue;
+    const n = (seen.get(code) ?? 0) + 1;
+    seen.set(code, n);
+    const total = counts.get(code) ?? 1;
+    out.push({ slot: total === 1 ? code : `${code}${n}`, code });
+  }
+  return out;
+}
+
+/** Codes uniques (ApplyForm : postuler en CB une fois, pas trois chips). */
+export function uniquePositionCodes(positions: readonly string[] | null | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of positions ?? []) {
+    const code = typeof raw === "string" ? raw.trim() : "";
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  return out;
+}
+
+/** Une ligne de codes (CB1 · CB2 · ST). Vide -> null (jamais « — » inventé). */
 export function formatNeededPositionsLine(positions: readonly string[] | null | undefined): string | null {
-  if (!positions?.length) return null;
-  const labels = positions.map((p) => POSITION_LABELS[p as PositionCode] ?? p);
-  return labels.join(" · ");
+  const slots = numberedPositionSlots(positions);
+  if (!slots.length) return null;
+  return slots.map((item) => item.slot).join(" · ");
 }
 
 /** OWNER / MANAGER seulement — le frontend n'est pas la source de vérité (RLS / Edge). */
@@ -128,6 +176,21 @@ export function filledSlotCount(assignments: SlotAssignmentRow[] | null | undefi
 
 export function rosterFillLabel(filled: number, total = MATCH_SHEET_SLOT_TOTAL): string {
   return `${filled}/${total} titulaires`;
+}
+
+/**
+ * Postes vraiment vacants sur la feuille — `needed_positions` du LIVE,
+ * pas un second picker. Doublons conservés (deux CB vides = deux CB).
+ */
+export function neededPositionsFromEmptySlots(
+  formationId: FormationId | null | undefined,
+  assignments: SlotAssignmentRow[] | null | undefined
+): PositionCode[] {
+  if (!formationId) return [];
+  const formation = FORMATIONS[formationId];
+  if (!formation) return [];
+  const filled = new Set((assignments ?? []).map((row) => row.slot_id));
+  return formation.filter((slot) => !filled.has(slot.slotId)).map((slot) => slot.position);
 }
 
 /**

@@ -2,10 +2,13 @@
  * Tests de lib/recruitment.ts — transitions idempotentes.
  * Lancer : npx tsx scripts/test-recruitment.ts
  */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import {
   liveOffRecruitmentEvent,
   nextApplicationStatus,
   nextInvitationStatus,
+  playerInvitationAcceptHref,
   recruitmentNotificationNav,
 } from "../lib/recruitment";
 
@@ -50,7 +53,9 @@ test("invitation PENDING → ACCEPT/DECLINE/CANCEL/EXPIRE", () => {
 
 test("invitation RESERVED/ACCEPTED : no-op", () => {
   assert.equal(nextInvitationStatus("RESERVED", "EXPIRE"), null, "reserved");
+  assert.equal(nextInvitationStatus("RESERVED", "CANCEL"), null, "reserved cancel");
   assert.equal(nextInvitationStatus("ACCEPTED", "DECLINE"), null, "accepted");
+  assert.equal(nextInvitationStatus("ACCEPTED", "CANCEL"), null, "accepted cancel");
   assert.equal(nextInvitationStatus("EXPIRED", "ACCEPT"), null, "expired");
 });
 
@@ -91,6 +96,12 @@ test("INVITATION_RECEIVED → Mes invitations (Accepter côté joueur)", () => {
   assert.equal(nav?.requireClubMode, false, "player");
 });
 
+test("INVITATION_CANCELLED → Mes invitations (joueur)", () => {
+  const nav = recruitmentNotificationNav("INVITATION_CANCELLED", { clubId: "c1", invitationId: "i1" });
+  assert.equal(nav?.href, "/my-invitations", "href");
+  assert.equal(nav?.requireClubMode, false, "player");
+});
+
 test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
   assert.equal(recruitmentNotificationNav("APPLICATION_ACCEPTED", {})?.href, "/my-applications", "accepted");
   assert.equal(recruitmentNotificationNav("APPLICATION_DECLINED", {})?.href, "/my-applications", "declined");
@@ -106,6 +117,46 @@ test("APPLICATION_ACCEPTED/DECLINED → Mes candidatures", () => {
     null,
     "tournament schedule not recruitment"
   );
+});
+
+test("joueur ACCEPTED → feuille /match-sheet, jamais Recrutement", () => {
+  assert.equal(playerInvitationAcceptHref("club-1"), "/match-sheet?clubId=club-1", "href");
+  assert.equal(playerInvitationAcceptHref("  "), null, "blank");
+  assert.equal(playerInvitationAcceptHref(null), null, "null");
+  assert.equal(playerInvitationAcceptHref(undefined), null, "undefined");
+  const list = readFileSync(`${process.cwd()}/components/player/MyInvitationsList.tsx`, "utf8");
+  assert.equal(list.includes("playerInvitationAcceptHref"), true, "list uses helper");
+  assert.equal(list.includes("router.push(href)"), true, "navigates");
+  assert.equal(list.includes("/candidatures"), false, "not recrutement");
+});
+
+test("cancel-invitation — Edge + hook + Annuler PENDING + re-invite CANCELLED", () => {
+  const edge = readFileSync(`${process.cwd()}/supabase/functions/cancel-invitation/index.ts`, "utf8");
+  assert.equal(edge.includes("getCallingUser"), true, "auth");
+  assert.equal(edge.includes('["OWNER", "MANAGER"]'), true, "manager only");
+  assert.equal(edge.includes('nextInvitationStatus'), true, "transition");
+  assert.equal(edge.includes('"CANCEL"'), true, "cancel event");
+  assert.equal(edge.includes('.eq("status", "PENDING")') || edge.includes(".eq('status','PENDING')") || edge.includes('.eq("status","PENDING")'), true, "pending guard");
+  assert.equal(edge.includes("INVITATION_CANCELLED"), true, "notif type");
+  assert.equal(edge.includes("RESERVED"), false, "no reserved cancel path");
+  const hooks = readFileSync(`${process.cwd()}/lib/hooks/useInvitations.ts`, "utf8");
+  assert.equal(hooks.includes("useCancelInvitation"), true, "hook");
+  assert.equal(hooks.includes('"cancel-invitation"'), true, "edge name");
+  assert.equal(hooks.includes('["club-invitations"'), true, "invalidate club");
+  assert.equal(hooks.includes('["my-invitations"]'), true, "invalidate mine");
+  const recPanel = readFileSync(`${process.cwd()}/components/club/ClubInvitationsPanel.tsx`, "utf8");
+  assert.equal(recPanel.includes("useCancelInvitation"), true, "panel hook");
+  assert.equal(recPanel.includes("Annuler"), true, "panel CTA");
+  assert.equal(recPanel.includes('inv.status === "PENDING"'), true, "pending only");
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  assert.equal(feuille.includes("useCancelInvitation"), true, "feuille hook");
+  assert.equal(feuille.includes("Annuler"), true, "feuille CTA");
+  const invite = readFileSync(`${process.cwd()}/components/club/InviteToClubPanel.tsx`, "utf8");
+  assert.equal(invite.includes('status === "DECLINED" || status === "CANCELLED"'), true, "re-invite after cancel");
+  const unique = readFileSync(`${process.cwd()}/supabase/migrations/0015_invitations_one_pending_per_club_user.sql`, "utf8");
+  assert.equal(unique.includes("where status = 'PENDING'"), true, "unique pending only");
+  const toml = readFileSync(`${process.cwd()}/supabase/config.toml`, "utf8");
+  assert.equal(toml.includes("[functions.cancel-invitation]"), true, "toml");
 });
 
 console.log(`\n${passed} tests recruitment OK`);

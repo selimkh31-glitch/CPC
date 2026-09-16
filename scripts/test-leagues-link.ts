@@ -62,7 +62,7 @@ test("push /leagues cible le stack partagé (app/leagues.tsx + _layout), sans ta
   assert.true(existsSync(stackFile), "app/leagues.tsx");
   assert.false(existsSync(`${root}/app/(player)/(tabs)/leagues.tsx`), "no tab collision");
   const layout = readFileSync(`${root}/app/_layout.tsx`, "utf8");
-  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile)}>");
+  const sharedGuard = layout.indexOf("Stack.Protected guard={Boolean(session) && Boolean(profile) && Boolean(mode)}>");
   const playerGuard = layout.indexOf('mode === "PLAYER"');
   const leaguesName = layout.indexOf('name="leagues"');
   assert.true(sharedGuard >= 0, "shared guard");

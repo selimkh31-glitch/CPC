@@ -1,26 +1,27 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
-import { Users } from "lucide-react-native";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { LiveBadge } from "@/components/ui/LiveBadge";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { ProfileRow } from "@/components/ui/ProfileRow";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/Screen";
+import { EmptyState, ErrorState } from "@/components/ui/Screen";
+import { AppShell } from "@/components/nav/AppShell";
 import { ApplyForm } from "@/components/club/ApplyForm";
-import { ClubCard } from "@/components/club/ClubCard";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
-import { PlayerCard } from "@/components/player/PlayerCard";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
-import { POSITION_LABELS, type PositionCode } from "@/lib/constants";
 import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { sortClubRoster } from "@/lib/clubProfile";
-import { buildPlayerCardData } from "@/lib/playerCard";
-import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
+import { buildClubLiveRowMeta } from "@/lib/clubLiveRow";
+import { numberedPositionSlots } from "@/lib/sessionState";
 import type { ClubRole } from "@/lib/types";
 
 const ROLE_LABEL: Record<ClubRole, string> = {
@@ -44,119 +45,125 @@ export default function ClubDetailScreen() {
 
   if (isError) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+      <AppShell>
         <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
-      </ScrollView>
+      </AppShell>
     );
   }
 
-  if (isLoading || !club) {
+  if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <AppShell contentContainerStyle={{ gap: 12 }}>
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-40" />
         <Skeleton className="h-40" />
-      </ScrollView>
+      </AppShell>
+    );
+  }
+
+  if (!club) {
+    return (
+      <AppShell>
+        <EmptyState title="Ce club n'est plus là." subtitle="Il a été retiré, ou tu n'y as plus accès." />
+      </AppShell>
     );
   }
 
   const activeSession = findActiveLiveSession(club.sessions, now);
   const isMember = session ? club.members?.some((m) => m.user_id === session.user.id) : false;
+  const memberCount = Array.isArray(club.members) ? club.members.length : null;
+  const headerMeta = buildClubLiveRowMeta({
+    languages: club.languages,
+    level: club.level,
+    memberCount,
+    form: null,
+    clubId: club.id,
+    isDev: false,
+  });
+  const neededSlots = numberedPositionSlots(activeSession?.needed_positions);
+  const showMatchHistory = matchHistoryLoading || matchHistoryError || (matchHistory?.length ?? 0) > 0;
 
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
-      <ClubCard
-        data={buildClubCardDataFromHydratedClub(club, {
-          members: club.members,
-          sessions: club.sessions,
-          nowMs: now,
-        })}
-        variant="full"
-        interactive={false}
-        footer={
-          <Link href={`/match-sheet?clubId=${club.id}`} className="text-sm text-accent">
-            Voir la feuille de match
-          </Link>
-        }
-      />
+    <AppShell contentContainerStyle={{ gap: 16 }}>
+      <View className="min-h-[44px] flex-row items-center gap-2">
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="font-display text-titleSmall text-fg">
+            {club.name}
+          </Text>
+          {headerMeta ? (
+            <Text numberOfLines={1} className="mt-0.5 font-sans text-bodySmall text-fg-muted">
+              {headerMeta}
+            </Text>
+          ) : null}
+        </View>
+        {activeSession ? <LiveBadge /> : null}
+      </View>
 
-      <Card>
+      {isMember ? (
+        <Link href={`/match-sheet?clubId=${club.id}`} className="min-h-[44px] justify-center font-sans-semibold text-body text-accent">
+          Voir la feuille de match
+        </Link>
+      ) : null}
+
+      {showMatchHistory ? (
         <MatchHistoryList
           items={matchHistory}
           loading={matchHistoryLoading}
           error={matchHistoryError}
           onRetry={refetchMatchHistory}
         />
-      </Card>
+      ) : null}
 
-      <Card>
-        <Text className="mb-2 font-display text-lg text-fg">Session</Text>
+      <SurfaceCard>
+        <SectionHeader title="Session" />
         {activeSession ? (
           <>
             <View className="mb-3 flex-row flex-wrap gap-1.5">
-              {activeSession.needed_positions.map((p) => (
-                <Badge key={p} tone="pro">
-                  {POSITION_LABELS[p as PositionCode] ?? p}
-                </Badge>
+              {neededSlots.map((item) => (
+                <PositionBadge key={item.slot}>{item.slot}</PositionBadge>
               ))}
             </View>
-            {activeSession.note && <Text className="mb-3 text-sm text-fg-muted">{activeSession.note}</Text>}
+            {activeSession.note && <Text className="mb-3 font-sans text-body text-fg-muted">{activeSession.note}</Text>}
             {session && !isMember && !isClubHiddenByBlock(club, blockedIds ?? []) ? (
               <ApplyForm sessionId={activeSession.id} neededPositions={activeSession.needed_positions} />
             ) : session && !isMember && isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <Text className="text-sm text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
+              <Text className="font-sans text-body text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
             ) : !session ? (
-              <Link href="/(auth)/login" className="text-sm text-accent">
+              <Link href="/(auth)/login" className="min-h-[44px] justify-center font-sans-semibold text-body text-accent">
                 Connecte-toi pour postuler
               </Link>
             ) : (
-              <Text className="text-sm text-fg-subtle">Tu es déjà membre de ce club.</Text>
+              <Text className="font-sans text-caption text-fg-subtle">Tu es déjà membre de ce club.</Text>
             )}
           </>
         ) : (
-          <Text className="text-sm text-fg-muted">Ce club n&apos;est pas live actuellement.</Text>
+          <Text className="font-sans text-body text-fg-muted">Ce club n&apos;est pas live actuellement.</Text>
         )}
-      </Card>
+      </SurfaceCard>
 
-      <Card>
-        <View className="mb-2 flex-row items-center gap-2">
-          <Users size={18} color="#f4f5f7" />
-          <Text className="font-display text-lg text-fg">Membres ({club.members?.length ?? 0})</Text>
-        </View>
-        <View className="gap-2">
+      <View>
+        <SectionHeader title={`Membres (${club.members?.length ?? 0})`} />
+        <View className="gap-1">
           {sortClubRoster(club.members ?? []).map((m) => {
             const isSelf = session?.user.id === m.user_id;
+            const name = m.user?.username?.trim() || "Joueur";
             const blocked = shouldHideContactCta(m.user_id, blockedIds);
-            const roleBadge = (
-              <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
-                {ROLE_LABEL[m.role]}
-              </Badge>
-            );
-            const footer = (
-              <View className="mt-2 gap-2">
-                {roleBadge}
-                {!isSelf && session ? <StartDirectMessageButton otherUserId={m.user_id} blocked={blocked} /> : null}
-              </View>
-            );
-            if (!m.user) {
-              return (
-                <View key={m.id} className="gap-2 rounded-2xl border border-border bg-bg-elevated p-3">
-                  <Text className="font-semibold text-fg-muted">Joueur</Text>
-                  {footer}
-                </View>
-              );
-            }
             return (
-              <PlayerCard
-                key={m.id}
-                data={buildPlayerCardData(m.user, { clubName: club.name })}
-                variant="mini"
-                footer={footer}
-              />
+              <View key={m.id} className="min-h-[44px] flex-row items-center gap-2">
+                <View className="min-w-0 flex-1">
+                  <ProfileRow name={name} />
+                </View>
+                <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
+                  {ROLE_LABEL[m.role]}
+                </Badge>
+                {isMember && !isSelf ? (
+                  <StartDirectMessageButton otherUserId={m.user_id} blocked={blocked} />
+                ) : null}
+              </View>
             );
           })}
         </View>
-      </Card>
-    </ScrollView>
+      </View>
+    </AppShell>
   );
 }

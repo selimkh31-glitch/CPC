@@ -10,11 +10,16 @@ import {
   formatPositionsLine,
   isPlayerCardTemplateSelectable,
   playerNeedFitLabel,
+  playerCardHeroNumber,
   resolvePlayerCardDensity,
   resolvePlayerCardTemplate,
+  visibleEaStatBlocks,
   visibleCpcBadges,
 } from "../lib/playerCard";
 import { computeOvr, rarityForOvr, OVR_CPC_LABEL } from "../lib/ovr";
+import { FACE_STAT_KEYS } from "../lib/cardFace";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import type { UserRow } from "../lib/types";
 
 const assert = {
@@ -111,7 +116,7 @@ test("joueur sans match CPC -> cpcMatchesPlayed 0, pas de fake stats, copy vide"
 test("joueur avec participations réelles -> match count reflété, toujours pas de buts/passes joueur", () => {
   const data = buildPlayerCardData(baseUser({ reliability_score: 62 }), { cpcMatchesPlayed: 3 });
   assert.equal(data.cpcMatchesPlayed, 3, "played");
-  assert.equal(formatCpcMatchCount(3), "3 matchs CPC", "label");
+  assert.equal(formatCpcMatchCount(3), "3 matchs", "label");
   assert.equal(data.showEaStats, false, "pas de stats joueur inventées");
 });
 
@@ -151,6 +156,16 @@ test("currentStreak/badges/secondaryPositions absents -> tableaux/0 vides", () =
   assert.equal(data.currentStreak, 0, "currentStreak");
   assert.deepEqual(data.badges, [], "badges");
   assert.deepEqual(data.secondaryPositions, [], "secondaryPositions");
+});
+
+test("secondaryPositions — déduplique et exclut le principal", () => {
+  const data = buildPlayerCardData(
+    baseUser({
+      main_position: "CB",
+      secondary_positions: ["CB", "CB", "ST", "ST"],
+    })
+  );
+  assert.deepEqual(data.secondaryPositions, ["ST"], "unique without main");
 });
 
 test("clubName absent par défaut -> null ; fourni -> tel quel", () => {
@@ -216,6 +231,85 @@ test("LIVE context flag + note, sans inventer un statut", () => {
   const on = buildPlayerCardData(baseUser(), { live: true, liveNote: "Dispo 21h" });
   assert.equal(on.live, true, "live");
   assert.equal(on.liveNote, "Dispo 21h", "note");
+});
+
+test("copy EA vide : C'est mon club, pas de chiffres inventés", () => {
+  assert.equal(PLAYER_CARD_COPY.linkClub, "C'est mon club", "cta");
+  assert.equal(PLAYER_CARD_COPY.eaUnlinked.includes("invent"), false, "unlinked no inventer");
+  assert.equal(PLAYER_CARD_COPY.eaLinkedPending.includes("pas encore"), true, "pending");
+  const unlinked = buildPlayerCardData(baseUser({ ea_club_linked: null }));
+  assert.equal(unlinked.eaClubLinked, false, "unlinked");
+  assert.deepEqual(visibleEaStatBlocks(unlinked.eaStats), [], "no blocks");
+});
+
+test("playerCardHeroNumber — OVR gagne, sinon matchs, jamais un 0", () => {
+  assert.deepEqual(
+    playerCardHeroNumber({ ovr: 72, cpcMatchesPlayed: 3 }),
+    { value: 72, label: PLAYER_CARD_COPY.ovrLabel },
+    "ovr"
+  );
+  assert.deepEqual(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 3 }), { value: 3, label: "matchs" }, "matches");
+  assert.deepEqual(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 1 }), { value: 1, label: "match" }, "one");
+  assert.equal(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: 0 }), null, "zero");
+  assert.equal(playerCardHeroNumber({ ovr: null, cpcMatchesPlayed: null }), null, "none");
+});
+
+test("visibleEaStatBlocks — seulement chiffres stockés, jamais SHO/PAS/TAC vides", () => {
+  assert.deepEqual(visibleEaStatBlocks(null), [], "null");
+  assert.deepEqual(visibleEaStatBlocks({}), [], "empty");
+  assert.deepEqual(visibleEaStatBlocks({ avgRating: 0 }), [], "note 0 omise");
+  const blocks = visibleEaStatBlocks({ goals: 3, assists: 1, matchesPlayed: 5, avgRating: 7.4 });
+  assert.equal(blocks.length, 4, "four real");
+  assert.equal(blocks[0]?.label, PLAYER_CARD_COPY.eaGoals, "goals");
+  assert.equal(blocks[3]?.value, "7.4", "rating 1 decimal");
+  const labels = blocks.map((b) => b.label).join(" ");
+  assert.equal(labels.includes("SHO"), false, "no SHO");
+  assert.equal(labels.includes("PAS"), false, "no PAS");
+  assert.equal(labels.includes("TAC"), false, "no TAC");
+  const mixed = visibleEaStatBlocks({ pac: 90, sho: 88, goals: 3 });
+  assert.equal(mixed.length, 1, "face attrs are not career");
+  assert.equal(mixed[0]?.label, PLAYER_CARD_COPY.eaGoals, "goals only");
+});
+
+test("faceStats — prod isDev false → null ; DEV sans attrs → DEV, showEaStats false", () => {
+  const prod = buildPlayerCardData(baseUser(), { isDev: false });
+  assert.equal(prod.faceStats, null, "prod null");
+  assert.equal(prod.showEaStats, false, "prod no career");
+  const dev = buildPlayerCardData(baseUser({ verified_stats: null }), { isDev: true });
+  assert.equal(dev.faceStats?.source, "DEV", "dev overlay");
+  assert.equal(dev.showEaStats, false, "DEV is not Buts EA");
+  assert.equal(FACE_STAT_KEYS.every((k) => typeof dev.faceStats?.values[k] === "number"), true, "six mock");
+});
+
+test("faceStats — attrs + USERNAME_EQUALITY même isDev true → EA, pas de pad DEV", () => {
+  const data = buildPlayerCardData(
+    baseUser({
+      ea_identity_kind: "USERNAME_EQUALITY",
+      ea_club_linked: "club-1",
+      verified_stats: { pac: 81, sho: 90, goals: 4 },
+    }),
+    { isDev: true }
+  );
+  assert.equal(data.faceStats?.source, "EA", "real wins");
+  assert.equal(data.faceStats?.values.pac, 81, "pac");
+  assert.equal(data.faceStats?.values.pas, undefined, "no pad");
+  assert.equal(data.showEaStats, true, "career still shown");
+  assert.equal(data.ovr, 50, "ovr still CPC from reliability");
+});
+
+test("FULL a la grille face ; MINI/COMPACT non", () => {
+  const src = readFileSync(`${process.cwd()}/components/player/PlayerCard.tsx`, "utf8");
+  const full = src.slice(src.indexOf("function FullBody"), src.indexOf("function EaSlot"));
+  const mini = src.slice(src.indexOf("function MiniBody"), src.indexOf("function CompactBody"));
+  const compact = src.slice(src.indexOf("function CompactBody"), src.indexOf("function FullBody"));
+  assert.equal(full.includes("visibleFaceStatCells"), true, "full grid");
+  assert.equal(full.includes("faceStatsCaption"), true, "full caption");
+  assert.equal(full.includes("PLAYER_CARD_COPY.watermark"), true, "ClubPro watermark");
+  assert.equal(full.includes("Sans club") || full.includes("sansClub"), true, "sans club");
+  assert.equal(mini.includes("visibleFaceStatCells"), false, "mini no grid");
+  assert.equal(compact.includes("visibleFaceStatCells"), false, "compact no grid");
+  assert.equal(full.includes("EaSlot"), true, "EaSlot stays");
+  assert.equal(full.includes("cpcHex.accent"), true, "green glow");
 });
 
 console.log(`\n${passed} test(s) passés.`);

@@ -23,6 +23,8 @@ export function ClubProCard({
   matchHistoryLoading = false,
   matchHistoryError = false,
   onRetryMatchHistory,
+  onLinkEaClub,
+  onPress,
 }: {
   user?: UserRow | null;
   clubName?: string | null;
@@ -35,6 +37,9 @@ export function ClubProCard({
   matchHistoryLoading?: boolean;
   matchHistoryError?: boolean;
   onRetryMatchHistory?: () => void;
+  onLinkEaClub?: () => void;
+  /** Accueil : ouvrir le profil existant. Profil perso : omis (carte non tappable). */
+  onPress?: () => void;
 }) {
   if (error) {
     return (
@@ -45,15 +50,15 @@ export function ClubProCard({
   }
 
   if (loading) {
-    return <Skeleton className="h-72 w-full max-w-sm rounded-3xl" />;
+    return <Skeleton className="h-72 w-full max-w-sm rounded-[32px]" />;
   }
 
   if (!user?.username) {
     return (
       <View className="w-full max-w-sm items-center rounded-3xl border border-dashed border-border bg-bg-card px-5 py-10">
-        <Text className="text-center font-display text-lg text-fg">Carte joueur FC 27</Text>
+        <Text className="text-center font-display text-lg text-fg">Ta ClubPro Card</Text>
         <Text className="mt-2 text-center text-sm text-fg-muted">
-          Profil incomplet — termine l&apos;onboarding pour afficher ta carte EA SPORTS FC 27 Pro Clubs.
+          Profil incomplet — termine l&apos;onboarding pour afficher ta carte. Tu peux déjà passer LIVE sans club EA.
         </Text>
       </View>
     );
@@ -67,22 +72,29 @@ export function ClubProCard({
     cpcMatchesPlayed,
   });
 
+  const showHistory =
+    matchHistory != null || matchHistoryLoading || matchHistoryError || Boolean(onRetryMatchHistory);
+
   return (
     <PlayerCard
       data={data}
       variant="full"
-      interactive={false}
+      interactive={Boolean(onPress)}
+      onPress={onPress}
       shareEnabled
+      onLinkEaClub={onLinkEaClub}
       footer={
-        <View className="px-5 pb-5">
-          <MatchHistoryList
-            variant="embedded"
-            items={matchHistory}
-            loading={matchHistoryLoading}
-            error={matchHistoryError}
-            onRetry={onRetryMatchHistory}
-          />
-        </View>
+        showHistory ? (
+          <View className="px-6 pb-6">
+            <MatchHistoryList
+              variant="embedded"
+              items={matchHistory}
+              loading={matchHistoryLoading}
+              error={matchHistoryError}
+              onRetry={onRetryMatchHistory}
+            />
+          </View>
+        ) : undefined
       }
     />
   );

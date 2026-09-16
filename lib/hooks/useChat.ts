@@ -43,6 +43,34 @@ function hydrateConversationEmbeds(row: ConversationRow): ConversationRow {
   };
 }
 
+async function fetchLastMessages(
+  conversationIds: string[]
+): Promise<Map<string, NonNullable<ConversationRow["last_message"]>>> {
+  const map = new Map<string, NonNullable<ConversationRow["last_message"]>>();
+  if (conversationIds.length === 0) return map;
+  const results = await Promise.all(
+    conversationIds.map(async (id) => {
+      try {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("body, created_at, deleted_at")
+          .eq("conversation_id", id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error || !data) return null;
+        return { id, message: data as NonNullable<ConversationRow["last_message"]> };
+      } catch {
+        return null;
+      }
+    })
+  );
+  for (const row of results) {
+    if (row?.message) map.set(row.id, row.message);
+  }
+  return map;
+}
+
 /** Conversations dont l'utilisateur connecté est membre (les plus récentes en premier). */
 export function useConversations(userId: string | null) {
   return useQuery({
@@ -75,8 +103,23 @@ export function useConversations(userId: string | null) {
       } catch {
         blocked = new Set();
       }
-      const rows = ((data ?? []) as ConversationRow[]).map(hydrateConversationEmbeds);
-      return filterVisibleConversations(rows, userId!, blocked);
+      let lastById = new Map<string, NonNullable<ConversationRow["last_message"]>>();
+      try {
+        lastById = await fetchLastMessages(conversationIds);
+      } catch {
+        lastById = new Map();
+      }
+      const rows = ((data ?? []) as ConversationRow[]).map((row) => {
+        const hydrated = hydrateConversationEmbeds(row);
+        return { ...hydrated, last_message: lastById.get(hydrated.id) ?? null };
+      });
+      const visible = filterVisibleConversations(rows, userId!, blocked);
+      visible.sort((a, b) => {
+        const ta = a.last_message?.created_at ?? a.created_at;
+        const tb = b.last_message?.created_at ?? b.created_at;
+        return tb.localeCompare(ta);
+      });
+      return visible;
     },
   });
 }
@@ -99,12 +142,29 @@ export function useConversation(conversationId: string | null) {
   });
 }
 
+function conversationIdFromStartPayload(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as { conversation?: { id?: unknown } | { id?: unknown }[] | null; id?: unknown };
+  const embedded = row.conversation;
+  const fromEmbed = Array.isArray(embedded) ? embedded[0]?.id : embedded?.id;
+  if (typeof fromEmbed === "string" && fromEmbed) return fromEmbed;
+  if (typeof row.id === "string" && row.id) return row.id;
+  return null;
+}
+
 /** Démarre (ou retrouve) une conversation DIRECT avec `otherUserId` — voir start-direct-conversation. */
 export function useStartDirectConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (otherUserId: string) =>
-      callEdgeFunction<{ conversation: ConversationRow }>("start-direct-conversation", { otherUserId }),
+    mutationFn: async (otherUserId: string) => {
+      const data = await callEdgeFunction<{ conversation?: ConversationRow | ConversationRow[]; id?: string }>(
+        "start-direct-conversation",
+        { otherUserId }
+      );
+      const id = conversationIdFromStartPayload(data);
+      if (!id) throw new Error("Impossible d'ouvrir la conversation.");
+      return { conversation: { id } };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       queryClient.invalidateQueries({ queryKey: ["conversation"] });

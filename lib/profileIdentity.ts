@@ -184,3 +184,75 @@ export function validateProfileIdentity(input: Record<string, unknown>): Profile
     },
   };
 }
+
+export type PositionSelection = {
+  main_position: PositionCode;
+  secondary_positions: PositionCode[];
+};
+
+export type PositionTapIntent = "tap" | "long-press";
+export type PositionTapReason = "max" | "noop";
+
+export type PositionTapResult =
+  | { ok: true; main_position: PositionCode; secondary_positions: PositionCode[] }
+  | { ok: false; reason: PositionTapReason };
+
+export const MAX_PROFILE_POSITIONS = 3;
+export const MAX_SECONDARY_POSITIONS = 2;
+
+function normalizeSecondary(
+  main: PositionCode,
+  secondary: readonly string[] | null | undefined
+): PositionCode[] {
+  const seen = new Set<string>();
+  const out: PositionCode[] = [];
+  for (const raw of secondary ?? []) {
+    if (typeof raw !== "string" || raw === main || !POSITION_SET.has(raw) || seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw as PositionCode);
+    if (out.length === MAX_SECONDARY_POSITIONS) break;
+  }
+  return out;
+}
+
+function okPositions(main: PositionCode, secondary: PositionCode[]): PositionTapResult {
+  return { ok: true, main_position: main, secondary_positions: secondary };
+}
+
+/**
+ * Grille de postes inline (profil perso). Pas de navigation.
+ * Max 3 postes (1 principal + 2 secondaires). Un 4e vide n'est jamais promu.
+ * - tap vide → secondaire si place, sinon `{ ok:false, reason:"max" }`
+ * - tap secondaire → devient principal, l'ancien principal passe secondaire
+ * - tap principal → `{ ok:false, reason:"noop" }`
+ * - appui long sur un secondaire → le retire ; le principal ne se retire pas
+ */
+export function nextPositionsOnTap(
+  current: { main_position: PositionCode; secondary_positions?: readonly PositionCode[] | null },
+  tapped: PositionCode,
+  intent: PositionTapIntent = "tap"
+): PositionTapResult {
+  if (!POSITION_SET.has(tapped) || !POSITION_SET.has(current.main_position)) {
+    return { ok: false, reason: "noop" };
+  }
+  const main = current.main_position;
+  const secondary = normalizeSecondary(main, current.secondary_positions);
+
+  if (intent === "long-press") {
+    if (tapped === main || !secondary.includes(tapped)) return { ok: false, reason: "noop" };
+    return okPositions(main, secondary.filter((p) => p !== tapped));
+  }
+
+  if (tapped === main) return { ok: false, reason: "noop" };
+
+  if (secondary.includes(tapped)) {
+    const rest = secondary.filter((p) => p !== tapped);
+    return okPositions(tapped, normalizeSecondary(tapped, [main, ...rest]));
+  }
+
+  if (secondary.length >= MAX_SECONDARY_POSITIONS) {
+    return { ok: false, reason: "max" };
+  }
+
+  return okPositions(main, [...secondary, tapped]);
+}

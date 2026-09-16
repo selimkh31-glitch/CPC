@@ -48,5 +48,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Impossible de démarrer la conversation." }, 500);
   }
 
-  return jsonResponse({ conversation });
+  const row = Array.isArray(conversation) ? conversation[0] : conversation;
+  if (!row?.id) return jsonResponse({ error: "Impossible de démarrer la conversation." }, 500);
+
+  return jsonResponse({ conversation: row });
 });

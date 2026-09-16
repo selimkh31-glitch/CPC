@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { Alert, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Text, View } from "react-native";
 import { DoorOpen, Clock, ArrowRightCircle } from "lucide-react-native";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +29,7 @@ export function MyDepartureStatusCard({
   membership: ClubMemberRow;
 }) {
   const { data: departure, isLoading } = useDeparture(membership.active_departure_request_id);
+  const [confirming, setConfirming] = useState(false);
   const requestDeparture = useRequestDeparture(clubId);
 
   const onStatusChange = useCallback((status: DepartureStatus) => {
@@ -45,22 +46,15 @@ export function MyDepartureStatusCard({
   useMyDepartureUpdates(userId, onStatusChange);
 
   const confirmAndRequest = () => {
-    Alert.alert(
-      "Quitter le club ?",
-      "L'owner/manager aura 3 minutes pour répondre. Tu restes membre et peux continuer à jouer normalement pendant ce temps — aucune pénalité.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Confirmer",
-          style: "destructive",
-          onPress: () =>
-            requestDeparture.mutate(undefined, {
-              onSuccess: () => toast.success("Demande de départ envoyée."),
-              onError: (err: any) => toast.error(err.message ?? "Erreur"),
-            }),
-        },
-      ]
-    );
+    if (requestDeparture.isPending) return;
+    requestDeparture.mutate(undefined, {
+      onSuccess: (data) => {
+        setConfirming(false);
+        const leftNow = Boolean(data.leftImmediately) || data.departure?.status === "ACCEPTED_NOW";
+        toast.success(leftNow ? "Tu as quitté le club." : "Demande de départ envoyée.");
+      },
+      onError: (err: any) => toast.error(err.message ?? "Impossible d'envoyer la demande de départ."),
+    });
   };
 
   // Demande active — affiche le statut résolu côté serveur, aucune logique recréée ici.
@@ -122,19 +116,13 @@ export function MyDepartureStatusCard({
     );
   }
 
-  // Aucune demande active.
-  if (membership.matches_played_count < 1) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle icon={<DoorOpen size={18} color="#f4f5f7" />}>Quitter le club</CardTitle>
-        </CardHeader>
-        <Text className="text-sm text-fg-muted">
-          Tu dois avoir joué au moins 1 match validé (check-in) dans ce club avant de pouvoir demander ton départ.
-        </Text>
-      </Card>
-    );
-  }
+  // Aucune demande active — MEMBER/MANAGER peut toujours taper Quitter.
+  const zeroMatches = membership.matches_played_count < 1;
+  const playedCount = membership.matches_played_count;
+  const playedLabel =
+    playedCount > 1
+      ? `${playedCount} matchs joué — départ disponible.`
+      : `${playedCount} match joué — départ disponible.`;
 
   return (
     <Card>
@@ -142,12 +130,28 @@ export function MyDepartureStatusCard({
         <CardTitle icon={<DoorOpen size={18} color="#f4f5f7" />}>Quitter le club</CardTitle>
       </CardHeader>
       <Text className="mb-3 text-sm text-fg-muted">
-        {membership.matches_played_count} match{membership.matches_played_count > 1 ? "s" : ""} joué — départ
-        disponible.
+        {zeroMatches ? "Tu n'as pas encore joué. Tu quittes tout de suite." : playedLabel}
       </Text>
-      <Button variant="danger" loading={requestDeparture.isPending} onPress={confirmAndRequest}>
-        Quitter le club
-      </Button>
+      {confirming ? (
+        <View className="gap-2">
+          {zeroMatches ? null : (
+            <Text className="text-sm text-fg-muted">
+              L&apos;owner/manager aura 3 minutes pour répondre. Tu restes membre et tu peux continuer à jouer pendant ce
+              temps — aucune pénalité.
+            </Text>
+          )}
+          <Button variant="danger" loading={requestDeparture.isPending} onPress={confirmAndRequest}>
+            Confirmer
+          </Button>
+          <Button variant="secondary" disabled={requestDeparture.isPending} onPress={() => setConfirming(false)}>
+            Annuler
+          </Button>
+        </View>
+      ) : (
+        <Button variant="danger" onPress={() => setConfirming(true)}>
+          Quitter le club
+        </Button>
+      )}
     </Card>
   );
 }

@@ -6,6 +6,7 @@ import { validateClubIdentity } from "@/lib/clubIdentity";
 import { filterClubsHiddenByBlock } from "@/lib/safety";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
+import { clubReadOrNull } from "@/lib/clubRead";
 
 export function useClubsList() {
   return useQuery({
@@ -34,15 +35,17 @@ export function useClub(clubId: string | null) {
     queryKey: ["club", clubId],
     enabled: Boolean(clubId),
     queryFn: async () => {
+      if (!clubId) return null;
       const { data, error } = await supabase
         .from("clubs")
         .select(
           `*, members:club_members(*, user:users(${USER_PUBLIC_COLUMNS})), sessions:club_sessions(*), slotAssignments:slot_assignments(*, user:users(${USER_PUBLIC_COLUMNS}))`
         )
-        .eq("id", clubId!)
-        .single();
-      if (error) throw error;
-      return data as ClubRow & { members: ClubMemberRow[]; sessions: ClubSessionRow[]; slotAssignments: SlotAssignmentRow[] };
+        .eq("id", clubId)
+        .maybeSingle();
+      return clubReadOrNull({ data, error }) as
+        | (ClubRow & { members: ClubMemberRow[]; sessions: ClubSessionRow[]; slotAssignments: SlotAssignmentRow[] })
+        | null;
     },
   });
 }
@@ -155,6 +158,12 @@ export function useCreateSession(clubId: string) {
       if (!input.neededPositions.length) throw new Error("Sélectionne au moins un poste recherché.");
       const durationMs = parseLiveDurationMs(input.durationMs !== undefined ? String(input.durationMs) : undefined);
       const expiresAt = computeLiveExpiresAt(Date.now(), durationMs).toISOString();
+      const { data: previousRows } = await supabase
+        .from("club_sessions")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("is_live", true);
+      const previousIds = ((previousRows ?? []) as { id: string }[]).map((row) => row.id).filter(Boolean);
       await supabase.from("club_sessions").update({ is_live: false }).eq("club_id", clubId).eq("is_live", true);
       const { data, error } = await supabase
         .from("club_sessions")
@@ -167,7 +176,12 @@ export function useCreateSession(clubId: string) {
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (previousIds.length > 0) {
+          await supabase.from("club_sessions").update({ is_live: true }).in("id", previousIds);
+        }
+        throw error;
+      }
       return data as ClubSessionRow;
     },
     onSuccess: () => {
@@ -195,6 +209,26 @@ export function useToggleSession(clubId: string) {
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
+    },
+  });
+}
+
+/** Met à jour les postes cherchés d'un LIVE déjà allumé, sans recréer la session / le TTL. */
+export function usePatchLiveNeededPositions(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { sessionId: string; neededPositions: string[] }) => {
+      if (!input.neededPositions.length) throw new Error("Sélectionne au moins un poste recherché.");
+      const { error } = await supabase
+        .from("club_sessions")
+        .update({ needed_positions: input.neededPositions })
+        .eq("id", input.sessionId)
+        .eq("club_id", clubId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
     },
@@ -250,6 +284,24 @@ export function useUpdateMember(clubId: string) {
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+    },
+  });
+}
+
+/**
+ * Retire un joueur de la feuille (slot_assignments) sans le bloquer ni
+ * le sortir de club_members. RLS slot_assignments_write_manager.
+ */
+export function useClearSlotAssignment(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from("slot_assignments").delete().eq("club_id", clubId).eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
     },
   });
 }

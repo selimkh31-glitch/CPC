@@ -17,6 +17,7 @@ import { POSITION_LABELS } from "@/lib/constants";
 import type { Plan, Platform, PlayStyleCode, PositionCode, UserRow, VerifiedStats } from "@/lib/types";
 import type { EaIdentityKind } from "@/lib/statsSource";
 import { hasVerifiedEaStatValues, normalizeEaIdentityKind } from "@/lib/statsSource";
+import { resolveFaceStats, type FaceStatsPack } from "@/lib/cardFace";
 
 export type PlayerCardDensity = "mini" | "compact" | "full";
 /** `standard` → compact, `hero` → full (aliases historiques). */
@@ -83,10 +84,19 @@ export const PLAYER_CARD_COPY = {
   viewProfile: "Voir le profil",
   invite: "Inviter",
   live: "LIVE",
-  matchesOne: "1 match CPC",
-  matchesMany: (n: number) => `${n} matchs CPC`,
+  matchesOne: "1 match",
+  matchesMany: (n: number) => `${n} matchs`,
   eaUsernameHint: "Pseudo EA (rapprochement par nom — pas un id joueur)",
   fc27: "EA SPORTS FC 27 Pro Clubs",
+  linkClub: "C'est mon club",
+  eaUnlinked: "Pas encore lié — tu peux jouer sans.",
+  eaLinkedPending: "Club lié — chiffres pas encore là.",
+  eaGoals: "Buts EA",
+  eaAssists: "Passes EA",
+  eaMatches: "Matchs EA",
+  eaRating: "Note EA",
+  sansClub: "Sans club",
+  watermark: "ClubPro",
 } as const;
 
 export function formatCpcMatchCount(played: number | null | undefined): string | null {
@@ -155,8 +165,11 @@ export interface PlayerCardData {
   /** Club EA lié (colonne). ≠ identité joueur EA vérifiée. */
   eaClubLinked: boolean;
   eaIdentityKind: EaIdentityKind;
+  /** Career EA (buts/passes/matchs/note) — distinct du pack face PAC/SHO. */
   eaStats: VerifiedStats | null;
   showEaStats: boolean;
+  /** Pack face. `null` en prod sans attributs stockés. DEV = mock, jamais labellisé EA. */
+  faceStats: FaceStatsPack | null;
 
   /** Comptage PRESENT → match_results. `null` = non fourni (listes). 0 = aucun. */
   cpcMatchesPlayed: number | null;
@@ -178,6 +191,8 @@ export interface BuildPlayerCardOpts {
   needPositions?: string | readonly string[] | null;
   /** Ignoré s'il n'est pas STANDARD / sélectionnable. */
   templateId?: PlayerCardTemplateId | null;
+  /** Défaut `__DEV__`. Les tests passent `false` pour verrouiller la prod. */
+  isDev?: boolean;
 }
 
 export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {}): PlayerCardData {
@@ -187,6 +202,7 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
   const ovr = computeOvr({ reliabilityScore: reliability, verifiedStats: user.verified_stats });
   const identityKind = normalizeEaIdentityKind(user.ea_identity_kind);
   const showEaStats = identityKind === "USERNAME_EQUALITY" && hasVerifiedEaStatValues(user.verified_stats);
+  const isDev = opts.isDev ?? (typeof __DEV__ !== "undefined" && Boolean(__DEV__));
   const template = resolvePlayerCardTemplate(opts.templateId);
   const played =
     typeof opts.cpcMatchesPlayed === "number" && Number.isFinite(opts.cpcMatchesPlayed)
@@ -199,7 +215,7 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
     eaUsername: identityKind === "USERNAME_EQUALITY" && user.username ? user.username : null,
     platform: user.platform,
     mainPosition: user.main_position,
-    secondaryPositions: user.secondary_positions ?? [],
+    secondaryPositions: [...new Set((user.secondary_positions ?? []).filter((p) => p !== user.main_position))],
     playStyle: user.play_style,
     plan: user.plan,
     clubName: opts.clubName?.trim() ? opts.clubName.trim() : null,
@@ -215,6 +231,13 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
     eaIdentityKind: identityKind,
     eaStats: showEaStats ? user.verified_stats : null,
     showEaStats,
+    faceStats: resolveFaceStats({
+      verified: user.verified_stats,
+      identityKind,
+      isDev,
+      seed: user.id || user.username,
+      position: user.main_position,
+    }),
 
     cpcMatchesPlayed: played,
     live: Boolean(opts.live),
@@ -230,4 +253,46 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
 export function formatPositionsLine(main: PositionCode, secondary: PositionCode[] = []): string {
   const positions = [main, ...secondary].filter((p, i, arr) => arr.indexOf(p) === i);
   return positions.map((p) => `${p} · ${POSITION_LABELS[p]}`).join("  ·  ");
+}
+
+/**
+ * Blocs EA carrière à afficher — seulement les chiffres déjà stockés.
+ * PAC/SHO/PAS/DRI/DEF/PHY vivent dans `faceStats`, pas ici.
+ * Pas de courbe : une note unique n'est pas un historique.
+ */
+export function visibleEaStatBlocks(
+  stats: VerifiedStats | null | undefined
+): { label: string; value: string | number }[] {
+  if (!stats) return [];
+  const out: { label: string; value: string | number }[] = [];
+  if (typeof stats.goals === "number" && Number.isFinite(stats.goals)) {
+    out.push({ label: PLAYER_CARD_COPY.eaGoals, value: stats.goals });
+  }
+  if (typeof stats.assists === "number" && Number.isFinite(stats.assists)) {
+    out.push({ label: PLAYER_CARD_COPY.eaAssists, value: stats.assists });
+  }
+  if (typeof stats.matchesPlayed === "number" && Number.isFinite(stats.matchesPlayed)) {
+    out.push({ label: PLAYER_CARD_COPY.eaMatches, value: stats.matchesPlayed });
+  }
+  if (typeof stats.avgRating === "number" && Number.isFinite(stats.avgRating) && stats.avgRating > 0) {
+    out.push({ label: PLAYER_CARD_COPY.eaRating, value: stats.avgRating.toFixed(1) });
+  }
+  return out;
+}
+
+/** Un seul chiffre héros, CPC réel. Jamais un 0 décoratif ni un % inventé. */
+export function playerCardHeroNumber(data: {
+  ovr: number | null;
+  cpcMatchesPlayed: number | null;
+}): { value: number; label: string } | null {
+  if (typeof data.ovr === "number" && Number.isFinite(data.ovr)) {
+    return { value: data.ovr, label: PLAYER_CARD_COPY.ovrLabel };
+  }
+  if (typeof data.cpcMatchesPlayed === "number" && Number.isFinite(data.cpcMatchesPlayed) && data.cpcMatchesPlayed > 0) {
+    return {
+      value: data.cpcMatchesPlayed,
+      label: data.cpcMatchesPlayed === 1 ? "match" : "matchs",
+    };
+  }
+  return null;
 }

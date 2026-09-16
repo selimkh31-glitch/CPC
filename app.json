@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "clubproconnect",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#08090b",
+    "backgroundColor": "#04080d",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -23,7 +23,7 @@
       "package": "com.clubproconnect.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#08090b",
+        "backgroundColor": "#04080d",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -44,9 +44,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#08090b",
+          "backgroundColor": "#04080d",
           "dark": {
-            "backgroundColor": "#08090b"
+            "backgroundColor": "#04080d"
           }
         }
       ],
@@ -55,7 +55,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#39ff8a"
+          "color": "#54e182"
         }
       ],
       "expo-font"

@@ -1,33 +1,39 @@
 import { Tabs } from "expo-router";
-import { Inbox, Radio, Shield, Swords } from "lucide-react-native";
+import { House, Inbox, Radio, Shield, Swords } from "lucide-react-native";
+import { useModeAccent } from "@/lib/theme";
+import { BottomNavigation } from "@/components/nav/BottomNavigation";
+import { cpcHex } from "@/lib/design/cpc-native";
 
-const TAB_BAR_STYLE = {
-  backgroundColor: "#0f1114",
-  borderTopColor: "#24272c",
-  borderTopWidth: 1,
-  height: 64,
-  paddingBottom: 10,
-  paddingTop: 8,
-} as const;
+export const unstable_settings = {
+  initialRouteName: "home",
+};
 
 /**
- * Mode Club — 3 onglets : LIVE | Recrutement | Club.
- * match (feuille de match) reste un fichier pour deep link `/match`, hors tab bar.
+ * Mode Club — 3 onglets : Accueil | Matchmaking | Recrutement.
+ * index.tsx reste la feuille (ex-LIVE) pour les deep links.
+ * Club / match hors tab bar (`href: null`).
  */
 export default function ClubTabsLayout() {
+  const accent = useModeAccent();
+
   return (
     <Tabs
+      initialRouteName="home"
+      tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#39ff8a",
-        tabBarInactiveTintColor: "#666c74",
-        tabBarStyle: TAB_BAR_STYLE,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
+        tabBarActiveTintColor: accent,
+        tabBarInactiveTintColor: cpcHex.disabled,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
+        name="home"
+        options={{ title: "Accueil", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="index"
-        options={{ title: "LIVE", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
+        options={{ title: "Matchmaking", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="candidatures"
@@ -35,7 +41,7 @@ export default function ClubTabsLayout() {
       />
       <Tabs.Screen
         name="effectif"
-        options={{ title: "Club", tabBarIcon: ({ color, size }) => <Shield color={color} size={size} /> }}
+        options={{ href: null, title: "Club", tabBarIcon: ({ color, size }) => <Shield color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="match"

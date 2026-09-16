@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useAuth } from "@/lib/providers/AuthProvider";
-import { isLiveActive } from "@/lib/live";
+import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { rankLiveClubsForPlayer } from "@/lib/liveMatch";
 import {
   EMPTY_LIVE_FILTERS,
@@ -25,6 +25,9 @@ import {
   widenLiveFilters,
 } from "@/lib/liveFilters";
 import { PLATFORM_LABELS, POSITION_LABELS } from "@/lib/constants";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
+import { useModeAccent } from "@/lib/theme";
 
 type FindMode = "live" | "matchmaking" | "directory";
 
@@ -33,13 +36,14 @@ type FindMode = "live" | "matchmaking" | "directory";
  * Discovery (annuaire) et Matchmaking (slots / moteur déterministe) restent distincts
  * du feed LIVE. Aucun club inventé, aucun % de compatibilité.
  */
-export function FindClubPanel() {
+export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => void }) {
   const { profile } = useAuth();
+  const accent = useModeAccent();
   const { data: items, isLoading, isError, refetch, isRefetching } = useLiveSessions();
   const now = useLiveClock();
   const [filters, setFilters] = useState<LiveFiltersState>(EMPTY_LIVE_FILTERS);
   const [mode, setMode] = useState<FindMode>("live");
-  const [relaxed, setRelaxed] = useState(false);
+  const [relaxed, setRelaxed] = useState(true);
 
   const activeLive = useMemo(
     () => (items ?? []).filter((item) => item.club && isLiveActive(item, now) && (item.needed_positions?.length ?? 0) > 0),
@@ -109,9 +113,7 @@ export function FindClubPanel() {
   };
 
   const liquidityLabel =
-    activeLive.length > 0
-      ? `${activeLive.length} club${activeLive.length > 1 ? "s" : ""} LIVE maintenant`
-      : "Aucun club LIVE pour l'instant";
+    activeLive.length > 0 ? LIVE_UX_COPY.liveClubsNow(activeLive.length) : LIVE_UX_COPY.noLiveClubs;
 
   const onRefresh = () => {
     refetch();
@@ -122,14 +124,14 @@ export function FindClubPanel() {
       <View className="px-4 pt-1">
         <View className="mb-3 flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-display text-xl text-fg">Trouver un club</Text>
-            <Text className="mt-0.5 text-sm text-fg-muted">On cherche les clubs qui correspondent à ton profil.</Text>
+            <Text className="font-display text-xl text-fg">{LIVE_UX_COPY.findClub}</Text>
+            <Text className="mt-0.5 text-sm text-fg-muted">Clubs qui cherchent des joueurs.</Text>
           </View>
           {mode === "directory" ? (
             <Button
               size="sm"
               variant="secondary"
-              icon={<Plus size={16} color="#f4f5f7" />}
+              icon={<Plus size={16} color={cpcHex.textPrimary} />}
               onPress={() => {
                 Haptics.selectionAsync();
                 router.push("/create-club");
@@ -140,7 +142,7 @@ export function FindClubPanel() {
           ) : null}
         </View>
 
-        <View className="mb-3 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+        <View className="mb-3 flex-row border border-border bg-bg-elevated p-1" style={{ borderRadius: cpcTokens.radius.control }}>
           <ModeTab active={mode === "live"} onPress={() => setModeSafe("live")} label="Clubs LIVE" />
           <ModeTab active={mode === "matchmaking"} onPress={() => setModeSafe("matchmaking")} label="Matchmaking" />
           <ModeTab active={mode === "directory"} onPress={() => setModeSafe("directory")} label="Annuaire" />
@@ -170,7 +172,7 @@ export function FindClubPanel() {
           data={displayed}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#39ff8a" />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={accent} />}
           renderItem={({ item }) => <LiveClubCard item={item} reason={reasonBySession.get(item.id)} />}
           ItemSeparatorComponent={() => <View className="h-2.5" />}
           ListEmptyComponent={
@@ -185,6 +187,7 @@ export function FindClubPanel() {
                 relaxed={relaxed}
                 canWiden={canWiden}
                 onWiden={widen}
+                onCreateSession={onCreateSession}
                 profilePosition={profile?.main_position ? POSITION_LABELS[profile.main_position] : null}
                 profilePlatform={profile?.platform ? PLATFORM_LABELS[profile.platform] : null}
               />
@@ -200,9 +203,10 @@ function ModeTab({ active, onPress, label }: { active: boolean; onPress: () => v
   return (
     <Pressable
       onPress={onPress}
-      className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-bg-card" : ""}`}
+      className={`min-h-[44px] flex-1 justify-center px-2 py-2 ${active ? "bg-bg-card" : ""}`}
+      style={{ borderRadius: cpcTokens.radius.control }}
     >
-      <Text className={`text-center text-[11px] font-bold ${active ? "text-fg" : "text-fg-muted"}`}>{label}</Text>
+      <Text className={`text-center font-sans-bold text-eyebrow ${active ? "text-fg" : "text-fg-muted"}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -217,6 +221,7 @@ function LiveEmptyState({
   relaxed,
   canWiden,
   onWiden,
+  onCreateSession,
   profilePosition,
   profilePlatform,
 }: {
@@ -229,6 +234,7 @@ function LiveEmptyState({
   relaxed: boolean;
   canWiden: boolean;
   onWiden: () => void;
+  onCreateSession?: () => void;
   profilePosition: string | null;
   profilePlatform: string | null;
 }) {
@@ -250,41 +256,47 @@ function LiveEmptyState({
 
   if (activeCount === 0) {
     return (
-      <View className="items-center rounded-2xl bg-bg-elevated px-5 py-10">
-        <Text className="text-center text-base font-semibold text-fg">Aucun club LIVE pour l&apos;instant</Text>
+      <View className="items-center bg-bg-elevated px-5 py-10">
+        <Text className="text-center text-base font-semibold text-fg">{LIVE_UX_COPY.noLiveClubs}</Text>
         <Text className="mt-2 text-center text-sm text-fg-muted">
-          Passe LIVE pour que les clubs te trouvent dès qu&apos;ils recrutent.
+          Passe LIVE. Les clubs te voient dès qu&apos;ils cherchent.
         </Text>
+        {onCreateSession ? (
+          <View className="mt-4 w-full">
+            <Button onPress={onCreateSession}>{LIVE_UX_COPY.goLive}</Button>
+          </View>
+        ) : null}
       </View>
     );
   }
 
   const profileHint =
     profilePosition && profilePlatform
-      ? `Aucun club LIVE ne recherche ${profilePosition} sur ${profilePlatform} pour l'instant.`
-      : "Aucun club LIVE ne correspond exactement à ton profil pour l'instant.";
+      ? `Personne ne cherche ${profilePosition} sur ${profilePlatform} pour l'instant.`
+      : "Personne ne cherche exactement ton profil pour l'instant.";
 
   const title = !filtersEmpty
-    ? "Pas de club LIVE pour ces critères."
+    ? "Personne pour ces critères."
     : !relaxed
       ? profileHint
-      : "Aucun club LIVE pour l'instant";
+      : LIVE_UX_COPY.noLiveClubs;
 
   const subtitle = !filtersEmpty
-    ? "On peut élargir : autre poste, plateforme ou niveau — toujours de vrais clubs LIVE, rien d'inventé."
-    : "D'autres clubs LIVE recrutent peut-être sur un autre poste ou une autre plateforme.";
+    ? "On peut élargir : autre poste, plateforme ou niveau — toujours de vrais clubs, rien d'inventé."
+    : "D'autres clubs cherchent peut-être un autre poste ou une autre plateforme.";
 
   return (
-    <View className="items-center rounded-2xl bg-bg-elevated px-5 py-8">
+    <View className="items-center bg-bg-elevated px-5 py-8">
       <Text className="text-center text-base font-semibold text-fg">{title}</Text>
       <Text className="mt-2 text-center text-sm text-fg-muted">{subtitle}</Text>
       {canWiden ? (
         <Pressable
           onPress={onWiden}
-          className="mt-4 rounded-2xl bg-accent px-5 py-3 active:opacity-90"
+          className="mt-4 min-h-[44px] items-center justify-center bg-accent px-5 py-3 active:opacity-90"
+          style={{ borderRadius: cpcTokens.radius.control }}
           accessibilityRole="button"
         >
-          <Text className="text-sm font-bold text-bg">Élargir la recherche</Text>
+          <Text className="font-sans-bold text-body text-accent-fg">Élargir la recherche</Text>
         </Pressable>
       ) : null}
     </View>

@@ -13,7 +13,7 @@ export function LiveCountdown({ expiresAt, className }: { expiresAt: string | nu
   }, []);
 
   return (
-    <Text className={cn("text-xs font-bold text-accent", className)}>
+    <Text className={cn("text-xs font-bold text-live", className)}>
       {formatLiveRemaining(expiresAt, now)}
     </Text>
   );

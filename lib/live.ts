@@ -16,21 +16,28 @@ export const LIVE_DURATION_OPTIONS = [
 ] as const;
 
 export const DEFAULT_LIVE_DURATION_MS = 2 * 60 * 60 * 1000;
+/** DEV only — Metro reload / switcher must outlive a 2 h session. Prod stays 2 h. */
+export const DEV_LIVE_DURATION_MS = 12 * 60 * 60 * 1000;
+
+export function liveSessionDurationMs(): number {
+  return typeof __DEV__ !== "undefined" && __DEV__ ? DEV_LIVE_DURATION_MS : DEFAULT_LIVE_DURATION_MS;
+}
 
 export interface LiveSessionLike {
   is_live: boolean;
   expires_at: string | null;
 }
 
-export function parseLiveDurationMs(raw: string | undefined, fallback = DEFAULT_LIVE_DURATION_MS): number {
-  const allowed = LIVE_DURATION_OPTIONS.map((o) => Number(o.value));
+export function parseLiveDurationMs(raw: string | undefined, fallback = liveSessionDurationMs()): number {
+  const allowed: number[] = LIVE_DURATION_OPTIONS.map((o) => Number(o.value));
+  if (typeof __DEV__ !== "undefined" && __DEV__) allowed.push(DEV_LIVE_DURATION_MS);
   const n = raw ? Number(raw) : fallback;
   if (!Number.isFinite(n) || !allowed.includes(n)) return fallback;
   return n;
 }
 
-export function computeLiveExpiresAt(nowMs: number, durationMs = DEFAULT_LIVE_DURATION_MS): Date {
-  const duration = parseLiveDurationMs(String(durationMs), DEFAULT_LIVE_DURATION_MS);
+export function computeLiveExpiresAt(nowMs: number, durationMs = liveSessionDurationMs()): Date {
+  const duration = parseLiveDurationMs(String(durationMs), liveSessionDurationMs());
   return new Date(nowMs + duration);
 }
 
@@ -57,11 +64,90 @@ export function findActiveLiveSession<T extends LiveSessionLike>(
 
 export function formatLiveRemaining(expiresAt: string | null, nowMs: number): string {
   const ms = remainingLiveMs(expiresAt, nowMs);
-  if (ms <= 0) return "Expiré";
+  if (ms <= 0) return "C'est fini";
   const totalMinutes = Math.ceil(ms / 60000);
-  if (totalMinutes < 60) return `${totalMinutes} min`;
+  if (totalMinutes < 60) return `encore ${totalMinutes} min`;
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (minutes === 0) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
+  if (minutes === 0) return `encore ${hours} h`;
+  return `encore ${hours} h ${minutes} min`;
+}
+
+export type LiveUiState = "off" | "open" | "ready";
+
+/** LIVE = un état, pas un feed. ready > open > off. */
+export function liveUiState(input: { liveActive: boolean; matchActive?: boolean }): LiveUiState {
+  if (input.matchActive) return "ready";
+  if (input.liveActive) return "open";
+  return "off";
+}
+
+/** Feuille club (formation / check-in) — pas `/match-sheet` (ClubHome lecture). */
+export const CLUB_MATCH_SHEET_HREF = "/match";
+
+/**
+ * Club LIVE chrome. `ready` est un badge match, jamais un écran qui cache
+ * Passer LIVE. Matching / TTL inchangés.
+ */
+export function clubLiveLayout(input: {
+  canManage: boolean;
+  liveActive: boolean;
+  matchActive: boolean;
+}): {
+  showSessionPanel: true;
+  matchSheetFilled: boolean;
+  showRecruit: boolean;
+  stopLabel: typeof LIVE_UX_COPY.quit | typeof LIVE_UX_COPY.stop;
+} {
+  return {
+    showSessionPanel: true,
+    matchSheetFilled: input.matchActive,
+    showRecruit: input.canManage && input.liveActive,
+    stopLabel: input.matchActive ? LIVE_UX_COPY.quit : LIVE_UX_COPY.stop,
+  };
+}
+
+/**
+ * Copy LIVE (tu, football, courte). Joueur = club. Club = joueurs.
+ * Pas de « on cherche un match » côté joueur.
+ */
+export const LIVE_UX_COPY = {
+  title: "Matchmaking",
+  playerHeadline: "Je cherche un club",
+  clubHeadline: "On cherche des joueurs",
+  goLive: "Passer LIVE",
+  findClub: "Clubs en LIVE",
+  liveClubFilters: "Filtres",
+  backToLive: "Matchmaking",
+  emptyNoClubs: "Aucun club en LIVE.",
+  emptySelfLive: "Je cherche un club. Personne d'autre pour l'instant.",
+  emptyNoPlayers: "Personne d'autre ne cherche un club pour l'instant.",
+  liveClubsNow: (n: number) => (n === 1 ? "1 club en LIVE" : `${n} clubs en LIVE`),
+  noLiveClubs: "Aucun club en LIVE",
+  otherPlayers: "Ils veulent jouer",
+  clubEmptyPlayersLive: "Personne de dispo sur tes postes.",
+  clubEmptyPlayersOffline: "Passe LIVE pour voir qui veut jouer.",
+  clubOpenTitle: "Club en LIVE",
+  discoveryOn: "En ligne",
+  discoveryHintOn: "Les joueurs te voient",
+  discoveryHintOff: "Passe en ligne. Les joueurs te voient.",
+  discoveryFull: "Tous les postes sont pris — rien à recruter.",
+  discoveryNeedPitch: "Choisis une formation pour passer en ligne.",
+  readyTitle: "Le match est lancé",
+  stop: "Arrêter",
+  quit: "Quitter",
+  newLive: "Nouveau LIVE",
+  edit: "Modifier",
+  matchSheet: "Feuille de match",
+  stillLooking: "Les clubs te voient.",
+  clubStillLooking: "Les joueurs te voient.",
+  howLong: "Combien de temps ?",
+  noteOptional: "Une note (optionnel)",
+  hideNote: "Masquer la note",
+} as const;
+
+export function liveFeedEmptyCopy(input: { selfLive: boolean; liveClubCount: number }): string {
+  if (input.selfLive && input.liveClubCount === 0) return LIVE_UX_COPY.emptySelfLive;
+  if (input.liveClubCount === 0) return LIVE_UX_COPY.emptyNoClubs;
+  return LIVE_UX_COPY.emptyNoPlayers;
 }

@@ -45,6 +45,13 @@ export interface VerifiedStats {
   lastSyncedAt?: string;
   /** Matchs EA déjà agrégés — skip incrémental, pas une identité joueur. */
   importedMatchIds?: string[];
+  /** Attributs face EA (0–99), optionnels — jamais inventés en prod. */
+  pac?: number;
+  sho?: number;
+  pas?: number;
+  dri?: number;
+  def?: number;
+  phy?: number;
 }
 
 export interface UserRow {
@@ -282,6 +289,8 @@ export interface ConversationRow {
    *  Jamais inventé : nom vide / placeholder « Club Pro Clubs » / « Club »
    *  → fallback `CLUB_CONVERSATION_COPY`. */
   club?: Pick<ClubRow, "id" | "name"> | null;
+  /** Dernier message — hydraté côté liste chat, jamais inventé. */
+  last_message?: { body: string; created_at: string; deleted_at: string | null } | null;
 }
 
 export interface ConversationMemberRow {

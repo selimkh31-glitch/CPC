@@ -8,6 +8,7 @@ import {
   buildClubCardDataFromHydratedClub,
   buildClubCardDataFromLiveSession,
   clubMatchRecordFromLinkedResults,
+  clubCardHeroNumber,
   formatClubMatchRecord,
   formatClubMemberCount,
   honestClubReason,
@@ -146,6 +147,8 @@ test("W-D-L réel seulement avec opponent_club_id — même scorer CPC", () => {
 
   const data = buildClubCardData(baseClub({ id: clubId }), { matchRecord: record });
   assert.deepEqual(data.matchRecord, record, "passed through");
+  assert.deepEqual(clubCardHeroNumber(data), { value: 4, label: CLUB_CARD_COPY.pointsLabel }, "hero points");
+  assert.equal(clubCardHeroNumber({ matchRecord: null }), null, "no fake hero");
 });
 
 test("LIVE / needed / note viennent de la session, pas de la ligne Club", () => {
@@ -160,7 +163,7 @@ test("LIVE / needed / note viennent de la session, pas de la ligne Club", () => 
     liveExpiresAt: "2026-08-25T21:00:00.000Z",
   });
   assert.equal(on.live, true, "live");
-  assert.equal(on.neededLine, "Attaquant · Milieu offensif", "needed from session");
+  assert.equal(on.neededLine, "ST · CAM", "needed from session");
   assert.equal(on.liveNote, "Dispo 21h", "note");
   assert.equal(on.liveExpiresAt, "2026-08-25T21:00:00.000Z", "ttl");
 });
@@ -181,6 +184,8 @@ test("eaClubId = identité liée, jamais des stats EA", () => {
   assert.equal("eaStats" in linked, false, "pas de stats");
   assert.equal("goals" in linked, false, "pas de buts");
   assert.equal(CLUB_CARD_COPY.eaLinkedHint.includes("pas des stats"), true, "copy");
+  assert.equal(CLUB_CARD_COPY.eaUnlinked.includes("inventées"), true, "unlinked honest");
+  assert.equal(CLUB_CARD_COPY.eaUnlinked.includes("Lier"), false, "pas de CTA mort club");
 });
 
 test("memberCount omis si non fourni ; 0 chargé reste 0 (effectif réel vide)", () => {
@@ -245,7 +250,7 @@ test("buildClubCardDataFromLiveSession — owner platform + needed session", () 
   assert.equal(data?.live, true, "live");
   assert.equal(data?.ownerPlatform, "XBOX", "owner platform");
   assert.equal(data?.ownerUsername, "Patron", "owner name");
-  assert.equal(data?.neededLine, "Attaquant", "needed");
+  assert.equal(data?.neededLine, "ST", "needed");
   assert.equal(data?.reason, "poste recherché (ST)", "reason");
   assert.equal(data?.href.includes("session=s1"), true, "session href");
   assert.equal(buildClubCardDataFromLiveSession({ ...item, club: undefined }), null, "no club");
@@ -313,7 +318,7 @@ test("hydraté : plateforme owner, LIVE session, effectif déjà chargé ; pas d
   assert.equal(data.ownerUsername, "Patron", "username");
   assert.equal(data.memberCount, 1, "members loaded");
   assert.equal(data.live, true, "live session");
-  assert.equal(data.neededLine, "Gardien", "needed from session");
+  assert.equal(data.neededLine, "GK", "needed from session");
   assert.equal("ovr" in data, false, "pas d'OVR");
   assert.equal(data.matchRecord, null, "pas de W-D-L sans results");
 });
@@ -329,6 +334,35 @@ test("listes fondateur : candidatures / invitations n'inventent pas Club / Club 
   assert.true(invs.includes("buildClubCardData"), "invs ClubCard");
   assert.false(invs.includes('name: "Club"'), "invs no Club fallback");
   assert.false(invs.includes('"Club Pro Clubs"'), "invs no placeholder");
+});
+
+test("spine UX — Recrutement invite ; Club pas un 2e LIVE ; Card a Lier mon club", () => {
+  const rec = readFileSync(`${process.cwd()}/app/(club)/(tabs)/candidatures.tsx`, "utf8");
+  const club = readFileSync(`${process.cwd()}/app/(club)/(tabs)/effectif.tsx`, "utf8");
+  const liveClub = readFileSync(`${process.cwd()}/app/(club)/(tabs)/index.tsx`, "utf8");
+  const livePlayer = readFileSync(`${process.cwd()}/app/(player)/(tabs)/index.tsx`, "utf8");
+  const profile = readFileSync(`${process.cwd()}/components/profile/ProfileContent.tsx`, "utf8");
+  const card = readFileSync(`${process.cwd()}/components/player/PlayerCard.tsx`, "utf8");
+  assert.true(rec.includes("InviteToClubPanel"), "invite on recrutement");
+  assert.true(rec.includes("ApplicationsPanel"), "accept");
+  assert.false(club.includes("InviteToClubPanel"), "invite not on club tab");
+  assert.false(club.includes("ClubSessionStatus"), "club not 2nd LIVE");
+  assert.true(club.includes("MatchHistoryList"), "club stats");
+  assert.true(liveClub.includes("ClubLiveFeuille"), "club LIVE is feuille");
+  assert.false(liveClub.includes("LiveSessionPanel"), "no intern LIVE panel");
+  assert.false(liveClub.includes("clubLiveLayout"), "no competing layout");
+  assert.false(liveClub.includes('uiState === "ready"'), "ready does not replace screen");
+  assert.false(liveClub.includes("ClubSessionStatus"), "no duplicate status");
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  assert.true(feuille.includes("ClubDiscoveryToggle"), "discovery toggle");
+  assert.true(feuille.includes("FormationPitch"), "pitch on LIVE");
+  assert.false(feuille.includes("flag + durée"), "no intern flag copy");
+  assert.true(livePlayer.includes("LiveClubCard"), "clubs on matchmaking");
+  assert.true(livePlayer.includes("MatchmakingFilters"), "filters");
+  assert.false(livePlayer.includes("LivePlayerCard"), "no other players");
+  assert.false(livePlayer.includes("liveFeedEmptyCopy"), "not liveFeedEmptyCopy");
+  assert.true(profile.includes("onLinkEaClub"), "EA CTA wired");
+  assert.true(card.includes("PLAYER_CARD_COPY.linkClub"), "cta on card");
 });
 
 console.log(`\n${passed} test(s) passés.`);

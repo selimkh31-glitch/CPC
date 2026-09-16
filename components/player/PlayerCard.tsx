@@ -8,20 +8,24 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { PulseDot } from "@/components/ui/PulseDot";
-import { RARITY_BORDER, RARITY_GRADIENT, RARITY_TEXT } from "@/lib/theme";
-import { OVR_CPC_LABEL, RARITY_LABEL } from "@/lib/ovr";
+import { RARITY_BORDER, RARITY_TEXT } from "@/lib/theme";
+import { OVR_CPC_LABEL } from "@/lib/ovr";
+import { Button } from "@/components/ui/Button";
 import {
   PLAYER_CARD_COPY,
   formatCpcMatchCount,
-  formatPositionsLine,
+  playerCardHeroNumber,
   resolvePlayerCardDensity,
+  visibleEaStatBlocks,
   type PlayerCardData,
   type PlayerCardState,
   type PlayerCardVariant,
 } from "@/lib/playerCard";
+import { faceStatsCaption, visibleFaceStatCells } from "@/lib/cardFace";
 import { PLATFORM_LABELS, PLAY_STYLE_LABELS, POSITION_LABELS } from "@/lib/constants";
 import { eaIdentityBadge } from "@/lib/statsSource";
 import { cn } from "@/lib/utils";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 /**
  * Carte joueur unique — 3 densités du même builder (`buildPlayerCardData`).
@@ -37,6 +41,7 @@ export function PlayerCard({
   shareEnabled = false,
   footer,
   rightSlot,
+  onLinkEaClub,
   className,
 }: {
   data: PlayerCardData;
@@ -47,6 +52,8 @@ export function PlayerCard({
   shareEnabled?: boolean;
   footer?: React.ReactNode;
   rightSlot?: React.ReactNode;
+  /** Profil perso, club EA pas lié — CTA sur la Card, pas dans les réglages. */
+  onLinkEaClub?: () => void;
   className?: string;
 }) {
   const density = resolvePlayerCardDensity(variant);
@@ -59,7 +66,7 @@ export function PlayerCard({
 
   if (density === "mini") {
     return (
-      <View className={cn("rounded-2xl border bg-bg-card px-3 py-2", stateBorderClass(state, data), className)}>
+      <View className={cn("rounded-xl border bg-bg-card px-2.5 py-1.5", stateBorderClass(state, data), className)}>
         <MiniBody data={data} onPress={press} rightSlot={rightSlot} />
         {footer}
       </View>
@@ -74,6 +81,7 @@ export function PlayerCard({
         onPress={press}
         shareEnabled={shareEnabled}
         footer={footer}
+        onLinkEaClub={onLinkEaClub}
         className={className}
       />
     );
@@ -121,12 +129,11 @@ function MiniBody({
             {data.username}
           </Text>
         </View>
-        <Text className="text-xs text-fg-subtle">
+        <Text className="text-[11px] text-fg-subtle">
           {data.mainPosition} · {PLATFORM_LABELS[data.platform]}
           {data.clubName ? ` · ${data.clubName}` : ""}
         </Text>
       </View>
-      <Text className="font-display text-xl text-accent">{data.mainPosition}</Text>
     </>
   );
 
@@ -222,6 +229,7 @@ function FullBody({
   onPress,
   shareEnabled,
   footer,
+  onLinkEaClub,
   className,
 }: {
   data: PlayerCardData;
@@ -229,12 +237,15 @@ function FullBody({
   onPress?: () => void;
   shareEnabled: boolean;
   footer?: React.ReactNode;
+  onLinkEaClub?: () => void;
   className?: string;
 }) {
   const identity = eaIdentityBadge(data.eaIdentityKind);
-  const matchLine = formatCpcMatchCount(data.cpcMatchesPlayed);
-  const positionLine = formatPositionsLine(data.mainPosition, data.secondaryPositions);
-  const gradient = data.rarity ? RARITY_GRADIENT[data.rarity] : (["#39ff8a26", "#131519"] as [string, string]);
+  const hero = playerCardHeroNumber(data);
+  const faceCells = visibleFaceStatCells(data.faceStats);
+  const careerBlocks = data.showEaStats ? visibleEaStatBlocks(data.eaStats) : [];
+  const surface = [cpcHex.secondary, cpcHex.background] as [string, string];
+  const secondaryCodes = [...new Set(data.secondaryPositions.filter((p) => p !== data.mainPosition))];
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -245,110 +256,140 @@ function FullBody({
   };
 
   const inner = (
-    <LinearGradient colors={gradient} className="p-5">
-      <Text className="text-[11px] font-extrabold uppercase tracking-widest text-accent">{PLAYER_CARD_COPY.fc27}</Text>
-
-      <View className="mt-3 flex-row items-start justify-between">
-        <View className="min-w-0 flex-1 pr-3">
-          <Text className="font-display text-7xl leading-[72px] text-accent">{data.mainPosition}</Text>
-          <Text className="font-display-semibold text-sm uppercase tracking-widest text-fg-muted">
-            {POSITION_LABELS[data.mainPosition]}
-          </Text>
-        </View>
-        <View className="items-end gap-2">
-          <Avatar username={data.username} size="xl" tone={data.live ? "accent" : "neutral"} />
-          {data.rarity ? <Badge tone={data.rarity}>{RARITY_LABEL[data.rarity]}</Badge> : null}
-        </View>
-      </View>
-
-      <View className="mt-4 flex-row items-center justify-between border-t border-white/10 pt-4">
-        <View className="min-w-0 flex-1 pr-3">
-          <View className="flex-row items-center gap-1.5">
-            {data.live ? <PulseDot /> : null}
-            <Text numberOfLines={1} className="font-display text-2xl text-fg">
-              {data.username}
-            </Text>
-          </View>
-          <Text className="mt-0.5 text-xs text-fg-muted">
-            {PLATFORM_LABELS[data.platform]}
-            {data.playStyle ? ` · ${PLAY_STYLE_LABELS[data.playStyle]}` : ""}
-            {data.clubName ? ` · ${data.clubName}` : ""}
-          </Text>
-          {data.eaUsername ? (
-            <Text className="mt-1 text-[11px] text-fg-subtle">
-              EA · {data.eaUsername}
-            </Text>
+    <LinearGradient colors={surface} className="relative px-5 pb-8 pt-5">
+      <View className="min-h-[44px] flex-row items-start justify-between">
+        <View>
+          {hero ? (
+            <>
+              <Text className="font-display text-5xl leading-[48px] text-accent">{hero.value}</Text>
+              <Text className="text-[9px] uppercase tracking-wide text-fg-subtle">{hero.label}</Text>
+            </>
+          ) : data.cpcMatchesPlayed === 0 && !footer ? (
+            <Text className="text-xs text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
           ) : null}
+          <Text className="mt-1 font-display text-2xl leading-7 text-accent">{data.mainPosition}</Text>
         </View>
         {shareEnabled ? (
           <Pressable
             onPress={handleShare}
             accessibilityLabel="Partager la carte"
             hitSlop={8}
-            className="min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border bg-bg-elevated/70 active:scale-90"
+            className="min-h-[44px] min-w-[44px] items-center justify-center active:opacity-70"
           >
-            <Share2 size={16} color="#9aa0a8" />
+            <Share2 size={16} color="#666c74" />
           </Pressable>
-        ) : null}
+        ) : (
+          <View className="min-h-[44px] min-w-[44px]" />
+        )}
       </View>
 
-      {data.secondaryPositions.length > 0 ? (
-        <View className="mt-3">
-          <Text className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Postes</Text>
-          <Text className="mt-1 text-sm font-semibold text-fg">{positionLine}</Text>
+      <View className="mt-3 items-center">
+        <View className="items-center justify-center" style={{ width: 120, height: 120 }}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -18,
+              bottom: -18,
+              left: -18,
+              right: -18,
+              borderRadius: 9999,
+              backgroundColor: cpcHex.accent,
+              opacity: 0.18,
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -8,
+              bottom: -8,
+              left: -8,
+              right: -8,
+              borderRadius: 9999,
+              backgroundColor: cpcHex.accent,
+              opacity: 0.12,
+            }}
+          />
+          <Avatar username={data.username} size="xl" tone="accent" />
         </View>
-      ) : null}
-
-      <View className="mt-4 flex-row gap-2">
-        {data.ovr !== null ? (
-          <StatBlock label={OVR_CPC_LABEL} value={data.ovr} />
-        ) : null}
-        {matchLine ? <StatBlock label="Matchs CPC" value={data.cpcMatchesPlayed ?? 0} /> : null}
       </View>
-      {data.cpcMatchesPlayed === 0 && !footer ? (
-        <Text className="mt-3 text-sm text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
-      ) : null}
 
-      {identity.show ? (
-        <View className="mt-4 self-start rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1.5">
-          <View className="flex-row items-center gap-1.5">
-            <BadgeCheck size={14} color="#39ff8a" />
-            <Text className="text-xs font-bold text-accent">{identity.label}</Text>
+      <View className="mt-4 flex-row flex-wrap items-center justify-center gap-1.5">
+        {data.live ? (
+          <View className="flex-row items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
+            <PulseDot />
+            <Text className="text-[10px] font-bold uppercase tracking-wide text-accent">{PLAYER_CARD_COPY.live}</Text>
           </View>
-          <Text className="mt-0.5 text-[10px] text-fg-muted">{identity.hint}</Text>
-        </View>
-      ) : (
-        <Text className="mt-4 text-xs text-fg-subtle">{identity.hint}</Text>
-      )}
+        ) : null}
+        {secondaryCodes.map((code) => (
+          <Text key={`sec-${code}`} className="font-mono text-[11px] font-bold text-white/45">
+            {code}
+          </Text>
+        ))}
+      </View>
 
-      {data.showEaStats && data.eaStats ? (
-        <View className="mt-4 flex-row gap-2">
-          {typeof data.eaStats.goals === "number" ? <StatBlock label="Buts EA" value={data.eaStats.goals} /> : null}
-          {typeof data.eaStats.assists === "number" ? <StatBlock label="Passes EA" value={data.eaStats.assists} /> : null}
-          {typeof data.eaStats.matchesPlayed === "number" ? (
-            <StatBlock label="Matchs EA" value={data.eaStats.matchesPlayed} />
-          ) : null}
+      <Text numberOfLines={1} className="mt-3 text-center font-display text-3xl leading-9 text-fg">
+        {data.username}
+      </Text>
+      <Text numberOfLines={1} className="mt-0.5 text-center text-sm text-fg-muted">
+        {data.clubName ?? PLAYER_CARD_COPY.sansClub}
+      </Text>
+      <Text className="mt-1 text-center text-[12px] text-fg-subtle">
+        {PLATFORM_LABELS[data.platform]}
+        {data.playStyle ? ` · ${PLAY_STYLE_LABELS[data.playStyle]}` : ""}
+      </Text>
+
+      {faceCells.length > 0 && data.faceStats ? (
+        <View className="mt-5">
+          <View className="flex-row flex-wrap">
+            {faceCells.map((cell) => (
+              <View key={cell.key} className="w-1/3 items-center py-1.5">
+                <Text className="text-[10px] font-bold uppercase tracking-wide text-white/40">{cell.label}</Text>
+                <Text className="font-display text-xl text-fg">{cell.value}</Text>
+              </View>
+            ))}
+          </View>
+          <Text className="mt-1.5 text-center text-[10px] text-fg-subtle">{faceStatsCaption(data.faceStats.source)}</Text>
         </View>
       ) : null}
+
+      {careerBlocks.length > 0 ? (
+        <View className="mt-4 flex-row flex-wrap gap-2">
+          {careerBlocks.map((block) => (
+            <StatBlock key={block.label} label={block.label} value={block.value} />
+          ))}
+        </View>
+      ) : null}
+
+      <EaSlot
+        data={data}
+        identity={identity}
+        onLinkEaClub={onLinkEaClub}
+        hasFaceEa={data.faceStats?.source === "EA"}
+        hasCareer={careerBlocks.length > 0}
+      />
 
       {data.badges.length > 0 ? (
-        <View className="mt-4 flex-row flex-wrap gap-1.5">
+        <View className="mt-4 flex-row flex-wrap justify-center gap-1.5">
           {data.badges.map((badge) => (
             <Badge key={badge.id} tone="accent">
               {badge.label}
             </Badge>
           ))}
         </View>
-      ) : (
-        <Text className="mt-4 text-xs text-fg-subtle">{PLAYER_CARD_COPY.noBadges}</Text>
-      )}
+      ) : null}
 
       {data.currentStreak > 0 ? (
-        <View className="mt-3 flex-row items-center gap-1">
-          <Flame size={14} color="#39ff8a" />
+        <View className="mt-3 flex-row items-center justify-center gap-1">
+          <Flame size={14} color={cpcHex.accent} />
           <Text className="text-xs font-bold text-accent">{data.currentStreak} de suite</Text>
         </View>
       ) : null}
+
+      <Text className="absolute bottom-3 right-4 text-[9px] font-bold uppercase tracking-[3px] text-white/20">
+        {PLAYER_CARD_COPY.watermark}
+      </Text>
     </LinearGradient>
   );
 
@@ -358,7 +399,7 @@ function FullBody({
       animate={{ opacity: 1, translateY: 0, scale: 1 }}
       transition={{ type: "timing", duration: 500 }}
       className={cn(
-        "w-full max-w-sm overflow-hidden rounded-3xl border-2",
+        "w-full max-w-sm overflow-hidden rounded-[32px] border border-white/10",
         stateBorderClass(state, data),
         className
       )}
@@ -375,9 +416,65 @@ function FullBody({
   );
 }
 
+function EaSlot({
+  data,
+  identity,
+  onLinkEaClub,
+  hasFaceEa = false,
+  hasCareer = false,
+}: {
+  data: PlayerCardData;
+  identity: { show: boolean; label: string; hint: string };
+  onLinkEaClub?: () => void;
+  hasFaceEa?: boolean;
+  hasCareer?: boolean;
+}) {
+  if (onLinkEaClub && !data.eaClubLinked) {
+    return (
+      <View className="mt-6">
+        <Text className="text-sm text-fg-muted">{PLAYER_CARD_COPY.eaUnlinked}</Text>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-2 min-h-[44px] self-start px-0"
+          onPress={onLinkEaClub}
+          accessibilityLabel={PLAYER_CARD_COPY.linkClub}
+        >
+          {PLAYER_CARD_COPY.linkClub}
+        </Button>
+      </View>
+    );
+  }
+
+  if (identity.show) {
+    return (
+      <View className="mt-5">
+        <View className="flex-row items-center gap-1.5">
+          <BadgeCheck size={14} color="#666c74" />
+          <Text className="text-xs text-fg-subtle">{identity.label}</Text>
+        </View>
+        <Text className="mt-0.5 text-[10px] text-fg-subtle">{identity.hint}</Text>
+        {!hasCareer && !hasFaceEa && data.eaClubLinked ? (
+          <Text className="mt-2 text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (data.eaClubLinked && !hasCareer && !hasFaceEa) {
+    return (
+      <View className="mt-4">
+        <Text className="text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>
+      </View>
+    );
+  }
+
+  return null;
+}
+
 function StatBlock({ label, value }: { label: string; value: string | number }) {
   return (
-    <View className="flex-1 items-center rounded-lg bg-black/20 py-2">
+    <View className="min-w-[28%] flex-1 items-center rounded-lg bg-black/20 py-2">
       <Text className="font-display text-lg text-fg">{String(value)}</Text>
       <Text className="text-[10px] uppercase tracking-wide text-fg-subtle">{label}</Text>
     </View>

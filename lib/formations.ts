@@ -207,6 +207,6 @@ function validateFormations() {
   }
 }
 
-if (__DEV__) {
+if (typeof __DEV__ !== "undefined" && __DEV__) {
   validateFormations();
 }

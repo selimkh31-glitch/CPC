@@ -1,6 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Ban, MessageCircle, Users } from "lucide-react-native";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
  * Raccourcis stack (pas un 4e onglet) : Messages, Groupes, Bloqués.
@@ -14,29 +16,32 @@ export function SocialShortcuts() {
           onPress={() => router.push("/conversations")}
           accessibilityRole="button"
           accessibilityLabel="Messages"
-          className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
+          className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 border border-border bg-bg-elevated px-3 active:opacity-80"
+          style={{ borderRadius: cpcTokens.radius.control }}
         >
-          <MessageCircle size={16} color="#f4f5f7" />
-          <Text className="font-bold text-fg">Messages</Text>
+          <MessageCircle size={cpcTokens.icon.sm} color={cpcHex.textPrimary} />
+          <Text className="font-sans-bold text-body text-fg">Messages</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push("/groups")}
           accessibilityRole="button"
           accessibilityLabel="Groupes"
-          className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
+          className="min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 border border-border bg-bg-elevated px-3 active:opacity-80"
+          style={{ borderRadius: cpcTokens.radius.control }}
         >
-          <Users size={16} color="#f4f5f7" />
-          <Text className="font-bold text-fg">Groupes</Text>
+          <Users size={cpcTokens.icon.sm} color={cpcHex.textPrimary} />
+          <Text className="font-sans-bold text-body text-fg">Groupes</Text>
         </Pressable>
       </View>
       <Pressable
         onPress={() => router.push("/blocked")}
         accessibilityRole="button"
         accessibilityLabel="Joueurs bloqués"
-        className="min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 active:opacity-80"
+        className="min-h-[44px] flex-row items-center justify-center gap-1.5 border border-border bg-bg-elevated px-3 active:opacity-80"
+        style={{ borderRadius: cpcTokens.radius.control }}
       >
-        <Ban size={16} color="#f4f5f7" />
-        <Text className="font-bold text-fg">Bloqués</Text>
+        <Ban size={cpcTokens.icon.sm} color={cpcHex.textPrimary} />
+        <Text className="font-sans-bold text-body text-fg">Bloqués</Text>
       </Pressable>
     </View>
   );

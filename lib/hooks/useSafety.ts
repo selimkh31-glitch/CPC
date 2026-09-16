@@ -94,10 +94,18 @@ export function useMyBlocks(userId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_blocks")
-        .select(`*, blocked:users!user_blocks_blocked_id_fkey(${USER_PUBLIC_COLUMNS})`)
+        .select(`*, blocked:users!user_blocks_blocked_fkey(${USER_PUBLIC_COLUMNS})`)
         .eq("blocker_id", userId!)
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        const fallback = await supabase
+          .from("user_blocks")
+          .select("*")
+          .eq("blocker_id", userId!)
+          .order("created_at", { ascending: false });
+        if (fallback.error) throw error;
+        return (fallback.data ?? []) as UserBlockRow[];
+      }
       return data as UserBlockRow[];
     },
   });
@@ -110,10 +118,18 @@ export function useMyReports(userId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_reports")
-        .select(`*, reported:users!user_reports_reported_id_fkey(${USER_PUBLIC_COLUMNS})`)
+        .select(`*, reported:users!user_reports_reported_fkey(${USER_PUBLIC_COLUMNS})`)
         .eq("reporter_id", userId!)
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        const fallback = await supabase
+          .from("user_reports")
+          .select("*")
+          .eq("reporter_id", userId!)
+          .order("created_at", { ascending: false });
+        if (fallback.error) throw error;
+        return (fallback.data ?? []) as UserReportRow[];
+      }
       return data as UserReportRow[];
     },
   });
