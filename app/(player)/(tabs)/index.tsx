@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { RefreshControl, Text, View } from "react-native";
 import { LiveClubCard } from "@/components/live/LiveClubCard";
 import { MatchmakingFilters } from "@/components/live/MatchmakingFilters";
 import { PlayerLivePanel } from "@/components/live/PlayerLivePanel";
+import { AppShell } from "@/components/nav/AppShell";
 import { ErrorState } from "@/components/ui/Screen";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLiveSessions } from "@/lib/hooks/useLiveSessions";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { EMPTY_LIVE_FILTERS, clubSessionMatchesLiveFilters } from "@/lib/liveFilters";
 import { useModeAccent } from "@/lib/theme";
 import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
  * Matchmaking Mode Joueur — un scroll : Passer LIVE + clubs en LIVE.
@@ -35,33 +37,32 @@ export default function LiveScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={accent} />}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text className="font-display text-[34px] leading-10 text-fg">{LIVE_UX_COPY.title}</Text>
-        <ModeSegmentToggle />
-        <PlayerLivePanel />
-        <MatchmakingFilters value={filters} onChange={setFilters} />
+    <AppShell
+      edges={[]}
+      contentContainerStyle={{ gap: 28 }}
+      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={accent} />}
+    >
+      <Text className="font-display text-display text-fg" style={{ lineHeight: cpcTokens.font.lineHeight.display }}>
+        {LIVE_UX_COPY.title}
+      </Text>
+      <ModeSegmentToggle />
+      <PlayerLivePanel />
+      <MatchmakingFilters value={filters} onChange={setFilters} />
 
-        <View className="mb-2">
-          <Text className="mb-3 text-sm text-fg-subtle">{LIVE_UX_COPY.findClub}</Text>
-          {clubsError ? (
-            <ErrorState message="Impossible de charger les clubs LIVE." onRetry={refetch} />
-          ) : liveClubs.length > 0 ? (
-            <View className="gap-3">
-              {liveClubs.map((item) => (
-                <LiveClubCard key={item.id} item={item} />
-              ))}
-            </View>
-          ) : (
-            <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.noLiveClubs}</Text>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <View className="mb-2">
+        <SectionHeader title={LIVE_UX_COPY.findClub} />
+        {clubsError ? (
+          <ErrorState message="Impossible de charger les clubs LIVE." onRetry={refetch} />
+        ) : liveClubs.length > 0 ? (
+          <View className="gap-3">
+            {liveClubs.map((item) => (
+              <LiveClubCard key={item.id} item={item} />
+            ))}
+          </View>
+        ) : (
+          <Text className="text-sm text-fg-muted">{LIVE_UX_COPY.noLiveClubs}</Text>
+        )}
+      </View>
+    </AppShell>
   );
 }

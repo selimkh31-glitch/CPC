@@ -104,7 +104,7 @@ export function MembersPanel({
 
             if (!m.user) {
               return (
-                <View key={m.user_id} className="rounded-2xl border border-border bg-bg-elevated p-3">
+                <View key={m.user_id} className="border border-border bg-bg-elevated p-3">
                   <View className="flex-row items-center justify-between">
                     <Text className="font-semibold text-fg-muted">Joueur</Text>
                     <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>

@@ -4,6 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Mail } from "lucide-react-native";
 import { Badge } from "@/components/ui/Badge";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
+import { cpcHex } from "@/lib/design/cpc-native";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -67,7 +70,7 @@ export function ClubLiveFeuille() {
         style={{ flex: 1 }}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36, gap: 24 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: cpcTokens.geometry.contentPadding, paddingTop: 8, paddingBottom: 36, gap: 24 }} keyboardShouldPersistTaps="handled">
           {body}
           <ModeSegmentToggle />
         </ScrollView>
@@ -115,8 +118,15 @@ export function ClubLiveFeuille() {
       {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <Text className="font-display text-[34px] leading-10 text-fg">{club.name}</Text>
-          <Text className="mt-1 text-[11px] tracking-wide text-fg-subtle">EA SPORTS FC 27 Pro Clubs</Text>
+          <Text className="font-display text-display text-fg" style={{ lineHeight: cpcTokens.font.lineHeight.display }} numberOfLines={2}>
+            {club.name}
+          </Text>
+          <Text
+            className="mt-1 font-sans text-eyebrow uppercase text-fg-subtle"
+            style={{ letterSpacing: cpcTokens.font.letterSpacing.eyebrow }}
+          >
+            EA SPORTS FC 27 Pro Clubs
+          </Text>
         </View>
       </View>
 
@@ -130,7 +140,7 @@ export function ClubLiveFeuille() {
 
       <View className="flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1">
-          <Text className="text-[13px] font-medium text-fg-muted">Effectif</Text>
+          <SectionHeader title="Effectif" />
           <Text className="text-[12px] text-fg-subtle">{fill}</Text>
         </View>
         {canManage ? (
@@ -206,7 +216,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
   return (
     <Card className="p-3">
       <CardHeader className="mb-2">
-        <CardTitle icon={<Mail size={16} color="#9aa0a8" />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
+        <CardTitle icon={<Mail size={16} color={cpcHex.textMuted} />} className="text-[13px] font-medium normal-case tracking-normal text-fg-muted">
           Invitations en attente
         </CardTitle>
         <Text className="text-[12px] text-fg-subtle">{invitations?.length ?? 0}</Text>
@@ -246,7 +256,7 @@ function PendingInvitations({ clubId, formationId }: { clubId: string; formation
             );
             if (!inv.user) {
               return (
-                <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+                <View key={inv.id} className="min-h-[44px] flex-row items-center justify-between border border-border bg-bg-elevated px-2.5 py-2">
                   <View className="min-w-0 flex-1">
                     <Text className="font-semibold text-fg-muted">Joueur</Text>
                     {footer}

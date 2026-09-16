@@ -1,6 +1,8 @@
 import { ActivityIndicator, Pressable, Text, type PressableProps } from "react-native";
 import * as Haptics from "expo-haptics";
 import { cn } from "@/lib/utils";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "pro";
 type Size = "sm" | "md" | "lg";
@@ -22,7 +24,7 @@ const CONTAINER_CLASSES: Record<Variant, string> = {
 };
 
 const TEXT_CLASSES: Record<Variant, string> = {
-  primary: "text-bg",
+  primary: "text-accent-fg",
   secondary: "text-fg",
   ghost: "text-fg-muted",
   danger: "text-danger",
@@ -30,18 +32,18 @@ const TEXT_CLASSES: Record<Variant, string> = {
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
-  sm: "h-9 px-3",
-  md: "h-12 px-4",
-  lg: "h-14 px-6",
+  sm: "h-11 px-3",
+  md: "h-11 px-4",
+  lg: "h-[52px] px-6",
 };
 
 const TEXT_SIZE_CLASSES: Record<Size, string> = {
   sm: "text-sm",
-  md: "text-base",
-  lg: "text-lg",
+  md: "text-action",
+  lg: "text-action",
 };
 
-/** Bouton tactile générique — feedback haptique systématique, zones de touch généreuses. */
+/** Bouton CPC — cible ≥ 44 px, rayon contrôle 2 px. */
 export function Button({
   variant = "primary",
   size = "md",
@@ -62,20 +64,21 @@ export function Button({
         onPress?.(e);
       }}
       className={cn(
-        "flex-row items-center justify-center gap-2 rounded-2xl active:scale-[0.98]",
+        "flex-row items-center justify-center gap-2 active:opacity-90",
         CONTAINER_CLASSES[variant],
         SIZE_CLASSES[size],
         (disabled || loading) && "opacity-50",
         className
       )}
+      style={{ borderRadius: cpcTokens.radius.control, minHeight: size === "lg" ? cpcTokens.geometry.buttonLarge : cpcTokens.geometry.button }}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? "#08090b" : "#f4f5f7"} />
+        <ActivityIndicator color={variant === "primary" ? cpcHex.accentForeground : cpcHex.textPrimary} />
       ) : (
         <>
           {icon}
-          <Text className={cn("font-bold", TEXT_CLASSES[variant], TEXT_SIZE_CLASSES[size])}>{children}</Text>
+          <Text className={cn("font-sans-bold", TEXT_CLASSES[variant], TEXT_SIZE_CLASSES[size])}>{children}</Text>
         </>
       )}
     </Pressable>

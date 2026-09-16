@@ -1,11 +1,14 @@
-import { InteractionManager, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { InteractionManager, Text, View } from "react-native";
 import { router, type Href } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ClubProCard } from "@/components/profile/ClubProCard";
 import { ClubCard } from "@/components/club/ClubCard";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { AppShell } from "@/components/nav/AppShell";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { ActivityRow } from "@/components/ui/ActivityRow";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { buildClubCardData } from "@/lib/clubCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
@@ -121,70 +124,57 @@ export function HomeScreen() {
     : null;
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={[]}>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 28 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text className="font-display text-[34px] leading-10 text-fg">Accueil</Text>
+    <AppShell edges={[]} contentContainerStyle={{ gap: 28 }}>
+      <Text className="font-display text-display text-fg" style={{ lineHeight: cpcTokens.font.lineHeight.display }}>
+        Accueil
+      </Text>
 
-        <View className="items-center">
-          <ClubProCard
-            user={profile}
-            clubName={currentClub.data?.name ?? null}
-            clubId={currentClub.data?.id ?? null}
-            cpcMatchesPlayed={matchHistory?.played ?? null}
-            onPress={goProfile}
-          />
-        </View>
+      <View className="items-center">
+        <ClubProCard
+          user={profile}
+          clubName={currentClub.data?.name ?? null}
+          clubId={currentClub.data?.id ?? null}
+          cpcMatchesPlayed={matchHistory?.played ?? null}
+          onPress={goProfile}
+        />
+      </View>
 
-        <View className="gap-2">
-          <Text className="text-[13px] font-medium text-fg-muted">Mon club</Text>
-          {membershipsLoading ? (
-            <Skeleton className="h-14" />
-          ) : clubCard ? (
-            <ClubCard data={clubCard} variant="mini" onPress={openMonClub} />
-          ) : mode === "CLUB" ? (
-            <View className="gap-3 rounded-2xl border border-dashed border-white/[0.08] px-4 py-4">
-              <Text className="text-[14px] text-fg-muted">Aucun club géré.</Text>
-              <Button className="min-h-[48px]" onPress={() => router.push("/create-club")}>
-                Créer un club
-              </Button>
-            </View>
-          ) : (
-            <View className="rounded-2xl border border-dashed border-white/[0.08] px-4 py-4">
-              <Text className="text-[14px] text-fg-muted">Sans club.</Text>
-            </View>
-          )}
-        </View>
+      <View className="gap-2">
+        <SectionHeader title="Mon club" />
+        {membershipsLoading ? (
+          <Skeleton className="h-14" />
+        ) : clubCard ? (
+          <ClubCard data={clubCard} variant="mini" onPress={openMonClub} />
+        ) : mode === "CLUB" ? (
+          <View className="gap-3 border border-dashed border-border px-4 py-4">
+            <Text className="text-body text-fg-muted">Aucun club géré.</Text>
+            <Button className="min-h-[44px]" onPress={() => router.push("/create-club")}>
+              Créer un club
+            </Button>
+          </View>
+        ) : (
+          <View className="border border-dashed border-border px-4 py-4">
+            <Text className="text-body text-fg-muted">Sans club.</Text>
+          </View>
+        )}
+      </View>
 
-        <View className="gap-2">
-          <Text className="text-[13px] font-medium text-fg-muted">À traiter</Text>
-          {inbox.length === 0 ? (
-            <Text className="text-[14px] text-fg-subtle">Rien à traiter.</Text>
-          ) : (
-            <View className="gap-2">
-              {inbox.map((row) => (
-                <Pressable
-                  key={row.key}
-                  onPress={row.onPress}
-                  accessibilityRole="button"
-                  accessibilityLabel={row.label}
-                  className="min-h-[44px] justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 active:opacity-80"
-                >
-                  <Text className="text-[14px] font-medium text-fg">{row.label}</Text>
-                  {row.hint ? <Text className="mt-0.5 text-[12px] text-fg-subtle">{row.hint}</Text> : null}
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </View>
+      <View className="gap-2">
+        <SectionHeader title="À traiter" />
+        {inbox.length === 0 ? (
+          <Text className="text-body text-fg-subtle">Rien à traiter.</Text>
+        ) : (
+          <View className="gap-2">
+            {inbox.map((row) => (
+              <ActivityRow key={row.key} title={row.label} subtitle={row.hint} onPress={row.onPress} />
+            ))}
+          </View>
+        )}
+      </View>
 
-        <Button size="lg" className="min-h-[52px]" onPress={goMatchmaking}>
-          Matchmaking
-        </Button>
-      </ScrollView>
-    </SafeAreaView>
+      <Button size="lg" className="min-h-[52px]" onPress={goMatchmaking}>
+        Matchmaking
+      </Button>
+    </AppShell>
   );
 }

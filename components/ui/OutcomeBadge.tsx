@@ -25,7 +25,7 @@ export function OutcomeBadge({
   const theme = OUTCOME_THEME[outcome];
   const badge = (
     <View
-      className={cn("self-start rounded-full border px-3 py-1.5", className)}
+      className={cn("self-start border px-3 py-1.5", className)}
       style={{ borderColor: `${theme.main}66`, backgroundColor: theme.soft }}
     >
       <Text className="text-xs font-extrabold uppercase tracking-wide" style={{ color: theme.text }}>

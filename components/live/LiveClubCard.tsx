@@ -1,25 +1,28 @@
 import { Text, View } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { PulseDot } from "@/components/ui/PulseDot";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { LiveBadge } from "@/components/ui/LiveBadge";
+import { MatchReasonBadge } from "@/components/ui/MatchReasonBadge";
 import { buildClubLiveRowMeta } from "@/lib/clubLiveRow";
 import { clubPublicHref } from "@/lib/clubProfile";
 import type { ClubSessionRow } from "@/lib/types";
 
 /**
- * Ligne Matchmaking — PulseDot, avatar, nom + meta, Rejoindre à droite.
+ * Ligne Matchmaking — LIVE, avatar, nom + meta, Rejoindre à droite.
  * Rangée unique, sans carte club, postes recherchés, timer ni second CTA.
  */
 export function LiveClubCard({
   item,
   memberCount,
   form,
+  reason,
 }: {
   item: ClubSessionRow;
   memberCount?: number | null;
   form?: string | null;
+  reason?: string;
 }) {
   const club = item.club;
   const name = club?.name?.trim();
@@ -41,12 +44,15 @@ export function LiveClubCard({
 
   return (
     <View className="min-h-[44px] flex-row items-center gap-2">
-      <PulseDot />
+      <LiveBadge />
       <Avatar username={name} size="sm" />
-      <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] font-medium text-fg">
-        {name}
-        {meta ? `  ${meta}` : ""}
-      </Text>
+      <View className="min-w-0 flex-1">
+        <Text numberOfLines={1} className="font-sans-medium text-body text-fg">
+          {name}
+          {meta ? `  ${meta}` : ""}
+        </Text>
+        {reason ? <MatchReasonBadge className="mt-1">{reason}</MatchReasonBadge> : null}
+      </View>
       <Button size="sm" onPress={join} accessibilityLabel="Rejoindre">
         Rejoindre
       </Button>

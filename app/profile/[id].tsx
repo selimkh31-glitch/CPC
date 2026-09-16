@@ -1,6 +1,6 @@
-import { ScrollView } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { ProfileContent } from "@/components/profile/ProfileContent";
+import { AppShell } from "@/components/nav/AppShell";
 import { useAuth } from "@/lib/providers/AuthProvider";
 
 function firstParam(value: string | string[] | undefined): string | null {
@@ -15,8 +15,8 @@ export default function OtherProfileScreen() {
   const isOwn = session?.user.id === id;
 
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+    <AppShell>
       <ProfileContent userId={id} isOwn={isOwn} clubId={firstParam(clubId)} />
-    </ScrollView>
+    </AppShell>
   );
 }

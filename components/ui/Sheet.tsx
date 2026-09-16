@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, Text, View, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 type SheetEntry = { id: symbol; close: () => void };
 
@@ -61,14 +63,15 @@ export function Sheet({
         className="flex-1"
       >
         <View
-          className="flex-1 justify-end bg-black/50"
+          className="flex-1 justify-end"
+          style={{ backgroundColor: cpcHex.overlay }}
           onLayout={(e) => {
             const h = Math.round(e.nativeEvent.layout.height);
             setAreaH((prev) => (prev === h ? prev : h));
           }}
         >
           <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
-          <View className="rounded-t-3xl border-t border-border bg-bg-card" style={{ paddingBottom: padBottom }}>
+          <View className="border-t border-border bg-bg-card" style={{ paddingBottom: padBottom, borderTopLeftRadius: cpcTokens.radius.sheet, borderTopRightRadius: cpcTokens.radius.sheet }}>
             <View className="items-center pt-2">
               <View className="h-1 w-10 rounded-full bg-border" />
             </View>
@@ -77,10 +80,11 @@ export function Sheet({
               <Pressable
                 onPress={onClose}
                 hitSlop={12}
+                className="min-h-[44px] min-w-[44px] items-center justify-center"
                 accessibilityRole="button"
                 accessibilityLabel="Fermer"
               >
-                <X size={20} color="#9aa0a8" />
+                <X size={cpcTokens.icon.md} color={cpcHex.textMuted} />
               </Pressable>
             </View>
             <ScrollView

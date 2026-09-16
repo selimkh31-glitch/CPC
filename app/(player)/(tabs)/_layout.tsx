@@ -3,19 +3,12 @@ import { Bell, House, Radio, User, Users } from "lucide-react-native";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useUnreadNotificationCount } from "@/lib/hooks/useNotifications";
 import { useModeAccent } from "@/lib/theme";
+import { BottomNavigation } from "@/components/nav/BottomNavigation";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 export const unstable_settings = {
   initialRouteName: "home",
 };
-
-const TAB_BAR_STYLE = {
-  backgroundColor: "#08090b",
-  borderTopColor: "rgba(255,255,255,0.06)",
-  borderTopWidth: 0.5,
-  height: 56,
-  paddingBottom: 6,
-  paddingTop: 6,
-} as const;
 
 /**
  * Mode Joueur — 3 onglets : Accueil | Matchmaking | Activité.
@@ -30,11 +23,11 @@ export default function TabsLayout() {
   return (
     <Tabs
       initialRouteName="home"
+      tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: accent,
-        tabBarInactiveTintColor: "#666c74",
-        tabBarStyle: TAB_BAR_STYLE,
+        tabBarInactiveTintColor: cpcHex.disabled,
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
@@ -52,7 +45,7 @@ export default function TabsLayout() {
           title: "Activité",
           tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
           tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarBadgeStyle: { backgroundColor: accent, color: "#08090b" },
+          tabBarBadgeStyle: { backgroundColor: accent, color: cpcHex.accentForeground },
         }}
       />
       <Tabs.Screen

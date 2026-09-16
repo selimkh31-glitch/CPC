@@ -6,6 +6,7 @@ import { LIVE_UX_COPY, liveSessionDurationMs } from "@/lib/live";
 import { useCreateSession, usePatchLiveNeededPositions, useToggleSession } from "@/lib/hooks/useClubs";
 import { toast } from "@/lib/toast";
 import { useModeAccent } from "@/lib/theme";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 /**
  * Découverte club — un ON/OFF. TTL silencieux (2 h prod / 12 h DEV, expires_at obligatoire).
@@ -116,7 +117,7 @@ export function ClubDiscoveryToggle({
   };
 
   return (
-    <View className={`rounded-2xl border px-4 py-3 ${live ? "border-accent/35 bg-accent/8" : "border-white/[0.08] bg-white/[0.03]"}`}>
+    <View className={`border px-4 py-3 ${live ? "border-live/40 bg-live/10" : "border-border bg-bg-elevated"}`}>
       <View className="min-h-[44px] flex-row items-center justify-between gap-3">
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-2">
@@ -135,9 +136,9 @@ export function ClubDiscoveryToggle({
             value={live}
             onValueChange={(next) => (next ? turnOn() : turnOff())}
             disabled={pending}
-            trackColor={{ false: "#24272c", true: accent }}
-            thumbColor="#f4f5f7"
-            ios_backgroundColor="#24272c"
+            trackColor={{ false: cpcHex.border, true: accent }}
+            thumbColor={cpcHex.textPrimary}
+            ios_backgroundColor={cpcHex.border}
             accessibilityRole="switch"
             accessibilityLabel={LIVE_UX_COPY.discoveryOn}
             accessibilityState={{ checked: live, disabled: pending }}

@@ -25,6 +25,8 @@ import {
   widenLiveFilters,
 } from "@/lib/liveFilters";
 import { PLATFORM_LABELS, POSITION_LABELS } from "@/lib/constants";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { useModeAccent } from "@/lib/theme";
 
 type FindMode = "live" | "matchmaking" | "directory";
@@ -129,7 +131,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
             <Button
               size="sm"
               variant="secondary"
-              icon={<Plus size={16} color="#f4f5f7" />}
+              icon={<Plus size={16} color={cpcHex.textPrimary} />}
               onPress={() => {
                 Haptics.selectionAsync();
                 router.push("/create-club");
@@ -140,7 +142,7 @@ export function FindClubPanel({ onCreateSession }: { onCreateSession?: () => voi
           ) : null}
         </View>
 
-        <View className="mb-3 flex-row rounded-2xl border border-border bg-bg-elevated p-1">
+        <View className="mb-3 flex-row border border-border bg-bg-elevated p-1" style={{ borderRadius: cpcTokens.radius.control }}>
           <ModeTab active={mode === "live"} onPress={() => setModeSafe("live")} label="Clubs LIVE" />
           <ModeTab active={mode === "matchmaking"} onPress={() => setModeSafe("matchmaking")} label="Matchmaking" />
           <ModeTab active={mode === "directory"} onPress={() => setModeSafe("directory")} label="Annuaire" />
@@ -201,9 +203,10 @@ function ModeTab({ active, onPress, label }: { active: boolean; onPress: () => v
   return (
     <Pressable
       onPress={onPress}
-      className={`min-h-[44px] flex-1 justify-center rounded-xl px-2 py-2 ${active ? "bg-bg-card" : ""}`}
+      className={`min-h-[44px] flex-1 justify-center px-2 py-2 ${active ? "bg-bg-card" : ""}`}
+      style={{ borderRadius: cpcTokens.radius.control }}
     >
-      <Text className={`text-center text-[11px] font-bold ${active ? "text-fg" : "text-fg-muted"}`}>{label}</Text>
+      <Text className={`text-center font-sans-bold text-eyebrow ${active ? "text-fg" : "text-fg-muted"}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -253,7 +256,7 @@ function LiveEmptyState({
 
   if (activeCount === 0) {
     return (
-      <View className="items-center rounded-2xl bg-bg-elevated px-5 py-10">
+      <View className="items-center bg-bg-elevated px-5 py-10">
         <Text className="text-center text-base font-semibold text-fg">{LIVE_UX_COPY.noLiveClubs}</Text>
         <Text className="mt-2 text-center text-sm text-fg-muted">
           Passe LIVE. Les clubs te voient dès qu&apos;ils cherchent.
@@ -283,16 +286,17 @@ function LiveEmptyState({
     : "D'autres clubs cherchent peut-être un autre poste ou une autre plateforme.";
 
   return (
-    <View className="items-center rounded-2xl bg-bg-elevated px-5 py-8">
+    <View className="items-center bg-bg-elevated px-5 py-8">
       <Text className="text-center text-base font-semibold text-fg">{title}</Text>
       <Text className="mt-2 text-center text-sm text-fg-muted">{subtitle}</Text>
       {canWiden ? (
         <Pressable
           onPress={onWiden}
-          className="mt-4 rounded-2xl bg-accent px-5 py-3 active:opacity-90"
+          className="mt-4 min-h-[44px] items-center justify-center bg-accent px-5 py-3 active:opacity-90"
+          style={{ borderRadius: cpcTokens.radius.control }}
           accessibilityRole="button"
         >
-          <Text className="text-sm font-bold text-bg">Élargir la recherche</Text>
+          <Text className="font-sans-bold text-body text-accent-fg">Élargir la recherche</Text>
         </Pressable>
       ) : null}
     </View>

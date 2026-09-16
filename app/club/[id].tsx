@@ -1,10 +1,14 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
 import { Badge } from "@/components/ui/Badge";
-import { Avatar } from "@/components/ui/Avatar";
-import { PulseDot } from "@/components/ui/PulseDot";
+import { LiveBadge } from "@/components/ui/LiveBadge";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { ProfileRow } from "@/components/ui/ProfileRow";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
+import { AppShell } from "@/components/nav/AppShell";
 import { ApplyForm } from "@/components/club/ApplyForm";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
@@ -41,27 +45,27 @@ export default function ClubDetailScreen() {
 
   if (isError) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+      <AppShell>
         <ErrorState message="Impossible de charger ce club." onRetry={refetch} />
-      </ScrollView>
+      </AppShell>
     );
   }
 
   if (isLoading) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <AppShell contentContainerStyle={{ gap: 12 }}>
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-40" />
         <Skeleton className="h-40" />
-      </ScrollView>
+      </AppShell>
     );
   }
 
   if (!club) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+      <AppShell>
         <EmptyState title="Ce club n'est plus là." subtitle="Il a été retiré, ou tu n'y as plus accès." />
-      </ScrollView>
+      </AppShell>
     );
   }
 
@@ -80,29 +84,23 @@ export default function ClubDetailScreen() {
   const showMatchHistory = matchHistoryLoading || matchHistoryError || (matchHistory?.length ?? 0) > 0;
 
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}>
+    <AppShell contentContainerStyle={{ gap: 16 }}>
       <View className="min-h-[44px] flex-row items-center gap-2">
-        <Avatar username={club.name} size="sm" />
         <View className="min-w-0 flex-1">
-          <Text numberOfLines={1} className="text-[16px] font-semibold text-fg">
+          <Text numberOfLines={1} className="font-display text-titleSmall text-fg">
             {club.name}
           </Text>
           {headerMeta ? (
-            <Text numberOfLines={1} className="text-[13px] text-fg-muted">
+            <Text numberOfLines={1} className="mt-0.5 font-sans text-bodySmall text-fg-muted">
               {headerMeta}
             </Text>
           ) : null}
         </View>
-        {activeSession ? (
-          <View className="flex-row items-center gap-1">
-            <PulseDot />
-            <Text className="text-[11px] font-bold uppercase tracking-wide text-accent">LIVE</Text>
-          </View>
-        ) : null}
+        {activeSession ? <LiveBadge /> : null}
       </View>
 
       {isMember ? (
-        <Link href={`/match-sheet?clubId=${club.id}`} className="text-sm text-accent">
+        <Link href={`/match-sheet?clubId=${club.id}`} className="min-h-[44px] justify-center font-sans-semibold text-body text-accent">
           Voir la feuille de match
         </Link>
       ) : null}
@@ -116,50 +114,45 @@ export default function ClubDetailScreen() {
         />
       ) : null}
 
-      <View>
-        <Text className="mb-2 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Session</Text>
+      <SurfaceCard>
+        <SectionHeader title="Session" />
         {activeSession ? (
           <>
             <View className="mb-3 flex-row flex-wrap gap-1.5">
               {neededSlots.map((item) => (
-                <Badge key={item.slot} tone="pro">
-                  {item.slot}
-                </Badge>
+                <PositionBadge key={item.slot}>{item.slot}</PositionBadge>
               ))}
             </View>
-            {activeSession.note && <Text className="mb-3 text-sm text-fg-muted">{activeSession.note}</Text>}
+            {activeSession.note && <Text className="mb-3 font-sans text-body text-fg-muted">{activeSession.note}</Text>}
             {session && !isMember && !isClubHiddenByBlock(club, blockedIds ?? []) ? (
               <ApplyForm sessionId={activeSession.id} neededPositions={activeSession.needed_positions} />
             ) : session && !isMember && isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <Text className="text-sm text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
+              <Text className="font-sans text-body text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
             ) : !session ? (
-              <Link href="/(auth)/login" className="text-sm text-accent">
+              <Link href="/(auth)/login" className="min-h-[44px] justify-center font-sans-semibold text-body text-accent">
                 Connecte-toi pour postuler
               </Link>
             ) : (
-              <Text className="text-sm text-fg-subtle">Tu es déjà membre de ce club.</Text>
+              <Text className="font-sans text-caption text-fg-subtle">Tu es déjà membre de ce club.</Text>
             )}
           </>
         ) : (
-          <Text className="text-sm text-fg-muted">Ce club n&apos;est pas live actuellement.</Text>
+          <Text className="font-sans text-body text-fg-muted">Ce club n&apos;est pas live actuellement.</Text>
         )}
-      </View>
+      </SurfaceCard>
 
       <View>
-        <Text className="mb-2 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
-          Membres ({club.members?.length ?? 0})
-        </Text>
-        <View className="gap-1.5">
+        <SectionHeader title={`Membres (${club.members?.length ?? 0})`} />
+        <View className="gap-1">
           {sortClubRoster(club.members ?? []).map((m) => {
             const isSelf = session?.user.id === m.user_id;
             const name = m.user?.username?.trim() || "Joueur";
             const blocked = shouldHideContactCta(m.user_id, blockedIds);
             return (
               <View key={m.id} className="min-h-[44px] flex-row items-center gap-2">
-                <Avatar username={name} size="sm" />
-                <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] font-medium text-fg">
-                  {name}
-                </Text>
+                <View className="min-w-0 flex-1">
+                  <ProfileRow name={name} />
+                </View>
                 <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
                   {ROLE_LABEL[m.role]}
                 </Badge>
@@ -171,6 +164,6 @@ export default function ClubDetailScreen() {
           })}
         </View>
       </View>
-    </ScrollView>
+    </AppShell>
   );
 }

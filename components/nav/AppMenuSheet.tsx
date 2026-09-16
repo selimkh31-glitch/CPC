@@ -2,6 +2,8 @@ import { InteractionManager, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type Href } from "expo-router";
 import { X } from "lucide-react-native";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
@@ -35,10 +37,10 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View className="flex-1 flex-row bg-black/50">
+      <View className="flex-1 flex-row" style={{ backgroundColor: cpcHex.overlay }}>
         <View className="h-full w-[84%] max-w-[320px] bg-bg-card" style={{ paddingTop: Math.max(insets.top, 12) }}>
           <View className="flex-row items-center justify-between px-5 pb-4">
-            <Text className="font-display text-[22px] text-fg">Menu</Text>
+            <Text className="font-display text-titleSmall text-fg">Menu</Text>
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -46,7 +48,7 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
               accessibilityRole="button"
               accessibilityLabel="Fermer"
             >
-              <X size={20} color="#9aa0a8" />
+              <X size={20} color={cpcHex.textMuted} />
             </Pressable>
           </View>
           <View className="flex-1 px-3 pb-6 pt-2">
@@ -76,9 +78,10 @@ function MenuRow({ label, onPress }: { label: string; onPress: () => void }) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="min-h-[48px] justify-center rounded-xl px-3 py-3 active:bg-white/[0.04]"
+      className="min-h-[48px] justify-center px-3 py-3 active:bg-white/[0.04]"
+      style={{ minHeight: cpcTokens.geometry.buttonLarge, borderRadius: cpcTokens.radius.control }}
     >
-      <Text className="text-[17px] font-medium text-fg">{label}</Text>
+      <Text className="font-sans-medium text-action text-fg">{label}</Text>
     </Pressable>
   );
 }

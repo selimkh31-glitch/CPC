@@ -309,7 +309,7 @@ test("FULL a la grille face ; MINI/COMPACT non", () => {
   assert.equal(mini.includes("visibleFaceStatCells"), false, "mini no grid");
   assert.equal(compact.includes("visibleFaceStatCells"), false, "compact no grid");
   assert.equal(full.includes("EaSlot"), true, "EaSlot stays");
-  assert.equal(full.includes("#39ff8a"), true, "green glow");
+  assert.equal(full.includes("cpcHex.accent"), true, "green glow");
 });
 
 console.log(`\n${passed} test(s) passés.`);

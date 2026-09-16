@@ -3,14 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { cn } from "@/lib/utils";
 import { useModeAccent } from "@/lib/theme";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 type AmbientTone = "none" | "accent" | "win" | "draw" | "loss";
 
 const AMBIENT_COLORS: Record<Exclude<AmbientTone, "none">, string> = {
-  accent: "#39ff8a",
-  win: "#39ff8a",
-  draw: "#f5a623",
-  loss: "#ff4d4f",
+  accent: cpcHex.accent,
+  win: cpcHex.success,
+  draw: cpcHex.warning,
+  loss: cpcHex.error,
 };
 
 /**
