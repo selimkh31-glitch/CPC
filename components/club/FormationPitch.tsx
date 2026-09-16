@@ -27,7 +27,7 @@ export function FormationPitch({
   formationId: FormationId;
   assignments: SlotAssignmentRow[];
   interactive?: boolean;
-  /** Appelé au tap d'un slot vide (recherche côté owner, candidature côté joueur).
+  /** Appelé au tap d'un slot vide (recherche manager, prise de poste membre).
    *  Sans callback, le slot vide n'est pas tappable. */
   onEmptySlotPress?: (slot: FormationSlot) => void;
   /** Si fourni, le slot occupé par ce user est marqué "Vous" (Phase 4.6) —
@@ -91,13 +91,8 @@ function PitchSlot({
   const positionLabel = POSITION_LABELS[slot.position as PositionCode] ?? slot.position;
   const isEmpty = !occupant?.user;
 
-  // Foundation #2.1 — `interactive` ne gouverne QUE l'affordance de
-  // recrutement/candidature d'un slot VIDE (Mode Joueur vs Mode Club). Un
-  // slot OCCUPÉ reste toujours cliquable -> profil, quel que soit
-  // `interactive` : sans ça, ClubHome (Mode Joueur, interactive=false)
-  // perdrait le tap-vers-profil sur ses propres titulaires, ce qui n'est pas
-  // la règle produit (seul le recrutement doit disparaître en Mode Joueur).
-  // Sans handler, un slot vide n'est pas tappable (pas de toast « bientôt »).
+  // `interactive` ne gouverne QUE l'affordance d'un slot VIDE (prise de poste
+  // membre / invite manager). Un slot OCCUPÉ reste toujours cliquable -> profil.
   const canOpenEmpty = canPressEmptyFormationSlot(interactive, Boolean(onEmptySlotPress));
   const disabled = isEmpty && !canOpenEmpty;
 

@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { PulseDot } from "@/components/ui/PulseDot";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/Screen";
-import { ApplyForm } from "@/components/club/ApplyForm";
+import { JoinLiveClubButton } from "@/components/club/JoinLiveClubButton";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
 import { useClub } from "@/lib/hooks/useClubs";
@@ -129,12 +129,12 @@ export default function ClubDetailScreen() {
             </View>
             {activeSession.note && <Text className="mb-3 text-sm text-fg-muted">{activeSession.note}</Text>}
             {session && !isMember && !isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <ApplyForm sessionId={activeSession.id} neededPositions={activeSession.needed_positions} />
+              <JoinLiveClubButton clubId={club.id} label="Rejoindre le club" size="md" />
             ) : session && !isMember && isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <Text className="text-sm text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
+              <Text className="text-sm text-fg-muted">Tu ne peux pas rejoindre ce club (blocage).</Text>
             ) : !session ? (
               <Link href="/(auth)/login" className="text-sm text-accent">
-                Connecte-toi pour postuler
+                Connecte-toi pour rejoindre
               </Link>
             ) : (
               <Text className="text-sm text-fg-subtle">Tu es déjà membre de ce club.</Text>

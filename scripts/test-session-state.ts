@@ -212,4 +212,15 @@ test("feuille : plus de chrome Banc dans ClubLiveFeuille / ClubHome", () => {
   assert.equal(home.includes("benchMembers"), false, "home no bench UI helper");
 });
 
+test("ClubHome : pas canApplyOnClubPitch / apply-on-slot ; claim après membership", () => {
+  const home = readFileSync(`${process.cwd()}/components/club/ClubHome.tsx`, "utf8");
+  const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
+  assert.equal(home.includes("canApplyOnClubPitch"), false, "no visitor apply helper");
+  assert.equal(home.includes("useApply"), false, "no apply");
+  assert.equal(home.includes("useClaimSlot"), true, "claim");
+  assert.equal(home.includes("Rejoindre le club"), true, "join CTA");
+  assert.equal(home.includes("interactive={isMember}"), true, "members can tap empty");
+  assert.equal(feuille.includes("/player-search?clubId="), true, "manager search");
+});
+
 console.log(`\n${passed} test(s) passés.`);

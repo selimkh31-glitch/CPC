@@ -174,6 +174,64 @@ export const FORMATIONS = {
 export type FormationId = keyof typeof FORMATIONS;
 export const FORMATION_IDS = Object.keys(FORMATIONS) as FormationId[];
 
+export function isFormationId(value: string | null | undefined): value is FormationId {
+  return Boolean(value && value in FORMATIONS);
+}
+
+/** Assignation minimale pour un remap — pas une ligne DB complète. */
+export interface RemappableAssignment {
+  slotId: string;
+  userId: string;
+}
+
+/**
+ * Recolle les titulaires sur une nouvelle formation sans toucher à club_members.
+ *
+ * 1. Même `slotId` encore présent → on le garde (prioritaire).
+ * 2. Sinon, premier slot encore libre avec le **même code poste exact**
+ *    (LW ≠ LM, RW ≠ RM — jamais d'approximation).
+ * 3. Sinon on drop uniquement cette assignation.
+ *
+ * L'ordre d'entrée départage les collisions (deux ST pour un seul ST cible).
+ */
+export function remapSlotAssignments(
+  assignments: readonly RemappableAssignment[],
+  fromFormationId: FormationId,
+  toFormationId: FormationId
+): RemappableAssignment[] {
+  const toSlots = FORMATIONS[toFormationId];
+  const fromSlots = FORMATIONS[fromFormationId];
+  const used = new Set<string>();
+  const kept: RemappableAssignment[] = [];
+  const pending: RemappableAssignment[] = [];
+  const toSlotIds = new Set<string>(toSlots.map((slot) => slot.slotId));
+  const fromBySlotId = new Map<string, (typeof fromSlots)[number]>(fromSlots.map((slot) => [slot.slotId, slot]));
+
+  for (const assignment of assignments) {
+    if (toSlotIds.has(assignment.slotId) && !used.has(assignment.slotId)) {
+      used.add(assignment.slotId);
+      kept.push({ slotId: assignment.slotId, userId: assignment.userId });
+    } else {
+      pending.push(assignment);
+    }
+  }
+
+  if (fromFormationId === toFormationId) {
+    return kept;
+  }
+
+  for (const assignment of pending) {
+    const position = fromBySlotId.get(assignment.slotId)?.position;
+    if (!position) continue;
+    const target = toSlots.find((slot) => slot.position === position && !used.has(slot.slotId));
+    if (!target) continue;
+    used.add(target.slotId);
+    kept.push({ slotId: target.slotId, userId: assignment.userId });
+  }
+
+  return kept;
+}
+
 // ------------------------------------------------------------------
 // Validation dev-only : garantit l'intégrité du catalogue au chargement
 // du module (11 slots exacts, slotId uniques, position valide, coords

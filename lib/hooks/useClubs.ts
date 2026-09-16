@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase/client";
-import { computeLiveExpiresAt, parseLiveDurationMs } from "@/lib/live";
+import { computeLiveExpiresAt, findActiveLiveSession, parseLiveDurationMs } from "@/lib/live";
 import { validateClubIdentity } from "@/lib/clubIdentity";
 import { filterClubsHiddenByBlock } from "@/lib/safety";
 import { USER_PUBLIC_COLUMNS, type ClubMemberRow, type ClubRole, type ClubRow, type ClubSessionRow, type SlotAssignmentRow } from "@/lib/types";
 import { fetchBlockedUserIdSet } from "@/lib/hooks/useSafety";
 import { clubReadOrNull } from "@/lib/clubRead";
+import { isFormationId, remapSlotAssignments, type FormationId } from "@/lib/formations";
+import { neededPositionsFromEmptySlots } from "@/lib/sessionState";
 
 export function useClubsList() {
   return useQuery({
@@ -236,27 +238,87 @@ export function usePatchLiveNeededPositions(clubId: string) {
 }
 
 /**
- * Changement de formation (feuille de match, phase 3). Ne supprime JAMAIS
- * club_members — uniquement les slot_assignments de ce club, puisqu'un
- * slotId n'a de sens que pour la formation qui l'a défini (lib/formations.ts).
- * Les membres restent dans le club, à réassigner explicitement ensuite
- * (comportement V1 volontairement simple, voir architecture validée).
+ * Changement de formation : remap des slot_assignments (même slotId, sinon
+ * même code poste exact) — jamais un wipe de tous les slots, jamais un
+ * DELETE club_members. Les assignations sans équivalent sont droppées seules.
+ * needed_positions du LIVE suit les postes encore vides.
  */
 export function useUpdateFormation(clubId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (formation: string) => {
-      const { error: unassignError } = await supabase.from("slot_assignments").delete().eq("club_id", clubId);
-      if (unassignError) throw unassignError;
+      if (!isFormationId(formation)) throw new Error("Formation inconnue.");
+      const nextFormation = formation as FormationId;
 
-      const { data, error } = await supabase.from("clubs").update({ formation }).eq("id", clubId).select().single();
+      const { data: club, error: clubError } = await supabase
+        .from("clubs")
+        .select("id, formation, slotAssignments:slot_assignments(id, slot_id, user_id), sessions:club_sessions(id, is_live, expires_at, needed_positions)")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (clubError) throw clubError;
+      if (!club) throw new Error("Club introuvable.");
+
+      const currentFormation = isFormationId(club.formation) ? club.formation : nextFormation;
+      const currentAssignments = (club.slotAssignments ?? []) as { id: string; slot_id: string; user_id: string }[];
+      const remapped = remapSlotAssignments(
+        currentAssignments.map((row) => ({ slotId: row.slot_id, userId: row.user_id })),
+        currentFormation,
+        nextFormation
+      );
+
+      const keepSameUserIds = new Set(
+        remapped
+          .filter((row) => currentAssignments.some((cur) => cur.user_id === row.userId && cur.slot_id === row.slotId))
+          .map((row) => row.userId)
+      );
+      const dropOrMoveUserIds = currentAssignments.filter((row) => !keepSameUserIds.has(row.user_id)).map((row) => row.user_id);
+      const toInsert = remapped.filter((row) => !keepSameUserIds.has(row.userId));
+
+      if (dropOrMoveUserIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("slot_assignments")
+          .delete()
+          .eq("club_id", clubId)
+          .in("user_id", dropOrMoveUserIds);
+        if (deleteError) throw deleteError;
+      }
+
+      if (toInsert.length > 0) {
+        const { error: insertError } = await supabase.from("slot_assignments").insert(
+          toInsert.map((row) => ({
+            club_id: clubId,
+            slot_id: row.slotId,
+            user_id: row.userId,
+          }))
+        );
+        if (insertError) throw insertError;
+      }
+
+      const { data, error } = await supabase.from("clubs").update({ formation: nextFormation }).eq("id", clubId).select().single();
       if (error) throw error;
+
+      const remappedRows = remapped.map((row) => ({
+        id: row.userId,
+        club_id: clubId,
+        slot_id: row.slotId,
+        user_id: row.userId,
+        assigned_at: "",
+      }));
+      const needed = neededPositionsFromEmptySlots(nextFormation, remappedRows);
+      const live = findActiveLiveSession(club.sessions ?? [], Date.now());
+      if (live) {
+        const patch = needed.length === 0 ? { is_live: false, needed_positions: needed } : { needed_positions: needed };
+        const { error: needError } = await supabase.from("club_sessions").update(patch).eq("id", live.id);
+        if (needError) throw needError;
+      }
+
       return data as ClubRow;
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
     },
   });
 }

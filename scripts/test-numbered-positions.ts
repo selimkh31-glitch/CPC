@@ -78,12 +78,13 @@ test("uniquePositionCodes — ApplyForm une fois par code", () => {
   assert.deepEqual(uniquePositionCodes(["CB", "CB", "CB", "ST"]), ["CB", "ST"], "unique");
 });
 
-test("source — chips key=item.slot ; page publique slim", () => {
+test("source — chips key=item.slot ; page publique slim ; Rejoindre pas ApplyForm", () => {
   const page = readFileSync(`${process.cwd()}/app/club/[id].tsx`, "utf8");
   const apply = readFileSync(`${process.cwd()}/components/club/ApplyForm.tsx`, "utf8");
   assert.true(page.includes("numberedPositionSlots"), "slots helper");
   assert.true(page.includes("key={item.slot}"), "chip key");
-  assert.true(page.includes("ApplyForm"), "apply");
+  assert.true(page.includes("JoinLiveClubButton"), "join");
+  assert.false(page.includes("ApplyForm"), "no apply form on public page");
   assert.true(page.includes("isMember"), "member gate");
   assert.true(page.includes("match-sheet"), "sheet href");
   assert.true(page.includes("{isMember ?"), "sheet if member");
