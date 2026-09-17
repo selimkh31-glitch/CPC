@@ -20,6 +20,7 @@ import {
   startingUserIds,
   canPressEmptyFormationSlot,
   neededPositionsFromEmptySlots,
+  membersAvailableForSlot,
   type LiveSessionFields,
 } from "../lib/sessionState";
 import type { ClubMemberRow, MatchCheckinRow, SlotAssignmentRow } from "../lib/types";
@@ -178,6 +179,58 @@ test("banc = membres sans slot_assignment ; filled = nombre de lignes slots", ()
   assert.equal(filledSlotCount([]), 0, "vide");
   assert.equal(rosterFillLabel(1), "1/11 titulaires", "label");
   assert.equal(rosterFillLabel(11), "11/11 titulaires", "complet — compte, pas FULL");
+  assert.deepEqual(
+    membersAvailableForSlot(members, assignments).map((m) => m.user_id),
+    ["u1", "u3"],
+    "available = banc"
+  );
+});
+
+test("membersAvailableForSlot — exclus les titulaires ; poste trie sans filtrer", () => {
+  const members: ClubMemberRow[] = [
+    {
+      id: "m1",
+      club_id: "c1",
+      user_id: "u1",
+      role: "OWNER",
+      joined_at: "a",
+      matches_played_count: 0,
+      strike_count: 0,
+      active_departure_request_id: null,
+      user: { id: "u1", username: "owner", main_position: "GK", secondary_positions: [] } as unknown as ClubMemberRow["user"],
+    },
+    {
+      id: "m2",
+      club_id: "c1",
+      user_id: "u2",
+      role: "MEMBER",
+      joined_at: "b",
+      matches_played_count: 0,
+      strike_count: 0,
+      active_departure_request_id: null,
+      user: { id: "u2", username: "st", main_position: "ST", secondary_positions: [] } as unknown as ClubMemberRow["user"],
+    },
+    {
+      id: "m3",
+      club_id: "c1",
+      user_id: "u3",
+      role: "MEMBER",
+      joined_at: "c",
+      matches_played_count: 0,
+      strike_count: 0,
+      active_departure_request_id: null,
+      user: { id: "u3", username: "cb", main_position: "CB", secondary_positions: ["ST"] } as unknown as ClubMemberRow["user"],
+    },
+  ];
+  const assignments: SlotAssignmentRow[] = [
+    { id: "a1", club_id: "c1", slot_id: "GK", user_id: "u1", assigned_at: "t" },
+  ];
+  assert.deepEqual(
+    membersAvailableForSlot(members, assignments, "ST").map((m) => m.user_id),
+    ["u2", "u3"],
+    "ST principal d'abord, secondaire ensuite, titulaire exclu"
+  );
+  assert.equal(membersAvailableForSlot(members, assignments, "ST").length, 2, "pas de filtre hors poste");
 });
 
 test("canPressEmptyFormationSlot — pas de CTA morte sans handler", () => {

@@ -246,7 +246,7 @@ test("pitch LIVE : SLOT 44, codes ST/LW, pas de libellé FR ni Inviter sur le te
   assert.false(/\{emptySlotHint\}<\/Text>/.test(pitch), "hint not painted on pitch");
   assert.false(/\{positionLabel\}<\/Text>/.test(pitch), "French label not painted");
   assert.true(pitch.includes("accessibilityLabel"), "a11y keeps French + hint");
-  assert.true(feuille.includes('emptySlotHint="Inviter sur ce poste"'), "feuille still passes hint");
+  assert.true(feuille.includes('emptySlotHint="Placer un membre"'), "feuille hint place member");
   assert.true(feuille.includes("Annuler"), "Annuler stays");
 });
 

@@ -310,6 +310,42 @@ export function useUpdateMember(clubId: string) {
 }
 
 /**
+ * Place un membre déjà au club sur un slot vide. RLS slot_assignments_write_manager.
+ * Ne crée pas de membership — le joueur doit déjà être dans club_members.
+ */
+export function useAssignClubMemberSlot(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { slotId: string; userId: string }) => {
+      const { data: membership, error: memberError } = await supabase
+        .from("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("user_id", input.userId)
+        .maybeSingle();
+      if (memberError) throw memberError;
+      if (!membership) throw new Error("Ce joueur n'est pas membre de ce club.");
+
+      const { error } = await supabase.from("slot_assignments").insert({
+        club_id: clubId,
+        slot_id: input.slotId,
+        user_id: input.userId,
+      });
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("Ce poste ou ce joueur est déjà sur la feuille.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
+    },
+  });
+}
+
+/**
  * Retire un joueur de la feuille (slot_assignments) sans le bloquer ni
  * le sortir de club_members. RLS slot_assignments_write_manager.
  */

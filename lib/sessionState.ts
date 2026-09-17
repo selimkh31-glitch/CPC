@@ -169,6 +169,36 @@ export function benchMembers(
   return (members ?? []).filter((m) => !starters.has(m.user_id));
 }
 
+function memberPlaysPosition(member: ClubMemberRow, position: PositionCode): boolean {
+  const user = member.user;
+  if (!user) return false;
+  if (user.main_position === position) return true;
+  return (user.secondary_positions ?? []).includes(position);
+}
+
+/**
+ * Membres déjà au club, pas encore titulaires — pour placer sur un slot vide.
+ * Tous les bancs restent visibles (membership ≠ XI) ; le poste du slot
+ * ne fait que trier (principal, puis secondaire, puis le reste).
+ */
+export function membersAvailableForSlot(
+  members: ClubMemberRow[] | null | undefined,
+  assignments: SlotAssignmentRow[] | null | undefined,
+  position?: PositionCode | null
+): ClubMemberRow[] {
+  const bench = benchMembers(members, assignments);
+  if (!position) return bench;
+  return [...bench].sort((a, b) => {
+    const aMain = a.user?.main_position === position ? 0 : 1;
+    const bMain = b.user?.main_position === position ? 0 : 1;
+    if (aMain !== bMain) return aMain - bMain;
+    const aFit = memberPlaysPosition(a, position) ? 0 : 1;
+    const bFit = memberPlaysPosition(b, position) ? 0 : 1;
+    if (aFit !== bFit) return aFit - bFit;
+    return (a.user?.username ?? a.user_id).localeCompare(b.user?.username ?? b.user_id);
+  });
+}
+
 /** Titulaires réellement placés (ligne slot_assignments), hors hydratation user. */
 export function filledSlotCount(assignments: SlotAssignmentRow[] | null | undefined): number {
   return (assignments ?? []).length;

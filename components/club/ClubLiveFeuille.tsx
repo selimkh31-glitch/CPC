@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Mail } from "lucide-react-native";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -18,6 +18,7 @@ import { FormationPitch } from "@/components/club/FormationPitch";
 import { FormationSelector } from "@/components/club/FormationSelector";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ClubRosterList } from "@/components/club/ClubRosterList";
+import { AssignSlotMemberSheet } from "@/components/club/AssignSlotMemberSheet";
 import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
@@ -45,6 +46,7 @@ export function ClubLiveFeuille() {
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
+  const [slotToFill, setSlotToFill] = useState<FormationSlot | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,7 +94,7 @@ export function ClubLiveFeuille() {
 
   const onEmptySlotPress = (slot: FormationSlot) => {
     if (!canManage) return;
-    router.push(`/player-search?clubId=${club.id}&slotId=${slot.slotId}&position=${slot.position}`);
+    setSlotToFill(slot);
   };
 
   return shell(
@@ -143,9 +145,19 @@ export function ClubLiveFeuille() {
           clubId={club.id}
           currentUserId={session?.user.id ?? null}
           onEmptySlotPress={canManage ? onEmptySlotPress : undefined}
-          emptySlotHint="Inviter sur ce poste"
+          emptySlotHint="Placer un membre"
         />
       )}
+
+      {canManage ? (
+        <AssignSlotMemberSheet
+          clubId={club.id}
+          slot={slotToFill}
+          members={members}
+          assignments={assignments}
+          onClose={() => setSlotToFill(null)}
+        />
+      ) : null}
 
       <VoiceLinkBlock voiceLink={club.voice_link} />
 

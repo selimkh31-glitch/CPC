@@ -106,4 +106,24 @@ test("face stats restent honnêtes (DEV caption, jamais EA inventé)", () => {
   assert.true(face.includes('identityKind === "USERNAME_EQUALITY"'), "EA pack gated");
 });
 
+test("slot vide : picker membres du club, pas auto-XI ; invite LIVE reste", () => {
+  const feuille = read("components/club/ClubLiveFeuille.tsx");
+  const sheet = read("components/club/AssignSlotMemberSheet.tsx");
+  const session = read("lib/sessionState.ts");
+  const hooks = read("lib/hooks/useClubs.ts");
+  const search = read("app/player-search.tsx");
+  assert.true(feuille.includes("AssignSlotMemberSheet"), "sheet on feuille");
+  assert.true(feuille.includes('emptySlotHint="Placer un membre"'), "hint place");
+  assert.false(feuille.includes("player-search?clubId"), "plus d'invite-only au tap +");
+  assert.true(sheet.includes("membersAvailableForSlot"), "bench picker");
+  assert.true(sheet.includes("Placer"), "assign CTA");
+  assert.true(sheet.includes("Inviter un joueur"), "LIVE invite stays");
+  assert.true(sheet.includes("player-search"), "invite route");
+  assert.true(session.includes("membersAvailableForSlot"), "helper");
+  assert.true(hooks.includes("useAssignClubMemberSlot"), "insert slot");
+  assert.true(hooks.includes("n'est pas membre de ce club"), "member guard");
+  assert.true(search.includes("excludeUserIds"), "search still skips members");
+  assert.true(search.includes("useInvitePlayer"), "search still invites");
+});
+
 console.log(`\n${passed} tests founder UX OK`);

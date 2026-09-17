@@ -76,7 +76,9 @@ export function Sheet({
               <View className="h-1 w-10 rounded-full bg-border" />
             </View>
             <View className="flex-row items-center justify-between px-4 py-3">
-              <Text className="font-display text-lg text-fg">{title}</Text>
+              <Text className="font-display text-lg text-fg" style={{ color: cpcHex.textPrimary }}>
+                {title}
+              </Text>
               <Pressable
                 onPress={onClose}
                 hitSlop={12}
