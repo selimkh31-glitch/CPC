@@ -117,6 +117,7 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
 
   const screens = [
     "components/club/ClubLiveFeuille.tsx",
+    "components/club/ClubLiveRecruit.tsx",
     "app/(club)/(tabs)/candidatures.tsx",
     "app/(club)/(tabs)/effectif.tsx",
   ];
@@ -135,8 +136,9 @@ test("LIVE / Recrutement / Club : missing club = empty + Créer un club, pas l'e
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const match = read("app/(club)/(tabs)/match.tsx");
   const feuille = read("components/club/ClubLiveFeuille.tsx");
-  assert.true(live.includes("ClubLiveFeuille"), "LIVE is feuille");
-  assert.true(match.includes("ClubLiveFeuille"), "match same surface");
+  assert.true(live.includes("ClubLiveRecruit"), "LIVE is recruit");
+  assert.true(match.includes("ClubLiveFeuille"), "match is feuille");
+  assert.false(live.includes("ClubLiveFeuille"), "tabs distinct");
   assert.false(live.includes("LiveSessionPanel"), "LIVE no competing panel");
   assert.false(/if \(isError\) \{\s*return shell/.test(feuille), "LIVE isError does not unmount panel");
   assert.true(feuille.includes("if (!club) return"), "LIVE skip refetch without club");

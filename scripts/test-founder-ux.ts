@@ -1,0 +1,109 @@
+/**
+ * Founder UX pass — membership rejoin, roster, tabs, CTAs, honest face stats.
+ * Lancer : npx tsx scripts/test-founder-ux.ts
+ */
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
+
+const root = process.cwd();
+const assert = {
+  true(actual: unknown, label: string) {
+    if (actual !== true) throw new Error(`Assertion échouée (${label}) : attendu true, reçu ${actual}`);
+  },
+  false(actual: unknown, label: string) {
+    if (actual !== false) throw new Error(`Assertion échouée (${label}) : attendu false, reçu ${actual}`);
+  },
+};
+
+let passed = 0;
+function test(name: string, fn: () => void) {
+  fn();
+  passed += 1;
+  console.log(`  ok — ${name}`);
+}
+function read(rel: string) {
+  return readFileSync(`${root}/${rel}`, "utf8");
+}
+
+console.log("Founder UX — club LIVE / feuille / members");
+
+test("rejoin : leave clears membership leftovers ; accept upserts same-club row", () => {
+  const sql = read("supabase/migrations/0032_rejoin_membership.sql");
+  const apply = read("supabase/functions/apply/index.ts");
+  assert.true(sql.includes("status = 'WITHDRAWN'"), "withdraw pending apps");
+  assert.true(sql.includes("status = 'CANCELLED'"), "cancel pending invites");
+  assert.true(sql.includes("on conflict (club_id, user_id) do update"), "upsert membership");
+  assert.true(sql.includes("delete from public.slot_assignments"), "drop stale XI");
+  assert.true(apply.includes("alreadyPending: true"), "idempotent pending apply");
+  assert.true(apply.includes('in("role", ["MEMBER", "MANAGER"])'), "other-club MEMBER/MANAGER blocked");
+  assert.false(apply.includes("do nothing"), "apply does not mention do nothing");
+});
+
+test("effectif visible : Membres list on feuille, preview, Accueil club", () => {
+  const home = read("components/club/ClubHome.tsx");
+  const feuille = read("components/club/ClubLiveFeuille.tsx");
+  const preview = read("app/club/[id].tsx");
+  const roster = read("components/club/ClubRosterList.tsx");
+  assert.true(roster.includes("club_members"), "roster from members");
+  assert.true(roster.includes("Membres"), "section title");
+  assert.true(home.includes("ClubRosterList"), "player feuille roster");
+  assert.true(feuille.includes("ClubRosterList"), "manager feuille roster");
+  assert.true(feuille.includes("ClubCard"), "feuille club header");
+  assert.true(preview.includes("ClubRosterList"), "LIVE preview roster");
+  assert.true(preview.includes("FormationPitch"), "preview pitch");
+  assert.true(preview.includes("interactive={false}"), "preview read-only pitch");
+});
+
+test("tabs Match ≠ Matchmaking ; pas de Lancer/Finir sur la feuille", () => {
+  const clubTabs = read("app/(club)/(tabs)/_layout.tsx");
+  const index = read("app/(club)/(tabs)/index.tsx");
+  const match = read("app/(club)/(tabs)/match.tsx");
+  const feuille = read("components/club/ClubLiveFeuille.tsx");
+  const nav = read("components/nav/BottomNavigation.tsx");
+  assert.true(index.includes("ClubLiveRecruit"), "matchmaking = recruit");
+  assert.true(match.includes("ClubLiveFeuille"), "match = feuille");
+  assert.false(index.includes("ClubLiveFeuille"), "not the same screen");
+  assert.true(clubTabs.includes('title: "Match"'), "Match tab visible");
+  assert.false(feuille.includes("MatchCheckinPanel"), "no check-in CTAs");
+  assert.false(feuille.includes("Lancer le match"), "no lancer");
+  assert.false(feuille.includes("Finir le match"), "no finir");
+  assert.true(nav.includes('options.href === null'), "custom tab bar hides href null");
+});
+
+test("LIVE card ouvre un aperçu avant Rejoindre PENDING", () => {
+  const card = read("components/live/LiveClubCard.tsx");
+  const apply = read("components/club/ApplyForm.tsx");
+  assert.true(card.includes("clubPublicHref"), "preview href");
+  assert.true(card.includes("Aperçu"), "preview copy");
+  assert.true(card.includes(">Voir<") || card.includes("Voir"), "Voir CTA");
+  assert.true(apply.includes("Rejoindre"), "join on preview is Rejoindre");
+  assert.false(card.includes("join-live-club"), "no auto-join edge");
+});
+
+test("owner peut supprimer ; membre quitte ; CTA primary blanc", () => {
+  const del = read("components/club/DeleteClubButton.tsx");
+  const home = read("components/club/ClubHome.tsx");
+  const effectif = read("app/(club)/(tabs)/effectif.tsx");
+  const depart = read("components/club/MyDepartureStatusCard.tsx");
+  const button = read("components/ui/Button.tsx");
+  const input = read("components/ui/Input.tsx");
+  const chat = read("components/ui/ChatMessage.tsx");
+  assert.true(del.includes("Supprimer le club"), "delete cta");
+  assert.true(del.includes('style: "destructive"'), "confirm destructive");
+  assert.true(home.includes("DeleteClubButton"), "owner on feuille");
+  assert.true(effectif.includes("DeleteClubButton"), "owner on club tab");
+  assert.true(depart.includes("Quitter le club"), "member leave stays");
+  assert.true(button.includes('primary: "bg-white'), "white primary fill");
+  assert.true(input.includes("color: cpcHex.textPrimary"), "input not black");
+  assert.true(chat.includes("color: cpcHex.textPrimary"), "chat not black");
+});
+
+test("face stats restent honnêtes (DEV caption, jamais EA inventé)", () => {
+  const face = read("lib/cardFace.ts");
+  const card = read("components/player/PlayerCard.tsx");
+  assert.true(face.includes("DEV — pas des stats EA"), "DEV caption");
+  assert.true(card.includes("faceStatsCaption"), "caption on FULL card");
+  assert.true(face.includes('identityKind === "USERNAME_EQUALITY"'), "EA pack gated");
+});
+
+console.log(`\n${passed} tests founder UX OK`);

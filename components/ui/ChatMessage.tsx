@@ -1,5 +1,6 @@
 import { Text, View } from "react-native";
 import { cn } from "@/lib/utils";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 export function ChatMessage({
   body,
@@ -26,9 +27,17 @@ export function ChatMessage({
 
   return (
     <View className={cn("max-w-[80%] px-3.5 py-2.5", isOwn ? "self-end bg-accent/20" : "self-start bg-bg-elevated")}>
-      {!isOwn && sender ? <Text className="mb-1 text-xs font-semibold text-fg-muted">{sender}</Text> : null}
-      <Text className="text-[15px] leading-5 text-fg">{body}</Text>
-      <Text className="mt-1 text-caption text-fg-subtle">{at}</Text>
+      {!isOwn && sender ? (
+        <Text className="mb-1 text-xs font-semibold text-fg-muted" style={{ color: cpcHex.textMuted }}>
+          {sender}
+        </Text>
+      ) : null}
+      <Text className="text-[15px] leading-5 text-fg" style={{ color: cpcHex.textPrimary }}>
+        {body}
+      </Text>
+      <Text className="mt-1 text-caption text-fg-subtle" style={{ color: cpcHex.disabled }}>
+        {at}
+      </Text>
     </View>
   );
 }

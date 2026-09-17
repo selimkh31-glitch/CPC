@@ -20,11 +20,11 @@ export function ProfileRow({
     <View className={cn("min-h-[44px] flex-row items-center gap-3 py-2", className)}>
       <Avatar username={name} size="sm" />
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="font-sans-semibold text-body text-fg">
+        <Text numberOfLines={1} className="font-sans-semibold text-body text-fg" style={{ color: cpcHex.textPrimary }}>
           {name}
         </Text>
         {meta ? (
-          <Text numberOfLines={1} className="mt-0.5 font-sans text-caption text-fg-muted">
+          <Text numberOfLines={1} className="mt-0.5 font-sans text-caption text-fg-muted" style={{ color: cpcHex.textMuted }}>
             {meta}
           </Text>
         ) : null}

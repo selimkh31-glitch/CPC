@@ -262,6 +262,27 @@ export function useUpdateFormation(clubId: string) {
 }
 
 /**
+ * OWNER — suppression du club (RLS clubs_delete_owner). Cascade membres / sessions.
+ */
+export function useDeleteClub(clubId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("clubs").delete().eq("id", clubId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
+    },
+  });
+}
+
+/**
  * Promotion/rétrogradation MEMBER<->MANAGER — écriture directe légitime (RLS
  * club_members_write_owner, colonne `role` non protégée). La suppression d'un
  * membre ne passe PLUS par ce hook depuis la Phase 5 : voir useReleaseMember

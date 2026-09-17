@@ -1,9 +1,7 @@
 import { Text, View } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
-import { Badge } from "@/components/ui/Badge";
 import { LiveBadge } from "@/components/ui/LiveBadge";
 import { PositionBadge } from "@/components/ui/PositionBadge";
-import { ProfileRow } from "@/components/ui/ProfileRow";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SurfaceCard } from "@/components/ui/SurfaceCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -12,6 +10,8 @@ import { AppShell } from "@/components/nav/AppShell";
 import { ApplyForm } from "@/components/club/ApplyForm";
 import { MatchHistoryList } from "@/components/profile/MatchHistoryList";
 import { StartDirectMessageButton } from "@/components/social/StartDirectMessageButton";
+import { FormationPitch } from "@/components/club/FormationPitch";
+import { ClubRosterList } from "@/components/club/ClubRosterList";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -22,13 +22,7 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { sortClubRoster } from "@/lib/clubProfile";
 import { buildClubLiveRowMeta } from "@/lib/clubLiveRow";
 import { numberedPositionSlots } from "@/lib/sessionState";
-import type { ClubRole } from "@/lib/types";
-
-const ROLE_LABEL: Record<ClubRole, string> = {
-  OWNER: "Owner",
-  MANAGER: "Manager",
-  MEMBER: "Membre",
-};
+import type { FormationId } from "@/lib/formations";
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -82,6 +76,8 @@ export default function ClubDetailScreen() {
   });
   const neededSlots = numberedPositionSlots(activeSession?.needed_positions);
   const showMatchHistory = matchHistoryLoading || matchHistoryError || (matchHistory?.length ?? 0) > 0;
+  const formationId = (club.formation as FormationId | null) ?? null;
+  const assignments = club.slotAssignments ?? [];
 
   return (
     <AppShell contentContainerStyle={{ gap: 16 }}>
@@ -141,29 +137,35 @@ export default function ClubDetailScreen() {
         )}
       </SurfaceCard>
 
-      <View>
-        <SectionHeader title={`Membres (${club.members?.length ?? 0})`} />
-        <View className="gap-1">
-          {sortClubRoster(club.members ?? []).map((m) => {
-            const isSelf = session?.user.id === m.user_id;
-            const name = m.user?.username?.trim() || "Joueur";
-            const blocked = shouldHideContactCta(m.user_id, blockedIds);
-            return (
-              <View key={m.id} className="min-h-[44px] flex-row items-center gap-2">
-                <View className="min-w-0 flex-1">
-                  <ProfileRow name={name} />
-                </View>
-                <Badge tone={m.role === "OWNER" ? "pro" : m.role === "MANAGER" ? "accent" : "neutral"}>
-                  {ROLE_LABEL[m.role]}
-                </Badge>
-                {isMember && !isSelf ? (
-                  <StartDirectMessageButton otherUserId={m.user_id} blocked={blocked} />
-                ) : null}
-              </View>
-            );
-          })}
+      {formationId ? (
+        <View className="gap-2">
+          <SectionHeader title="Feuille" />
+          <FormationPitch
+            formationId={formationId}
+            assignments={assignments}
+            interactive={false}
+            currentUserId={session?.user.id ?? null}
+            clubId={club.id}
+          />
         </View>
-      </View>
+      ) : null}
+
+      <ClubRosterList members={club.members} currentUserId={session?.user.id ?? null} clubId={club.id} />
+
+      {isMember ? (
+        <View className="gap-2">
+          {sortClubRoster(club.members ?? [])
+            .filter((m) => session?.user.id !== m.user_id)
+            .map((m) => (
+              <View key={`dm-${m.id}`} className="min-h-[44px] flex-row items-center justify-between">
+                <Text className="min-w-0 flex-1 font-sans text-body text-fg" numberOfLines={1}>
+                  {m.user?.username?.trim() || "Joueur"}
+                </Text>
+                <StartDirectMessageButton otherUserId={m.user_id} blocked={shouldHideContactCta(m.user_id, blockedIds)} />
+              </View>
+            ))}
+        </View>
+      ) : null}
     </AppShell>
   );
 }

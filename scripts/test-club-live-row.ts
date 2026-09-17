@@ -100,12 +100,12 @@ test("source — jamais EA, jamais ClubCard sur la ligne", () => {
   const filters = readFileSync(`${process.cwd()}/components/live/MatchmakingFilters.tsx`, "utf8");
   assert.true(row.includes("Jamais des stats EA") || row.includes("Jamais EA"), "never EA comment");
   assert.false(row.includes("verified_stats"), "no verified_stats");
-  assert.true(card.includes("Rejoindre"), "join");
+  assert.true(card.includes("Voir"), "preview cta");
   assert.true(card.includes("clubPublicHref"), "href club page");
   assert.false(card.includes("@/components/club/ClubCard"), "no ClubCard import");
   assert.false(/<ClubCard[\s>]/.test(card), "no ClubCard element");
   assert.false(card.includes("LiveCountdown"), "no countdown");
-  assert.false(card.includes("Voir le club"), "no view club");
+  assert.true(card.includes("Aperçu"), "preview a11y");
   assert.false(card.includes("needed"), "no needed positions");
   assert.true(filters.includes("Poste"), "poste");
   assert.true(filters.includes("Langue"), "langue");

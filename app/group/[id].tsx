@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { PlayerCard } from "@/components/player/PlayerCard";
 import { buildPlayerCardData } from "@/lib/playerCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { cpcHex } from "@/lib/design/cpc-native";
 import {
   useDeleteGroup,
   useGroup,
@@ -143,7 +144,7 @@ export default function GroupDetailScreen() {
           {isMember && conversationId && (
             <Button
               className="min-h-[48px]"
-              icon={<MessageCircle size={16} color="#08090b" />}
+              icon={<MessageCircle size={16} color={cpcHex.background} />}
               onPress={() => router.push(`/conversation/${conversationId}`)}
             >
               {CHAT_UX_COPY.write}

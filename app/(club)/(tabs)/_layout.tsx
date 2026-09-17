@@ -9,9 +9,8 @@ export const unstable_settings = {
 };
 
 /**
- * Mode Club — 3 onglets : Accueil | Matchmaking | Recrutement.
- * index.tsx reste la feuille (ex-LIVE) pour les deep links.
- * Club / match hors tab bar (`href: null`).
+ * Mode Club — Accueil | Matchmaking (LIVE recruit) | Match (feuille) | Recrutement.
+ * Club identity hors tab bar (`href: null`).
  */
 export default function ClubTabsLayout() {
   const accent = useModeAccent();
@@ -36,16 +35,21 @@ export default function ClubTabsLayout() {
         options={{ title: "Matchmaking", tabBarIcon: ({ color, size }) => <Radio color={color} size={size} /> }}
       />
       <Tabs.Screen
+        name="match"
+        options={{ title: "Match", tabBarIcon: ({ color, size }) => <Swords color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="candidatures"
         options={{ title: "Recrutement", tabBarIcon: ({ color, size }) => <Inbox color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="effectif"
-        options={{ href: null, title: "Club", tabBarIcon: ({ color, size }) => <Shield color={color} size={size} /> }}
-      />
-      <Tabs.Screen
-        name="match"
-        options={{ href: null, title: "Match", tabBarIcon: ({ color, size }) => <Swords color={color} size={size} /> }}
+        options={{
+          href: null,
+          tabBarItemStyle: { display: "none" },
+          title: "Club",
+          tabBarIcon: ({ color, size }) => <Shield color={color} size={size} />,
+        }}
       />
     </Tabs>
   );

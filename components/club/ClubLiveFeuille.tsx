@@ -12,27 +12,21 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/Screen";
 import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
+import { ClubCard } from "@/components/club/ClubCard";
 import { PlayerCard } from "@/components/player/PlayerCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { FormationSelector } from "@/components/club/FormationSelector";
-import { MatchCheckinPanel } from "@/components/club/MatchCheckinPanel";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
-import { ClubDiscoveryToggle } from "@/components/club/ClubDiscoveryToggle";
+import { ClubRosterList } from "@/components/club/ClubRosterList";
 import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
-import {
-  canMutateClub,
-  clubSessionSnapshot,
-  filledSlotCount,
-  neededPositionsFromEmptySlots,
-  rosterFillLabel,
-} from "@/lib/sessionState";
+import { canMutateClub, filledSlotCount, rosterFillLabel } from "@/lib/sessionState";
+import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { useManagedClub } from "@/lib/hooks/useManagedClub";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
 import { useClubInvitations, useCancelInvitation } from "@/lib/hooks/useInvitations";
-import { useActiveMatchCheckin } from "@/lib/hooks/useMatchCheckin";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FINALIZE_MATCH_COPY } from "@/lib/finalizeMatch";
@@ -40,9 +34,9 @@ import { buildPlayerCardData } from "@/lib/playerCard";
 import { toast } from "@/lib/toast";
 
 /**
- * Feuille manager (onglet Matchmaking et deep link `/match`).
- * Chrome : nom du club + un ON/OFF de découverte. Le terrain reste visible.
- * Check-in plus bas. Pas de carte intern de statut.
+ * Feuille manager (onglet Match et deep link `/match`).
+ * Terrain + effectif. Le recrutement LIVE vit sur l'onglet Matchmaking.
+ * Pas de check-in ni de coup d'envoi sur cet écran.
  */
 export function ClubLiveFeuille() {
   const { session } = useAuth();
@@ -51,7 +45,6 @@ export function ClubLiveFeuille() {
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
   const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
-  const { data: activeCheckin } = useActiveMatchCheckin(club?.id ?? null);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,21 +85,10 @@ export function ClubLiveFeuille() {
 
   const myMembership = session ? club.members?.find((m) => m.user_id === session.user.id) : undefined;
   const canManage = canMutateClub(myMembership?.role);
-  const snapshot = clubSessionSnapshot(club.sessions, activeCheckin ?? null, now);
-  const liveSession = snapshot.live.active
-    ? {
-        id: snapshot.live.sessionId,
-        needed_positions: snapshot.live.neededPositions,
-        note: snapshot.live.note,
-        expires_at: snapshot.live.expiresAt,
-        is_live: true as const,
-      }
-    : null;
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
   const members = club.members ?? [];
   const fill = rosterFillLabel(filledSlotCount(assignments));
-  const vacancies = neededPositionsFromEmptySlots(formationId, assignments);
 
   const onEmptySlotPress = (slot: FormationSlot) => {
     if (!canManage) return;
@@ -116,32 +98,33 @@ export function ClubLiveFeuille() {
   return shell(
     <>
       {isError ? <ErrorState message="Impossible de charger ce club." onRetry={refetch} /> : null}
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="font-display text-display text-fg" style={{ lineHeight: cpcTokens.font.lineHeight.display }} numberOfLines={2}>
-            {club.name}
-          </Text>
-          <Text
-            className="mt-1 font-sans text-eyebrow uppercase text-fg-subtle"
-            style={{ letterSpacing: cpcTokens.font.letterSpacing.eyebrow }}
-          >
-            EA SPORTS FC 27 Pro Clubs
-          </Text>
-        </View>
+
+      <View className="gap-2">
+        <Text
+          className="font-sans text-eyebrow uppercase text-fg-subtle"
+          style={{ letterSpacing: cpcTokens.font.letterSpacing.eyebrow, color: cpcHex.disabled }}
+        >
+          Feuille de match
+        </Text>
+        <ClubCard
+          data={buildClubCardDataFromHydratedClub(club, {
+            members: club.members,
+            sessions: club.sessions,
+            nowMs: now,
+          })}
+          variant="full"
+          interactive={false}
+        />
       </View>
 
-      <ClubDiscoveryToggle
-        clubId={club.id}
-        activeSession={liveSession}
-        neededPositions={vacancies}
-        canManage={canManage}
-        pitchReady={Boolean(formationId)}
-      />
+      <ClubRosterList members={members} currentUserId={session?.user.id ?? null} clubId={club.id} />
 
       <View className="flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1">
-          <SectionHeader title="Effectif" />
-          <Text className="text-[12px] text-fg-subtle">{fill}</Text>
+          <SectionHeader title="Formation" />
+          <Text className="text-[12px] text-fg-subtle" style={{ color: cpcHex.disabled }}>
+            {fill} — le XI n&apos;est pas l&apos;effectif
+          </Text>
         </View>
         {canManage ? (
           <FormationSelector clubId={club.id} currentFormation={formationId} hasAssignments={assignments.length > 0} />
@@ -150,9 +133,7 @@ export function ClubLiveFeuille() {
         ) : null}
       </View>
 
-      {members.length === 0 ? (
-        <EmptyState title="Aucun membre dans ce club." subtitle="L'effectif vient de club_members — rien n'est inventé." />
-      ) : !formationId ? (
+      {!formationId ? (
         <EmptyState title="Choisis une formation pour composer ton équipe." />
       ) : (
         <FormationPitch
@@ -160,6 +141,7 @@ export function ClubLiveFeuille() {
           assignments={assignments}
           interactive={canManage}
           clubId={club.id}
+          currentUserId={session?.user.id ?? null}
           onEmptySlotPress={canManage ? onEmptySlotPress : undefined}
           emptySlotHint="Inviter sur ce poste"
         />
@@ -168,16 +150,6 @@ export function ClubLiveFeuille() {
       <VoiceLinkBlock voiceLink={club.voice_link} />
 
       <PendingInvitations clubId={club.id} formationId={formationId} />
-
-      {formationId && canManage ? (
-        <MatchCheckinPanel
-          clubId={club.id}
-          sessionId={liveSession?.id ?? null}
-          formationId={formationId}
-          assignments={assignments}
-          members={members}
-        />
-      ) : null}
 
       {managedClubs.length > 1 && (
         <Pressable

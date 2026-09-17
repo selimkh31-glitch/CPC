@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { cn } from "@/lib/utils";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 interface ChipOption {
   value: string;
@@ -44,7 +45,10 @@ export function ChipSelect({ options, value, onChange, max, single }: ChipSelect
               active ? "border-accent bg-accent/15" : "border-border bg-bg-elevated"
             )}
           >
-            <Text className={cn("text-sm font-semibold", active ? "text-accent" : "text-fg-muted")}>
+            <Text
+              className={cn("text-sm font-semibold", active ? "text-accent" : "text-fg-muted")}
+              style={{ color: active ? cpcHex.accent : cpcHex.textMuted }}
+            >
               {opt.label}
             </Text>
           </Pressable>

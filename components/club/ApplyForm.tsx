@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { playerPlaysPosition } from "@/lib/liveMatch";
 import { uniquePositionCodes } from "@/lib/sessionState";
 import { toast } from "@/lib/toast";
+import { cpcHex } from "@/lib/design/cpc-native";
 
 /** Bouton "Postuler" en 1 clic + message optionnel. Poste ∈ besoin ∩ profil. */
 export function ApplyForm({ sessionId, neededPositions }: { sessionId: string; neededPositions: string[] }) {
@@ -39,8 +40,8 @@ export function ApplyForm({ sessionId, neededPositions }: { sessionId: string; n
     mutation.mutate(
       { sessionId, position: selected, message: message.trim() || undefined },
       {
-        onSuccess: () => {
-          toast.success("Candidature envoyée !");
+        onSuccess: (data) => {
+          toast.success(data?.alreadyPending ? "Candidature déjà envoyée." : "Candidature envoyée !");
           setOpen(false);
         },
         onError: (err: any) => toast.error(err.message ?? "Erreur"),
@@ -62,8 +63,8 @@ export function ApplyForm({ sessionId, neededPositions }: { sessionId: string; n
 
   if (!open) {
     return (
-      <Button icon={<Send size={16} color="#08090b" />} onPress={() => setOpen(true)}>
-        Postuler
+      <Button icon={<Send size={16} color={cpcHex.background} />} onPress={() => setOpen(true)}>
+        Rejoindre
       </Button>
     );
   }

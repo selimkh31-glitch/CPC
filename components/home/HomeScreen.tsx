@@ -9,7 +9,7 @@ import { AppShell } from "@/components/nav/AppShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ActivityRow } from "@/components/ui/ActivityRow";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
-import { buildClubCardData } from "@/lib/clubCard";
+import { buildClubCardData, buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useCurrentClubForUser } from "@/lib/hooks/useCurrentClubs";
@@ -120,7 +120,13 @@ export function HomeScreen() {
 
   const club = anyClub?.club ?? null;
   const clubCard = club?.name?.trim()
-    ? buildClubCardData({ id: club.id, name: club.name.trim(), level: club.level ?? undefined })
+    ? clubDetail && clubDetail.id === club.id
+      ? buildClubCardDataFromHydratedClub(clubDetail, {
+          members: clubDetail.members,
+          sessions: clubDetail.sessions,
+          nowMs: now,
+        })
+      : buildClubCardData({ id: club.id, name: club.name.trim(), level: club.level ?? undefined })
     : null;
 
   return (
@@ -144,7 +150,7 @@ export function HomeScreen() {
         {membershipsLoading ? (
           <Skeleton className="h-14" />
         ) : clubCard ? (
-          <ClubCard data={clubCard} variant="mini" onPress={openMonClub} />
+          <ClubCard data={clubCard} variant="compact" onPress={openMonClub} />
         ) : mode === "CLUB" ? (
           <View className="gap-3 border border-dashed border-border px-4 py-4">
             <Text className="text-body text-fg-muted">Aucun club géré.</Text>

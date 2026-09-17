@@ -34,7 +34,10 @@ export function BottomNavigation({ state, descriptors, navigation }: TabBarProps
   const accent = useModeAccent();
   const visibleRoutes = state.routes.filter((route) => {
     const options = descriptors[route.key]?.options ?? {};
-    return options.href !== null;
+    if (options.href === null) return false;
+    const itemStyle = options.tabBarItemStyle as { display?: string } | undefined;
+    if (itemStyle?.display === "none") return false;
+    return true;
   });
 
   return (

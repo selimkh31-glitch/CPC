@@ -54,8 +54,8 @@ export function clubPublicHref(clubId: string, sessionId?: string | null): strin
 export function sortClubRoster(members: ClubMemberRow[]): ClubMemberRow[] {
   const order: Record<ClubMemberRow["role"], number> = { OWNER: 0, MANAGER: 1, MEMBER: 2 };
   return [...members].sort((a, b) => {
-    const byRole = order[a.role] - order[b.role];
+    const byRole = (order[a.role] ?? 9) - (order[b.role] ?? 9);
     if (byRole !== 0) return byRole;
-    return a.joined_at.localeCompare(b.joined_at);
+    return (a.joined_at ?? "").localeCompare(b.joined_at ?? "");
   });
 }

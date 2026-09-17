@@ -21,6 +21,7 @@ import {
   type MatchCheckinResult,
 } from "@/lib/hooks/useMatchCheckin";
 import { toast } from "@/lib/toast";
+import { cpcHex } from "@/lib/design/cpc-native";
 import { COMPETITION_COPY, competitionOrTournamentHref } from "@/lib/competitions";
 import { FINALIZE_MATCH_COPY, parseUiMatchScore } from "@/lib/finalizeMatch";
 import { buildPlayerCardData } from "@/lib/playerCard";
@@ -522,7 +523,7 @@ export function MatchCheckinPanel({
         </Text>
       ) : (
         <Button
-          icon={<PlayCircle size={16} color="#08090b" />}
+          icon={<PlayCircle size={16} color={cpcHex.background} />}
           disabled={activeCheckinLoading}
           onPress={() => setStep("confirm")}
         >

@@ -211,23 +211,27 @@ test("panels LIVE : joueur = playerHeadline, club LIVE = discovery + feuille", (
   const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
   const liveTab = readFileSync(`${process.cwd()}/app/(club)/(tabs)/index.tsx`, "utf8");
   const matchTab = readFileSync(`${process.cwd()}/app/(club)/(tabs)/match.tsx`, "utf8");
+  const recruit = readFileSync(`${process.cwd()}/components/club/ClubLiveRecruit.tsx`, "utf8");
   assert.true(player.includes("LIVE_UX_COPY.playerHeadline"), "player uses playerHeadline");
   assert.false(player.includes("LIVE_UX_COPY.clubHeadline"), "player not clubHeadline");
   assert.false(player.includes("On cherche un match"), "player panel no match hunt");
   assert.true(toggle.includes("LIVE_UX_COPY.discoveryOn"), "club toggle En ligne");
   assert.true(toggle.includes("LIVE_UX_COPY.discoveryHintOn"), "Les joueurs te voient");
   assert.false(toggle.includes("LIVE_UX_COPY.playerHeadline"), "club not playerHeadline");
-  assert.true(feuille.includes("ClubDiscoveryToggle"), "feuille has toggle");
+  assert.true(recruit.includes("ClubDiscoveryToggle"), "matchmaking has toggle");
   assert.true(feuille.includes("FormationPitch"), "feuille has pitch");
-  assert.true(feuille.includes("MatchCheckinPanel"), "check-in lower on feuille");
+  assert.false(feuille.includes("MatchCheckinPanel"), "no lancer/finir on feuille");
+  assert.false(feuille.includes("ClubDiscoveryToggle"), "feuille not recruit");
+  assert.false(recruit.includes("FormationPitch"), "recruit not pitch");
   assert.false(feuille.includes("LiveSessionPanel"), "no competing LIVE panel");
   assert.false(feuille.includes("ClubSessionStatus"), "no intern status card");
   assert.false(feuille.includes("flag + durée"), "no intern flag copy");
   assert.false(feuille.includes("HORS LIGNE"), "no HORS LIGNE");
   assert.false(feuille.includes("Pas de match lancé"), "no PAS DE MATCH");
   assert.false(toggle.includes("LIVE_DURATION_OPTIONS"), "no duration picker");
-  assert.true(liveTab.includes("ClubLiveFeuille"), "LIVE tab is feuille");
-  assert.true(matchTab.includes("ClubLiveFeuille"), "match same surface");
+  assert.true(liveTab.includes("ClubLiveRecruit"), "LIVE tab is recruit");
+  assert.true(matchTab.includes("ClubLiveFeuille"), "match is feuille");
+  assert.false(liveTab.includes("ClubLiveFeuille"), "tabs are distinct");
   assert.false(liveTab.includes("LiveSessionPanel"), "LIVE tab no old panel");
   assert.false(matchTab.includes("LiveSessionPanel"), "match no old panel");
 });
@@ -235,7 +239,7 @@ test("panels LIVE : joueur = playerHeadline, club LIVE = discovery + feuille", (
 test("pitch LIVE : SLOT 44, codes ST/LW, pas de libellé FR ni Inviter sur le terrain", () => {
   const pitch = readFileSync(`${process.cwd()}/components/club/FormationPitch.tsx`, "utf8");
   const feuille = readFileSync(`${process.cwd()}/components/club/ClubLiveFeuille.tsx`, "utf8");
-  assert.true(pitch.includes("const SLOT_SIZE = 44"), "SLOT_SIZE 44");
+  assert.true(pitch.includes("SLOT_W"), "slot width token");
   assert.true(pitch.includes("h-10 w-10"), "h-10 circles");
   assert.false(pitch.includes("h-14 w-14"), "no h-14 circles");
   assert.true(pitch.includes("{slot.position}"), "position CODE on pitch");
@@ -293,7 +297,8 @@ test("Matchmaking joueur : titre Matchmaking, clubs LIVE seulement", () => {
   assert.true(feed.includes("LIVE_UX_COPY.title"), "title");
   assert.true(feed.includes("LiveClubCard"), "LiveClubCard");
   assert.true(feed.includes("MatchmakingFilters"), "MatchmakingFilters");
-  assert.true(clubCard.includes("Rejoindre"), "join on row");
+  assert.true(clubCard.includes("Voir"), "preview on row");
+  assert.true(clubCard.includes("clubPublicHref"), "opens club preview");
   assert.false(feed.includes("LivePlayerCard"), "no LivePlayerCard");
   assert.false(feed.includes("FindClubPanel"), "no FindClubPanel");
   assert.false(feed.includes("otherPlayers"), "no otherPlayers");
@@ -305,6 +310,7 @@ test("unmount / blur d'onglet LIVE ne coupe pas is_live", () => {
     "components/live/PlayerLivePanel.tsx",
     "components/club/ClubDiscoveryToggle.tsx",
     "components/club/ClubLiveFeuille.tsx",
+    "components/club/ClubLiveRecruit.tsx",
     "app/(player)/(tabs)/index.tsx",
     "app/(club)/(tabs)/index.tsx",
     "app/(club)/(tabs)/match.tsx",
