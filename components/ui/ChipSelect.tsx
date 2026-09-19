@@ -14,10 +14,12 @@ interface ChipSelectProps {
   onChange: (next: string[]) => void;
   max?: number;
   single?: boolean;
+  /** Seulement à l'ajout au-delà de `max` — jamais au retrait. */
+  onMax?: () => void;
 }
 
 /** Sélecteur de "chips" tactile, zones de touch généreuses — coeur de l'onboarding rapide (<10s/étape). */
-export function ChipSelect({ options, value, onChange, max, single }: ChipSelectProps) {
+export function ChipSelect({ options, value, onChange, max, single, onMax }: ChipSelectProps) {
   const toggle = (v: string) => {
     Haptics.selectionAsync();
     if (single) {
@@ -27,7 +29,10 @@ export function ChipSelect({ options, value, onChange, max, single }: ChipSelect
     if (value.includes(v)) {
       onChange(value.filter((x) => x !== v));
     } else {
-      if (max && value.length >= max) return;
+      if (max && value.length >= max) {
+        onMax?.();
+        return;
+      }
       onChange([...value, v]);
     }
   };

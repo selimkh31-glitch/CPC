@@ -107,6 +107,8 @@ test("persistance SecureStore dans AppModeProvider, pas de reset PLAYER au login
   assert.true(provider.includes("SecureStore"), "secure store");
   assert.true(provider.includes("appModeStorageKey"), "per-user key");
   assert.true(provider.includes("parseStoredAppMode"), "parse stored");
+  assert.true(provider.includes("clearMode"), "DEV retest can clear stored mode");
+  assert.true(provider.includes("deleteItemAsync"), "clear deletes SecureStore key");
   assert.false(/setModeState\("PLAYER"\)/.test(provider), "no force PLAYER");
 });
 

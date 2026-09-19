@@ -159,8 +159,12 @@ export function HomeScreen() {
             </Button>
           </View>
         ) : (
-          <View className="border border-dashed border-border px-4 py-4">
+          <View className="gap-3 border border-dashed border-border px-4 py-4">
             <Text className="text-body text-fg-muted">Sans club.</Text>
+            <Text className="font-sans text-caption text-fg-subtle">Trouve un club LIVE sur Matchmaking.</Text>
+            <Button variant="secondary" className="min-h-[44px]" onPress={goMatchmaking}>
+              Matchmaking
+            </Button>
           </View>
         )}
       </View>

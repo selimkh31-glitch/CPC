@@ -256,9 +256,9 @@ function identityPatchForPositions(
 
 function positionCellLabel(code: PositionCode, isMain: boolean, isSecondary: boolean, isOwn: boolean): string {
   if (!isOwn) return `Poste ${code}`;
-  if (isMain) return `Poste principal ${code}`;
-  if (isSecondary) return `Poste secondaire ${code}, appui long pour retirer`;
-  return `Ajouter ${code} comme poste secondaire`;
+  if (isMain) return `Retirer le poste principal ${code}`;
+  if (isSecondary) return `Retirer le poste ${code}`;
+  return `Ajouter ${code}`;
 }
 
 function ProfilePositionGrid({ user, isOwn }: { user: UserRow; isOwn: boolean }) {

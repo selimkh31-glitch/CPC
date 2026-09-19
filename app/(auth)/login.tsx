@@ -17,17 +17,27 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || password.length < 6) {
+      toast.error("Email et mot de passe (6 caractères min.) sont requis.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
+        const { data, error } = await supabase.auth.signUp({
+          email: trimmedEmail,
           password,
           options: { emailRedirectTo: "clubproconnect://auth/callback" },
         });
         if (error) throw error;
+        if (data.session) {
+          toast.success("Compte créé. On continue avec ton profil.");
+        } else {
+          toast.success("Compte créé. Ouvre le lien dans l'email, puis reconnecte-toi.");
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
         if (error) throw error;
       }
     } catch (err: any) {
@@ -44,6 +54,9 @@ export default function LoginScreen() {
           <Logo size="lg" />
           <Text className="mt-3 text-center font-sans text-bodySmall text-fg-muted">
             Matchmaking temps réel pour EA SPORTS FC 27 Pro Clubs.
+          </Text>
+          <Text className="mt-2 text-center font-sans text-caption text-fg-subtle">
+            Première fois : Inscription, puis tes postes, puis Joueur ou Manager.
           </Text>
         </View>
 
@@ -88,7 +101,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Button loading={loading} disabled={!email || password.length < 6} onPress={submit}>
+          <Button loading={loading} disabled={!email.trim() || password.length < 6} onPress={submit}>
             {mode === "signin" ? "Se connecter" : "Créer mon compte"}
           </Button>
         </View>

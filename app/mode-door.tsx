@@ -45,6 +45,11 @@ export default function ModeDoorScreen() {
           <Text className="font-display text-display text-fg">{MODE_DOOR_COPY.manager}</Text>
           <Text className="mt-2 font-sans text-body text-fg-muted">{MODE_DOOR_COPY.managerHint}</Text>
         </Pressable>
+        {typeof __DEV__ !== "undefined" && __DEV__ ? (
+          <Text className="mt-6 font-sans text-caption text-fg-subtle">
+            DEV — ce choix est mémorisé. Pour le revoir : Profil ou Club → « DEV — revoir Joueur / Manager ».
+          </Text>
+        ) : null}
       </View>
     </SafeAreaView>
   );

@@ -8,6 +8,7 @@ import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
 import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
+import { DevClearModeButton } from "@/components/profile/DevClearModeButton";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
@@ -67,6 +68,7 @@ export default function ProfileTabScreen() {
         </View>
 
         <DevTestAccountSwitcher />
+        <DevClearModeButton />
 
         {profile?.plan !== "PRO" && (
           <Pressable

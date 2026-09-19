@@ -219,13 +219,26 @@ function okPositions(main: PositionCode, secondary: PositionCode[]): PositionTap
   return { ok: true, main_position: main, secondary_positions: secondary };
 }
 
+function deselectPosition(main: PositionCode, secondary: PositionCode[], tapped: PositionCode): PositionTapResult {
+  if (tapped === main) {
+    if (secondary.length === 0) return { ok: false, reason: "noop" };
+    const [nextMain, ...rest] = secondary;
+    return okPositions(nextMain, rest);
+  }
+  if (secondary.includes(tapped)) {
+    return okPositions(main, secondary.filter((p) => p !== tapped));
+  }
+  return { ok: false, reason: "noop" };
+}
+
 /**
  * Grille de postes inline (profil perso). Pas de navigation.
- * Max 3 postes (1 principal + 2 secondaires). Un 4e vide n'est jamais promu.
- * - tap vide → secondaire si place, sinon `{ ok:false, reason:"max" }`
- * - tap secondaire → devient principal, l'ancien principal passe secondaire
- * - tap principal → `{ ok:false, reason:"noop" }`
- * - appui long sur un secondaire → le retire ; le principal ne se retire pas
+ * Max 3 postes (1 principal + 2 secondaires). Premier choisi = principal.
+ * - tap vide → ajoute en secondaire si place, sinon `{ ok:false, reason:"max" }`
+ * - tap déjà sélectionné → retire (2e tap). Si c'était le principal, le 1er
+ *   secondaire devient principal. Le dernier poste restant ne se retire pas.
+ * - appui long = même retrait (pas un promote). Toast « 3 postes max » seulement
+ *   à l'ajout d'un 4e, jamais au retrait.
  */
 export function nextPositionsOnTap(
   current: { main_position: PositionCode; secondary_positions?: readonly PositionCode[] | null },
@@ -238,16 +251,12 @@ export function nextPositionsOnTap(
   const main = current.main_position;
   const secondary = normalizeSecondary(main, current.secondary_positions);
 
-  if (intent === "long-press") {
-    if (tapped === main || !secondary.includes(tapped)) return { ok: false, reason: "noop" };
-    return okPositions(main, secondary.filter((p) => p !== tapped));
+  if (tapped === main || secondary.includes(tapped)) {
+    return deselectPosition(main, secondary, tapped);
   }
 
-  if (tapped === main) return { ok: false, reason: "noop" };
-
-  if (secondary.includes(tapped)) {
-    const rest = secondary.filter((p) => p !== tapped);
-    return okPositions(tapped, normalizeSecondary(tapped, [main, ...rest]));
+  if (intent === "long-press") {
+    return { ok: false, reason: "noop" };
   }
 
   if (secondary.length >= MAX_SECONDARY_POSITIONS) {

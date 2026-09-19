@@ -126,4 +126,36 @@ test("slot vide : picker membres du club, pas auto-XI ; invite LIVE reste", () =
   assert.true(search.includes("useInvitePlayer"), "search still invites");
 });
 
+test("postes profil : 2e tap retire ; toast seulement à l'ajout d'un 4e", () => {
+  const ident = read("lib/profileIdentity.ts");
+  const overview = read("components/profile/ProfileOverview.tsx");
+  const chips = read("components/ui/ChipSelect.tsx");
+  assert.true(ident.includes("deselectPosition"), "toggle off helper");
+  assert.true(ident.includes("jamais au retrait"), "max not on remove");
+  assert.true(overview.includes('if (next.reason === "max")'), "toast only max");
+  assert.true(chips.includes("onMax"), "chips toast on add-over-max");
+  assert.true(chips.includes("value.includes(v)"), "chips can deselect");
+});
+
+test("onboarding cold start : validation + signup copy + mode door reset DEV", () => {
+  const onboarding = read("app/onboarding.tsx");
+  const login = read("app/(auth)/login.tsx");
+  const door = read("app/mode-door.tsx");
+  const profile = read("app/(player)/(tabs)/profile.tsx");
+  const clubTab = read("app/(club)/(tabs)/effectif.tsx");
+  const reset = read("components/profile/DevClearModeButton.tsx");
+  const home = read("components/home/HomeScreen.tsx");
+  assert.true(onboarding.includes("validateProfileIdentity"), "onboarding validates");
+  assert.true(onboarding.includes("2 postes secondaires max."), "onboarding max toast");
+  assert.true(login.includes("Compte créé"), "signup not silent");
+  assert.true(login.includes("Première fois"), "signup hint");
+  assert.true(door.includes("MODE_DOOR_COPY"), "mode door stays");
+  assert.true(reset.includes("clearMode"), "DEV reset calls clearMode");
+  assert.true(reset.includes("__DEV__"), "DEV reset gated");
+  assert.true(profile.includes("DevClearModeButton"), "DEV revoir porte profil");
+  assert.true(clubTab.includes("DevClearModeButton"), "DEV revoir porte club");
+  assert.true(home.includes("Sans club."), "player empty stays");
+  assert.true(home.includes("Trouve un club LIVE"), "empty points to MM");
+});
+
 console.log(`\n${passed} tests founder UX OK`);

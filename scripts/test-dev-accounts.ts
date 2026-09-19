@@ -88,6 +88,8 @@ test("switcher Profil + Club, jamais LIVE, jamais wipe DB", () => {
   const livePlayer = read("app/(player)/(tabs)/index.tsx");
   assert.true(profile.includes("DevTestAccountSwitcher"), "profil");
   assert.true(clubTab.includes("DevTestAccountSwitcher"), "club identity");
+  assert.true(profile.includes("DevClearModeButton"), "DEV clear mode profil");
+  assert.true(clubTab.includes("DevClearModeButton"), "DEV clear mode club");
   assert.false(liveClub.includes("DevTestAccountSwitcher"), "not on club LIVE");
   assert.false(livePlayer.includes("DevTestAccountSwitcher"), "not on player LIVE");
   assert.true(switcher.includes("__DEV__"), "dev guard");

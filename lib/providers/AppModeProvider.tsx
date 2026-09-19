@@ -14,6 +14,8 @@ interface AppModeContextValue {
   hydrated: boolean;
   selectedManagedClubId: string | null;
   setMode: (mode: AppMode) => void;
+  /** DEV / retest — efface le mode persisté pour réafficher la porte. */
+  clearMode: () => void;
   setSelectedManagedClubId: (clubId: string | null) => void;
 }
 
@@ -69,6 +71,13 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
     [userId]
   );
 
+  const clearMode = useCallback(() => {
+    setModeState(null);
+    setSelectedManagedClubId(null);
+    if (!userId) return;
+    SecureStore.deleteItemAsync(appModeStorageKey(userId)).catch(() => {});
+  }, [userId]);
+
   const setSelectedManagedClubIdStable = useCallback((clubId: string | null) => setSelectedManagedClubId(clubId), []);
 
   return (
@@ -78,6 +87,7 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
         hydrated,
         selectedManagedClubId,
         setMode,
+        clearMode,
         setSelectedManagedClubId: setSelectedManagedClubIdStable,
       }}
     >
