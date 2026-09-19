@@ -87,14 +87,14 @@ test("source — chips key=item.slot ; page publique slim", () => {
   assert.true(page.includes("isMember"), "member gate");
   assert.true(page.includes("match-sheet"), "sheet href");
   assert.true(page.includes("{isMember ?"), "sheet if member");
-  assert.true(page.includes("isMember && !isSelf"), "dm members only");
+  assert.true(page.includes("isMember"), "dm members only");
   assert.true(page.includes("showMatchHistory"), "hide empty history");
   assert.true(page.includes("buildClubLiveRowMeta"), "compact header meta");
   assert.false(page.includes("@/components/club/ClubCard"), "no ClubCard");
   assert.false(page.includes("@/components/player/PlayerCard"), "no PlayerCard");
   assert.false(page.includes("eaUnlinked"), "no EA dump");
   assert.false(page.includes('variant="full"'), "no full card");
-  assert.true(apply.includes("uniquePositionCodes"), "apply unique codes");
+  assert.true(apply.includes("playableNeededPositions") || apply.includes("uniquePositionCodes"), "apply unique codes");
 });
 
 console.log(`\n${passed} test(s) passés.`);

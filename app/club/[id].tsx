@@ -17,15 +17,21 @@ import { useClubMatchHistory } from "@/lib/hooks/useMatchHistory";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { isClubHiddenByBlock, shouldHideContactCta } from "@/lib/safety";
-import { findActiveLiveSession } from "@/lib/live";
 import { useLiveClock } from "@/lib/hooks/useLiveClock";
-import { sortClubRoster } from "@/lib/clubProfile";
+import { resolveClubPreviewSession, sortClubRoster } from "@/lib/clubProfile";
 import { buildClubLiveRowMeta } from "@/lib/clubLiveRow";
 import { numberedPositionSlots } from "@/lib/sessionState";
+import { PLAYER_JOIN_COPY } from "@/lib/playerJoinCta";
 import type { FormationId } from "@/lib/formations";
 
 export default function ClubDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, session: sessionParam, join: joinParam } = useLocalSearchParams<{
+    id: string;
+    session?: string;
+    join?: string;
+  }>();
+  const preferredSessionId = Array.isArray(sessionParam) ? sessionParam[0] : sessionParam;
+  const joinIntent = (Array.isArray(joinParam) ? joinParam[0] : joinParam) === "1";
   const { data: club, isLoading, isError, refetch } = useClub(id);
   const {
     data: matchHistory,
@@ -63,7 +69,7 @@ export default function ClubDetailScreen() {
     );
   }
 
-  const activeSession = findActiveLiveSession(club.sessions, now);
+  const activeSession = resolveClubPreviewSession(club.sessions, now, preferredSessionId);
   const isMember = session ? club.members?.some((m) => m.user_id === session.user.id) : false;
   const memberCount = Array.isArray(club.members) ? club.members.length : null;
   const headerMeta = buildClubLiveRowMeta({
@@ -78,6 +84,7 @@ export default function ClubDetailScreen() {
   const showMatchHistory = matchHistoryLoading || matchHistoryError || (matchHistory?.length ?? 0) > 0;
   const formationId = (club.formation as FormationId | null) ?? null;
   const assignments = club.slotAssignments ?? [];
+  const blocked = isClubHiddenByBlock(club, blockedIds ?? []);
 
   return (
     <AppShell contentContainerStyle={{ gap: 16 }}>
@@ -101,15 +108,6 @@ export default function ClubDetailScreen() {
         </Link>
       ) : null}
 
-      {showMatchHistory ? (
-        <MatchHistoryList
-          items={matchHistory}
-          loading={matchHistoryLoading}
-          error={matchHistoryError}
-          onRetry={refetchMatchHistory}
-        />
-      ) : null}
-
       <SurfaceCard>
         <SectionHeader title="Session" />
         {activeSession ? (
@@ -120,22 +118,28 @@ export default function ClubDetailScreen() {
               ))}
             </View>
             {activeSession.note && <Text className="mb-3 font-sans text-body text-fg-muted">{activeSession.note}</Text>}
-            {session && !isMember && !isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <ApplyForm sessionId={activeSession.id} neededPositions={activeSession.needed_positions} />
-            ) : session && !isMember && isClubHiddenByBlock(club, blockedIds ?? []) ? (
-              <Text className="font-sans text-body text-fg-muted">Tu ne peux pas postuler à ce club (blocage).</Text>
-            ) : !session ? (
-              <Link href="/(auth)/login" className="min-h-[44px] justify-center font-sans-semibold text-body text-accent">
-                Connecte-toi pour postuler
-              </Link>
-            ) : (
-              <Text className="font-sans text-caption text-fg-subtle">Tu es déjà membre de ce club.</Text>
-            )}
+            <ApplyForm
+              sessionId={activeSession.id}
+              clubId={club.id}
+              neededPositions={activeSession.needed_positions}
+              session={activeSession}
+              blocked={blocked}
+              autoOpen={joinIntent}
+            />
           </>
         ) : (
-          <Text className="font-sans text-body text-fg-muted">Ce club n&apos;est pas live actuellement.</Text>
+          <Text className="font-sans text-body text-fg-muted">{PLAYER_JOIN_COPY.closed}</Text>
         )}
       </SurfaceCard>
+
+      {showMatchHistory ? (
+        <MatchHistoryList
+          items={matchHistory}
+          loading={matchHistoryLoading}
+          error={matchHistoryError}
+          onRetry={refetchMatchHistory}
+        />
+      ) : null}
 
       {formationId ? (
         <View className="gap-2">

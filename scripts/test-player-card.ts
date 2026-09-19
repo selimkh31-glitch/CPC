@@ -235,10 +235,12 @@ test("LIVE context flag + note, sans inventer un statut", () => {
 
 test("copy EA vide : C'est mon club, pas de chiffres inventés", () => {
   assert.equal(PLAYER_CARD_COPY.linkClub, "C'est mon club", "cta");
+  assert.equal(PLAYER_CARD_COPY.linkPlayer, "Lier mon joueur EA", "player cta");
   assert.equal(PLAYER_CARD_COPY.changeClub, "Changer de club", "relink");
   assert.equal(PLAYER_CARD_COPY.eaIdLabel, "ID EA", "id label");
   assert.equal(PLAYER_CARD_COPY.eaUnlinked.includes("invent"), false, "unlinked no inventer");
   assert.equal(PLAYER_CARD_COPY.eaLinkedPending.includes("pas encore"), true, "pending");
+  assert.equal(PLAYER_CARD_COPY.eaLinkedBound.includes("Joueur lié"), true, "bound");
   const unlinked = buildPlayerCardData(baseUser({ ea_club_linked: null }));
   assert.equal(unlinked.eaClubLinked, false, "unlinked");
   assert.equal(unlinked.eaClubId, null, "no id");

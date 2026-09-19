@@ -28,8 +28,8 @@ export function eaIdentityBadge(kind: EaIdentityKind | null | undefined): {
   if (kind === "USERNAME_EQUALITY") {
     return {
       show: true,
-      label: "Club lié",
-      hint: "Rapprochement par pseudo — pas un id joueur EA vérifié.",
+      label: "Joueur lié (pseudo)",
+      hint: "Ton pseudo CPC = nom joueur EA d'un membre du club lié — pas un id joueur EA vérifié.",
     };
   }
   return {

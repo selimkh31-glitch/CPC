@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -24,6 +24,8 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { canEditClubIdentity } from "@/lib/clubIdentity";
 import { buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { canMutateClub } from "@/lib/sessionState";
+import { Sheet } from "@/components/ui/Sheet";
+import { LinkEaClubForm, LINK_EA_CLUB_COPY } from "@/components/profile/LinkEaClubForm";
 
 /**
  * Club — identité manager. Recrutement LIVE et invitations sont ailleurs.
@@ -32,6 +34,7 @@ import { canMutateClub } from "@/lib/sessionState";
 export default function ClubTab() {
   const { session } = useAuth();
   const now = useLiveClock();
+  const [eaSheetOpen, setEaSheetOpen] = useState(false);
   const { data: club, isLoading, isError, refetch } = useManagedClub();
   const {
     data: matchHistory,
@@ -101,6 +104,18 @@ export default function ClubTab() {
                 <Text className="text-sm text-fg-subtle">Modifier le club</Text>
               </Pressable>
             ) : null}
+            {canManage ? (
+              <Pressable
+                onPress={() => setEaSheetOpen(true)}
+                className="min-h-[44px] self-start justify-center"
+                accessibilityRole="button"
+                accessibilityLabel={LINK_EA_CLUB_COPY.clubTitle}
+              >
+                <Text className="text-sm font-bold text-accent">
+                  {club.ea_club_id ? `Club EA · ID ${club.ea_club_id}` : LINK_EA_CLUB_COPY.clubTitle}
+                </Text>
+              </Pressable>
+            ) : null}
             <StartClubConversationButton clubId={club.id} role={myMembership?.role} clubName={club.name} />
             {isOwner ? <DeleteClubButton clubId={club.id} clubName={club.name} /> : null}
           </View>
@@ -132,6 +147,19 @@ export default function ClubTab() {
         <TournamentsLink />
         <LeaguesLink />
       </View>
+
+      {canManage ? (
+        <Sheet visible={eaSheetOpen} onClose={() => setEaSheetOpen(false)} title={LINK_EA_CLUB_COPY.clubTitle}>
+          <LinkEaClubForm
+            embedded
+            target="managed-club"
+            cpcClubId={club.id}
+            linkedClubId={club.ea_club_id}
+            onLinked={() => setEaSheetOpen(false)}
+            onUnlinked={() => setEaSheetOpen(false)}
+          />
+        </Sheet>
+      ) : null}
     </>
   );
 }

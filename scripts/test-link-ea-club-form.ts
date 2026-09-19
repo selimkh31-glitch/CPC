@@ -89,4 +89,20 @@ test("ProfileContent — relier même si déjà lié", () => {
   assert.false(content.includes("isOwn && !user.ea_club_linked"), "plus bloqué si lié");
 });
 
+test("manager — Lier le club EA écrit clubs.ea_club_id via confirm", () => {
+  const form = read("components/profile/LinkEaClubForm.tsx");
+  const create = read("app/create-club.tsx");
+  const clubTab = read("app/(club)/(tabs)/effectif.tsx");
+  const edge = read("supabase/functions/link-ea-club/index.ts");
+  assert.true(form.includes('target?: "player" | "managed-club"'), "target");
+  assert.true(form.includes("LINK_EA_CLUB_COPY.clubTitle"), "club title");
+  assert.true(form.includes("useLinkManagedEaClub"), "managed link");
+  assert.true(create.includes('target="managed-club"'), "create-club offer");
+  assert.true(create.includes("Le LIVE marche déjà sans") || create.includes("LIVE marche"), "LIVE without EA");
+  assert.true(clubTab.includes('target="managed-club"'), "mon club");
+  assert.true(edge.includes("link-club"), "edge action");
+  assert.true(edge.includes("ea_club_id"), "column");
+  assert.false(form.includes("regionId"), "jamais regionId");
+});
+
 console.log(`\n${passed} test(s) passés.`);

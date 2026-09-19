@@ -149,6 +149,36 @@ export function useUnlinkEaClub() {
   });
 }
 
+export function useLinkManagedEaClub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { cpcClubId: string; eaClubId: string; eaClubName: string }) =>
+      callEdgeFunction<LinkEaClubResult>("link-ea-club", { action: "link-club", ...input }),
+    onSuccess: async (_data, vars) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club", vars.cpcClubId] });
+      queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["clubs"] });
+    },
+  });
+}
+
+export function useUnlinkManagedEaClub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cpcClubId: string) =>
+      callEdgeFunction<{ unlinked: boolean }>("link-ea-club", { action: "unlink-club", cpcClubId }),
+    onSuccess: async (_data, cpcClubId) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["club", cpcClubId] });
+      queryClient.invalidateQueries({ queryKey: ["my-clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["clubs"] });
+    },
+  });
+}
+
 export function useScoutReport() {
   return useMutation({
     mutationFn: () => callEdgeFunction<{ report: ScoutReport }>("scout-report"),

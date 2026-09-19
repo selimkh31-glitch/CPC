@@ -175,7 +175,7 @@ export function ProfileContent({
       />
 
       {isOwn ? (
-        <Sheet visible={eaSheetOpen} onClose={() => setEaSheetOpen(false)} title={PLAYER_CARD_COPY.linkClub}>
+        <Sheet visible={eaSheetOpen} onClose={() => setEaSheetOpen(false)} title={PLAYER_CARD_COPY.linkPlayer}>
           <LinkEaClubForm
             embedded
             linkedClubId={user.ea_club_linked}

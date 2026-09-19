@@ -13,17 +13,21 @@ import {
 } from "@/lib/eaClubClaim";
 import {
   useLinkEaClub,
+  useLinkManagedEaClub,
   usePreviewEaClub,
   useSearchEaClub,
   useUnlinkEaClub,
+  useUnlinkManagedEaClub,
   type EaClubCandidate,
 } from "@/lib/hooks/useProfile";
 import { toast } from "@/lib/toast";
 
 export const LINK_EA_CLUB_COPY = {
   title: PLAYER_CARD_COPY.linkClub,
+  playerTitle: PLAYER_CARD_COPY.linkPlayer,
   section: "Stats EA liées",
-  intro: "Cherche le nom exact. Tu peux jouer sans.",
+  intro:
+    "Lier le club EA + le même pseudo que en jeu, c'est lier le joueur. Pas d'id joueur officiel. Tu peux jouer sans.",
   placeholder: "Nom exact de ton club EA",
   search: "Chercher",
   empty: "Aucun club trouvé pour ce nom.",
@@ -36,9 +40,16 @@ export const LINK_EA_CLUB_COPY = {
   unlink: "Délier",
   relink: "Chercher un autre club",
   linkedNow: (id: string) => `Club déjà lié · ID EA ${id}`,
-  linkedSynced: "Club EA lié. Stats syncées.",
-  linkedPending: "Club EA lié. Stats en attente de sync.",
+  linkedSynced: "Joueur lié : ton pseudo correspond à un membre. Stats syncées.",
+  linkedPending: "Club EA lié. Ton pseudo n'apparaît pas encore parmi les membres — pas de stats inventées.",
   unlinked: "Club EA délié. Tu peux en chercher un autre.",
+  clubTitle: "Lier le club EA",
+  clubSection: "Club EA Pro Clubs",
+  clubIntro: "Cherche le nom exact de ton club Pro Clubs. Le LIVE marche sans.",
+  clubLinkedNow: (id: string) => `Club CPC déjà lié · ID EA ${id}`,
+  clubLinkedOk: "Club CPC relié à l'ID EA.",
+  clubUnlinked: "Club EA délié. Tu peux en chercher un autre.",
+  clubConfirm: "Tu liais ce club CPC à",
 } as const;
 
 function candidateHint(c: EaClubCandidate): string | null {
@@ -56,11 +67,16 @@ function candidateHint(c: EaClubCandidate): string | null {
 export function LinkEaClubForm({
   embedded = false,
   linkedClubId = null,
+  target = "player",
+  cpcClubId = null,
   onLinked,
   onUnlinked,
 }: {
   embedded?: boolean;
   linkedClubId?: string | null;
+  /** player = users.ea_club_linked ; managed-club = clubs.ea_club_id */
+  target?: "player" | "managed-club";
+  cpcClubId?: string | null;
   onLinked?: () => void;
   onUnlinked?: () => void;
 }) {
@@ -71,8 +87,14 @@ export function LinkEaClubForm({
   const [memberPreview, setMemberPreview] = useState<string[] | null>(null);
   const search = useSearchEaClub();
   const preview = usePreviewEaClub();
-  const link = useLinkEaClub();
-  const unlink = useUnlinkEaClub();
+  const linkPlayer = useLinkEaClub();
+  const unlinkPlayer = useUnlinkEaClub();
+  const linkClub = useLinkManagedEaClub();
+  const unlinkClub = useUnlinkManagedEaClub();
+  const isClub = target === "managed-club";
+  const copyTitle = isClub ? LINK_EA_CLUB_COPY.clubTitle : LINK_EA_CLUB_COPY.title;
+  const copySection = isClub ? LINK_EA_CLUB_COPY.clubSection : LINK_EA_CLUB_COPY.section;
+  const copyIntro = isClub ? LINK_EA_CLUB_COPY.clubIntro : LINK_EA_CLUB_COPY.intro;
 
   const phase: LinkEaClubPhase = pendingConfirm ? "confirm" : candidates !== null ? "candidates" : "search";
 
@@ -124,7 +146,25 @@ export function LinkEaClubForm({
 
   const runLink = () => {
     if (!pendingConfirm || !canCallLinkEaClub(phase)) return;
-    link.mutate(
+    if (isClub) {
+      if (!cpcClubId) return;
+      linkClub.mutate(
+        { cpcClubId, eaClubId: pendingConfirm.clubId, eaClubName: eaClubName.trim() },
+        {
+          onSuccess: (data) => {
+            const clubId = data.clubId ?? data.eaClubId ?? pendingConfirm.clubId;
+            const name = data.name ?? pendingConfirm.name;
+            toast.success(`${LINK_EA_CLUB_COPY.clubLinkedOk} ${name} · ID EA ${clubId}`);
+            onLinked?.();
+          },
+          onError: (err: unknown) => {
+            toast.error(err instanceof Error ? err.message : "Liaison impossible, réessaie plus tard.");
+          },
+        }
+      );
+      return;
+    }
+    linkPlayer.mutate(
       { eaClubId: pendingConfirm.clubId, eaClubName: eaClubName.trim() },
       {
         onSuccess: (data) => {
@@ -142,7 +182,21 @@ export function LinkEaClubForm({
   };
 
   const runUnlink = () => {
-    unlink.mutate(undefined, {
+    if (isClub) {
+      if (!cpcClubId) return;
+      unlinkClub.mutate(cpcClubId, {
+        onSuccess: () => {
+          toast.success(LINK_EA_CLUB_COPY.clubUnlinked);
+          clearResults();
+          onUnlinked?.();
+        },
+        onError: (err: unknown) => {
+          toast.error(err instanceof Error ? err.message : "Impossible de délier.");
+        },
+      });
+      return;
+    }
+    unlinkPlayer.mutate(undefined, {
       onSuccess: () => {
         toast.success(LINK_EA_CLUB_COPY.unlinked);
         clearResults();
@@ -155,23 +209,36 @@ export function LinkEaClubForm({
   };
 
   const showEmpty = candidates !== null && candidates.length === 0 && !pendingConfirm;
-  const pending = search.isPending || link.isPending || unlink.isPending;
+  const pending =
+    search.isPending ||
+    linkPlayer.isPending ||
+    unlinkPlayer.isPending ||
+    linkClub.isPending ||
+    unlinkClub.isPending;
   const membersLabel = formatVisibleMembers(memberPreview ?? []);
 
   const body = (
     <>
       {!embedded ? (
         <CardHeader>
-          <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>{LINK_EA_CLUB_COPY.title}</CardTitle>
+          <CardTitle icon={<BadgeCheck size={18} color="#39ff8a" />}>{copyTitle}</CardTitle>
         </CardHeader>
       ) : null}
-      <Text className="mb-1 text-xs font-bold uppercase tracking-wide text-fg-subtle">{LINK_EA_CLUB_COPY.section}</Text>
-      <Text className="mb-3 text-sm text-fg-muted">{LINK_EA_CLUB_COPY.intro}</Text>
+      <Text className="mb-1 text-xs font-bold uppercase tracking-wide text-fg-subtle">{copySection}</Text>
+      <Text className="mb-3 text-sm text-fg-muted">{copyIntro}</Text>
       {linkedClubId ? (
         <View className="mb-3 rounded-xl border border-border bg-bg-elevated px-3 py-2">
-          <Text className="text-sm text-fg">{LINK_EA_CLUB_COPY.linkedNow(linkedClubId)}</Text>
+          <Text className="text-sm text-fg">
+            {isClub ? LINK_EA_CLUB_COPY.clubLinkedNow(linkedClubId) : LINK_EA_CLUB_COPY.linkedNow(linkedClubId)}
+          </Text>
           <View className="mt-2 flex-row gap-2">
-            <Button variant="secondary" size="sm" loading={unlink.isPending} disabled={pending} onPress={runUnlink}>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={unlinkPlayer.isPending || unlinkClub.isPending}
+              disabled={pending}
+              onPress={runUnlink}
+            >
               {LINK_EA_CLUB_COPY.unlink}
             </Button>
           </View>
@@ -184,7 +251,7 @@ export function LinkEaClubForm({
           value={eaClubName}
           onChangeText={onNameChange}
           placeholder={LINK_EA_CLUB_COPY.placeholder}
-          editable={!link.isPending}
+          editable={!linkPlayer.isPending && !linkClub.isPending}
           accessibilityLabel={LINK_EA_CLUB_COPY.placeholder}
         />
         <Button loading={search.isPending} disabled={pending || !eaClubName.trim()} onPress={runSearch}>
@@ -222,16 +289,33 @@ export function LinkEaClubForm({
       {pendingConfirm ? (
         <View className="mt-3 rounded-xl border border-accent bg-accent/10 px-3 py-3">
           <Text className="text-sm text-fg">
-            Tu liais <Text className="font-bold">{pendingConfirm.name}</Text>
-            {" · "}
-            {LINK_EA_CLUB_COPY.idLabel} <Text className="font-mono text-base font-bold">{pendingConfirm.clubId}</Text>
-            {". Ton pseudo CPC doit être "}
-            <Text className="font-bold">identique</Text>
-            {" au nom joueur EA pour les stats."}
+            {isClub ? (
+              <>
+                {LINK_EA_CLUB_COPY.clubConfirm}{" "}
+                <Text className="font-bold">{pendingConfirm.name}</Text>
+                {" · "}
+                {LINK_EA_CLUB_COPY.idLabel} <Text className="font-mono text-base font-bold">{pendingConfirm.clubId}</Text>
+                {". Le LIVE marche déjà sans."}
+              </>
+            ) : (
+              <>
+                Tu liais <Text className="font-bold">{pendingConfirm.name}</Text>
+                {" · "}
+                {LINK_EA_CLUB_COPY.idLabel} <Text className="font-mono text-base font-bold">{pendingConfirm.clubId}</Text>
+                {". Ton pseudo CPC doit être "}
+                <Text className="font-bold">identique</Text>
+                {" au nom joueur EA pour lier le joueur (stats)."}
+              </>
+            )}
           </Text>
           {membersLabel ? <Text className="mt-2 text-xs text-fg-muted">{membersLabel}</Text> : null}
           <View className="mt-3 flex-row gap-2">
-            <Button className="flex-1" loading={link.isPending} disabled={pending} onPress={runLink}>
+            <Button
+              className="flex-1"
+              loading={linkPlayer.isPending || linkClub.isPending}
+              disabled={pending}
+              onPress={runLink}
+            >
               {LINK_EA_CLUB_COPY.confirm}
             </Button>
             <Button

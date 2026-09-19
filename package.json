@@ -56,6 +56,7 @@
     "test:ea-provider": "tsx scripts/test-ea-provider.ts",
     "test:ea-http": "tsx scripts/test-ea-http.ts",
     "test:link-ea-club": "tsx scripts/test-link-ea-club-form.ts",
+    "test:player-join-cta": "tsx scripts/test-player-join-cta.ts",
     "test:ovr": "tsx scripts/test-ovr.ts",
     "test:reliability": "tsx scripts/test-reliability.ts",
     "test:player-card": "tsx scripts/test-player-card.ts",

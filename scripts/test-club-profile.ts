@@ -138,6 +138,7 @@ test("sortClubRoster — affichage Owner / Manager / Membre, sans muter l'entré
 test("clubPublicHref — page publique /club/[id], jamais /match-sheet", () => {
   assert.equal(clubPublicHref("c1"), "/club/c1", "base");
   assert.equal(clubPublicHref("c1", "s1"), "/club/c1?session=s1", "session");
+  assert.equal(clubPublicHref("c1", "s1", { join: true }), "/club/c1?session=s1&join=1", "join");
   assert.equal(clubPublicHref("  c1  ", "  "), "/club/c1", "session vide ignorée");
   if (clubPublicHref("c1").includes("match-sheet")) {
     throw new Error("clubPublicHref ne doit pas pointer vers /match-sheet");
