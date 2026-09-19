@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from "@/lib/providers/AuthProvider";
 import { AppModeProvider, useAppMode } from "@/lib/providers/AppModeProvider";
 import { ToastHost } from "@/components/ui/ToastHost";
 import { AppMenuHeader } from "@/components/nav/AppMenuHeader";
+import { ModeSwitchOverlay } from "@/components/nav/ModeSwitchOverlay";
 import { useBlockedUserIds } from "@/lib/hooks/useSafety";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { RANKING_COPY } from "@/lib/rankings";
@@ -64,6 +65,7 @@ export default function RootLayout() {
               <SafetyRealtimeBridge />
               <RootNavigator />
               <ToastHost />
+              <ModeSwitchOverlay />
             </SafeAreaProvider>
           </AppModeProvider>
         </AuthProvider>

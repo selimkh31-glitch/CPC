@@ -167,13 +167,15 @@ test("create-group : Edge unwrap + client invoke", () => {
   assert.true(edge.includes("Non authentifié"), "JWT required");
 });
 
-test("mode isolé : toggle header, pas de fuite setMode Accueil / Mon club", () => {
+test("mode isolé : toggle menu + overlay, pas de fuite setMode Accueil / Mon club", () => {
   const header = read("components/nav/AppMenuHeader.tsx");
+  const sheet = read("components/nav/AppMenuSheet.tsx");
   const home = read("components/home/HomeScreen.tsx");
   const monClub = read("lib/hooks/useOpenMonClub.ts");
   const playerMm = read("app/(player)/(tabs)/index.tsx");
   const clubMm = read("components/club/ClubLiveRecruit.tsx");
-  assert.true(header.includes("ModeSegmentToggle"), "header toggle");
+  assert.false(header.includes("ModeSegmentToggle"), "header has no pill");
+  assert.true(sheet.includes("ModeSegmentToggle"), "menu toggle");
   assert.false(home.includes("setMode("), "accueil stays in mode");
   assert.false(monClub.includes("setMode("), "mon club stays in mode");
   assert.false(playerMm.includes("ModeSegmentToggle"), "player MM no toggle");

@@ -6,8 +6,12 @@
 import { existsSync, readFileSync } from "fs";
 import {
   MODE_DOOR_COPY,
+  MODE_SWITCH_APPLY_MS,
+  MODE_SWITCH_COPY,
+  MODE_SWITCH_MS,
   appModeStorageKey,
   effectiveAppMode,
+  modeSwitchCopy,
   parseStoredAppMode,
   shouldShowModeDoor,
 } from "../lib/appMode";
@@ -79,6 +83,15 @@ test("copy porte — tu, joueur = je joue, manager = je gère, pas UI 1/2", () =
   assert.false(/UI\s*[12]/i.test(blob), "no UI 1 / UI 2");
 });
 
+test("overlay switch — copy + durée 400–800 ms", () => {
+  assert.equal(MODE_SWITCH_COPY.toClub, "Passage en mode club…", "to club");
+  assert.equal(MODE_SWITCH_COPY.toPlayer, "Passage en mode joueur…", "to player");
+  assert.equal(modeSwitchCopy("CLUB"), MODE_SWITCH_COPY.toClub, "helper club");
+  assert.equal(modeSwitchCopy("PLAYER"), MODE_SWITCH_COPY.toPlayer, "helper player");
+  assert.true(MODE_SWITCH_MS >= 400 && MODE_SWITCH_MS <= 800, "overlay 400–800ms");
+  assert.true(MODE_SWITCH_APPLY_MS > 0 && MODE_SWITCH_APPLY_MS < MODE_SWITCH_MS, "apply under overlay");
+});
+
 test("écran porte existe, un tap, pas de lien EA ni carousel", () => {
   assert.true(existsSync(`${root}/app/mode-door.tsx`), "mode-door.tsx");
   const door = read("app/mode-door.tsx");
@@ -143,17 +156,30 @@ test("LIVE / Recrutement / Match / /clubs / tab bars : pas de bascule", () => {
   }
 });
 
-test("bascule unique : header ModeSegmentToggle, pas Profil / Club / LIVE", () => {
+test("bascule unique : menu ModeSegmentToggle + overlay, pas header / Profil / LIVE", () => {
   const header = read("components/nav/AppMenuHeader.tsx");
   const profile = read("app/(player)/(tabs)/profile.tsx");
   const clubTab = read("app/(club)/(tabs)/effectif.tsx");
   const sheet = read("components/nav/AppMenuSheet.tsx");
-  assert.true(header.includes("ModeSegmentToggle"), "toggle in chrome");
-  assert.true(header.includes("compact"), "light header toggle");
+  const overlay = read("components/nav/ModeSwitchOverlay.tsx");
+  const toggle = read("components/nav/ModeSegmentToggle.tsx");
+  const provider = read("lib/providers/AppModeProvider.tsx");
+  assert.false(header.includes("ModeSegmentToggle"), "header has no mode pill");
+  assert.true(sheet.includes("ModeSegmentToggle"), "toggle in hamburger");
+  assert.true(sheet.includes("mode !== \"CLUB\""), "Mon club player-side only");
   assert.false(profile.includes("ModeLifeToggle"), "profil no life toggle");
   assert.false(clubTab.includes("ModeLifeToggle"), "club no life toggle");
-  assert.false(sheet.includes("ModeSegmentToggle"), "drawer is not the switch");
-  assert.false(sheet.includes("setMode"), "drawer does not switch mode");
+  assert.false(sheet.includes("setMode"), "drawer does not call setMode");
+  assert.true(toggle.includes("switchMode"), "toggle uses switchMode");
+  assert.true(toggle.includes("Mode joueur"), "a11y mode joueur");
+  assert.true(toggle.includes("Mode club"), "a11y mode club");
+  assert.true(toggle.includes("min-h-[28px]"), "compact menu pill");
+  assert.true(provider.includes("switchMode"), "provider switchMode");
+  assert.true(provider.includes("transitioningTo"), "provider transitioningTo");
+  assert.true(read("app/_layout.tsx").includes("ModeSwitchOverlay"), "overlay mounted at root");
+  assert.true(overlay.includes("modeSwitchCopy"), "overlay copy helper");
+  assert.true(overlay.includes("#4DA3FF"), "player blue");
+  assert.true(overlay.includes("cpcHex.accent"), "club green");
 });
 
 test("splitMemberships — manager d'abord, sinon membre, jamais un club inventé", () => {
@@ -221,10 +247,11 @@ test("menu avatar + hamburger : liste unique, pas de Ligues/Tournois/Groupes", (
   assert.false(sheet.includes("Mon club (joueur)"), "no club joueur row");
   assert.false(sheet.includes("Mon club (manager)"), "no club manager row");
   const toggle = read("components/nav/ModeSegmentToggle.tsx");
-  assert.true(header.includes("ModeSegmentToggle"), "header is the switch");
+  assert.false(header.includes("ModeSegmentToggle"), "header is not the switch");
+  assert.true(sheet.includes("ModeSegmentToggle"), "sheet is the switch");
   assert.true(toggle.includes('"Joueur"'), "toggle Joueur");
   assert.true(toggle.includes('"Club"'), "toggle Club");
-  assert.true(toggle.includes("setMode"), "toggle reuses AppModeProvider");
+  assert.true(toggle.includes("switchMode"), "toggle reuses AppModeProvider switchMode");
   const monClub = read("lib/hooks/useOpenMonClub.ts");
   const monClubNav = read("lib/monClubNav.ts");
   assert.true(monClubNav.includes("OWNER") && monClubNav.includes("MANAGER"), "Mon club by role");
@@ -328,7 +355,8 @@ test("Accueil partagé : ClubPro Card, Mon club, À traiter, CTA Matchmaking", (
   assert.true(home.includes("edges={[]}"), "accueil no double inset");
   assert.false(home.includes("AppMenuHeader"), "accueil uses global chrome");
   assert.false(read("app/(player)/(tabs)/index.tsx").includes("ModeSegmentToggle"), "MM not the switch");
-  assert.true(read("components/nav/AppMenuHeader.tsx").includes("ModeSegmentToggle"), "toggle in header");
+  assert.false(read("components/nav/AppMenuHeader.tsx").includes("ModeSegmentToggle"), "toggle not in header");
+  assert.true(read("components/nav/AppMenuSheet.tsx").includes("ModeSegmentToggle"), "toggle in menu");
   assert.false(home.includes("setMode("), "accueil does not switch mode");
 });
 

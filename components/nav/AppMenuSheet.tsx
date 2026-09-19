@@ -8,9 +8,12 @@ import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
 import { useOpenMonClub } from "@/lib/hooks/useOpenMonClub";
+import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 
 /**
- * Menu unique — reste dans le mode courant. Joueur | Club = header toggle.
+ * Menu unique — reste dans le mode courant.
+ * Joueur ↔ Club = petite bascule secondaire en bas (switchMode + overlay).
+ * « Mon club » = aperçu joueur uniquement, jamais le shell manager.
  */
 export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -41,7 +44,7 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
               <X size={20} color={cpcHex.textMuted} />
             </Pressable>
           </View>
-          <View className="flex-1 px-3 pb-6 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
+          <View className="flex-1 px-3 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
             {mode === "CLUB" ? (
               <MenuRow label="Club" onPress={() => go("/effectif")} />
             ) : (
@@ -49,14 +52,19 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
             )}
             <MenuRow label="Réglages" onPress={() => go("/settings")} />
             <MenuRow label="Chat" onPress={() => go("/conversations")} />
-            <MenuRow
-              label="Mon club"
-              onPress={() => {
-                onClose();
-                openMonClub();
-              }}
-            />
+            {mode !== "CLUB" ? (
+              <MenuRow
+                label="Mon club"
+                onPress={() => {
+                  onClose();
+                  openMonClub();
+                }}
+              />
+            ) : null}
             {showPro ? <MenuRow label={proEntry.title} onPress={() => go("/pricing")} /> : null}
+            <View className="mt-auto border-t border-white/[0.06] px-1 pt-4">
+              <ModeSegmentToggle onPicked={onClose} />
+            </View>
           </View>
         </View>
         <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />

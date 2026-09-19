@@ -4,15 +4,14 @@ import { useRouter } from "expo-router";
 import { Menu } from "lucide-react-native";
 import { Avatar } from "@/components/ui/Avatar";
 import { AppMenuSheet } from "@/components/nav/AppMenuSheet";
-import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { cpcHex } from "@/lib/design/cpc-native";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
- * Chrome authentifié : hamburger, marque, avatar, bascule Joueur | Club.
- * La bascule est le seul switch de mode (pas un setMode caché dans un CTA).
+ * Chrome authentifié : hamburger, marque, avatar.
+ * Joueur ↔ Club = petite bascule dans le menu, pas ici.
  */
 export function AppMenuHeader() {
   const { profile } = useAuth();
@@ -62,9 +61,6 @@ export function AppMenuHeader() {
         >
           <Avatar username={username} size="sm" />
         </Pressable>
-      </View>
-      <View className="pb-2">
-        <ModeSegmentToggle compact />
       </View>
       <AppMenuSheet visible={open} onClose={() => setOpen(false)} />
     </View>

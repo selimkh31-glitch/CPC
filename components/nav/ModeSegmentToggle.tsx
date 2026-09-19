@@ -3,59 +3,54 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
-import { useModeAccent } from "@/lib/theme";
+import { MODE_ACCENT } from "@/lib/theme";
 import { splitMemberships } from "@/lib/monClubNav";
 import type { AppMode } from "@/lib/appMode";
 
 /**
- * Unique bascule Joueur | Club (chrome). Persiste via AppModeProvider.
- * Compact = header. Pas dans les tabs LIVE / feuille.
+ * Petite bascule Joueur | Club — hamburger seulement.
+ * switchMode = overlay puis autre shell. Pas dans le header / tabs / LIVE.
  */
-export function ModeSegmentToggle({
-  onPicked,
-  bottomInset,
-  compact = false,
-}: {
-  onPicked?: () => void;
-  bottomInset?: number;
-  compact?: boolean;
-}) {
+export function ModeSegmentToggle({ onPicked }: { onPicked?: () => void }) {
   const { session } = useAuth();
-  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
+  const { mode, switchMode, setSelectedManagedClubId } = useAppMode();
   const { data: memberships } = useMyMemberships(session?.user.id ?? null);
-  const accent = useModeAccent();
   const active = mode === "CLUB" ? "CLUB" : "PLAYER";
 
   const pick = (next: AppMode) => {
-    Haptics.selectionAsync();
-    if (next === "CLUB") {
-      const { managed } = splitMemberships(memberships);
-      if (managed.length === 1) setSelectedManagedClubId(managed[0].club.id);
+    if (next !== active) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (next === "CLUB") {
+        const { managed } = splitMemberships(memberships);
+        if (managed.length === 1) setSelectedManagedClubId(managed[0].club.id);
+      }
+      switchMode(next);
     }
-    setMode(next);
     onPicked?.();
   };
 
   return (
-    <View
-      className={bottomInset != null ? "border-t border-white/[0.06] px-4 pt-4" : undefined}
-      style={bottomInset != null ? { paddingBottom: Math.max(bottomInset, 20) } : undefined}
-    >
-      <View className="flex-row rounded-full border border-white/10 bg-white/[0.03] p-1">
+    <View>
+      <Text className="mb-2 px-1 font-sans text-caption uppercase text-fg-subtle">Mode</Text>
+      <View className="flex-row self-start rounded-full border border-white/10 bg-white/[0.03] p-0.5">
         {(["PLAYER", "CLUB"] as const).map((key) => {
           const selected = active === key;
           const label = key === "PLAYER" ? "Joueur" : "Club";
+          const a11y = key === "PLAYER" ? "Mode joueur" : "Mode club";
+          const accent = MODE_ACCENT[key];
           return (
             <Pressable
               key={key}
               onPress={() => pick(key)}
               accessibilityRole="button"
-              accessibilityLabel={label}
+              accessibilityLabel={a11y}
               accessibilityState={{ selected }}
-              className={`${compact ? "min-h-[36px]" : "min-h-[44px]"} flex-1 items-center justify-center rounded-full`}
+              className="min-h-[28px] items-center justify-center rounded-full px-3"
               style={selected ? { backgroundColor: accent } : undefined}
             >
-              <Text className={`text-sm font-bold ${selected ? "text-accent-fg" : "text-fg-muted"}`}>{label}</Text>
+              <Text className={`text-xs font-bold ${selected ? "text-accent-fg" : "text-fg-muted"}`}>
+                {label}
+              </Text>
             </Pressable>
           );
         })}

@@ -9,10 +9,9 @@ import { CLUB_MATCH_SHEET_HREF } from "@/lib/live";
 import { splitMemberships } from "@/lib/monClubNav";
 
 /**
- * « Mon club » reste dans le mode courant. Pas de setMode ici —
- * Joueur ↔ Club = toggle chrome uniquement.
- * CLUB + manager → feuille `/match`. PLAYER membre → feuille joueur.
- * PLAYER owner/manager → aperçu `/club/[id]`, pas la stack manager.
+ * « Mon club » est joueur-only (aperçu / feuille membre). Pas de setMode ici —
+ * Joueur ↔ Club = petite bascule du menu (switchMode + overlay).
+ * PLAYER membre → feuille joueur. PLAYER owner/manager → aperçu `/club/[id]`.
  */
 export function useOpenMonClub() {
   const { session } = useAuth();
