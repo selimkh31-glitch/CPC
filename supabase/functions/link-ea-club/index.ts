@@ -2,19 +2,31 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getCallingUser } from "../_shared/supabase.ts";
 import { FEATURE_EA_STATS } from "../_shared/ea.ts";
 import { eaProvider } from "../_shared/ea/proClubsAdapter.ts";
-import { confirmClubInSearch } from "../_shared/ea/normalize.ts";
+import { confirmClubInSearch, parseEaClubId } from "../_shared/ea/normalize.ts";
+import type { EAClub } from "../_shared/ea/types.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
-import { requireEnum, requireString, ValidationError } from "../_shared/validate.ts";
+import { requireEaClubId, requireEnum, requireString, ValidationError } from "../_shared/validate.ts";
 
-const LINK_ACTIONS = ["search", "link"] as const;
+const LINK_ACTIONS = ["search", "preview", "link", "unlink"] as const;
+
+function toCandidate(c: EAClub) {
+  return {
+    clubId: c.externalId,
+    name: c.name,
+    platform: c.externalPlatform,
+    rank: c.rank,
+    gamesPlayed: c.gamesPlayed,
+  };
+}
 
 /**
- * Lie le compte joueur à un club EA (JWT). Deux actions, jamais de first-hit :
- *  - search : { eaClubName } → candidats { clubId, name }, aucun write.
- *  - link   : { eaClubId, eaClubName } → re-search, l'id doit matcher, puis
- *             update de la ligne CALLER seulement (USERNAME_EQUALITY).
- * Best-effort : EA down → liste vide / synced:false, cache précédent conservé.
+ * Lie le compte joueur à un club EA (JWT). Jamais de first-hit :
+ *  - search  : { eaClubName } → candidats { clubId, name, platform? }, aucun write.
+ *  - preview : { eaClubId, eaClubName } → re-search + top 3 membres (best-effort).
+ *  - link    : { eaClubId, eaClubName } → re-search, clubId numérique requis, puis
+ *              update CALLER (USERNAME_EQUALITY). Retour { clubId, name }.
+ *  - unlink  : clear ea_club_linked pour relier un autre id.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -38,6 +50,12 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Corps de requête invalide." }, 400);
   }
 
+  if (action === "unlink") {
+    const admin = getAdminClient();
+    await admin.from("users").update({ ea_club_linked: null, ea_identity_kind: "NONE" }).eq("id", user.id);
+    return jsonResponse({ unlinked: true });
+  }
+
   if (action === "search") {
     let eaClubName: string;
     try {
@@ -52,7 +70,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ candidates: [], unavailable: true });
     }
     return jsonResponse({
-      candidates: clubs.map((c) => ({ clubId: c.externalId, name: c.name })),
+      candidates: clubs.map(toCandidate),
       unavailable: false,
     });
   }
@@ -61,10 +79,14 @@ Deno.serve(async (req) => {
   let eaClubId: string;
   try {
     eaClubName = requireString(body.eaClubName, "eaClubName", { min: 2, max: 60 });
-    eaClubId = requireString(body.eaClubId, "eaClubId", { min: 1, max: 64 });
+    eaClubId = requireEaClubId(body.eaClubId, "eaClubId");
   } catch (err) {
     if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
     return jsonResponse({ error: "Corps de requête invalide." }, 400);
+  }
+
+  if (!parseEaClubId(eaClubId)) {
+    return jsonResponse({ error: "eaClubId doit être l'identifiant numérique EA (clubId), pas un regionId." }, 400);
   }
 
   const clubs = await eaProvider.searchClub(eaClubName);
@@ -80,6 +102,22 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Club EA inconnu pour ce nom. Choisis un club dans la liste." }, 400);
   }
 
+  if (action === "preview") {
+    let memberNames: string[] = [];
+    try {
+      const members = await eaProvider.getClubMembers(confirmed.externalId, confirmed.externalPlatform ?? undefined);
+      memberNames = (members ?? []).map((m) => m.name).filter(Boolean).slice(0, 3);
+    } catch {
+      memberNames = [];
+    }
+    return jsonResponse({
+      clubId: confirmed.externalId,
+      name: confirmed.name,
+      platform: confirmed.externalPlatform,
+      members: memberNames,
+    });
+  }
+
   const admin = getAdminClient();
   const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
   if (!profile) return jsonResponse({ error: "Profil introuvable" }, 404);
@@ -91,7 +129,13 @@ Deno.serve(async (req) => {
 
   const matches = await eaProvider.getClubMatches(confirmed.externalId);
   if (matches === null) {
-    return jsonResponse({ eaClubId: confirmed.externalId, synced: false, stats: null });
+    return jsonResponse({
+      eaClubId: confirmed.externalId,
+      clubId: confirmed.externalId,
+      name: confirmed.name,
+      synced: false,
+      stats: null,
+    });
   }
 
   const mine = buildVerifiedStatsForPlayer(
@@ -117,5 +161,11 @@ Deno.serve(async (req) => {
     await admin.from("users").update({ verified_stats: mine, reliability_score: reliabilityScore }).eq("id", user.id);
   }
 
-  return jsonResponse({ eaClubId: confirmed.externalId, synced: Boolean(mine), stats: mine });
+  return jsonResponse({
+    eaClubId: confirmed.externalId,
+    clubId: confirmed.externalId,
+    name: confirmed.name,
+    synced: Boolean(mine),
+    stats: mine,
+  });
 });

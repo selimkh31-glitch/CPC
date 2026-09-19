@@ -73,7 +73,7 @@ export function ProfileContent({
   const avgSkill = reviews?.length ? reviews.reduce((s, r) => s + r.rating_skill, 0) / reviews.length : null;
   const avgBehavior = reviews?.length ? reviews.reduce((s, r) => s + r.rating_behavior, 0) / reviews.length : null;
 
-  const onLinkEaClub = isOwn && !user.ea_club_linked ? () => setEaSheetOpen(true) : undefined;
+  const onLinkEaClub = isOwn ? () => setEaSheetOpen(true) : undefined;
 
   let actionsSlot: ReactNode = null;
   if (!isOwn) {
@@ -176,7 +176,12 @@ export function ProfileContent({
 
       {isOwn ? (
         <Sheet visible={eaSheetOpen} onClose={() => setEaSheetOpen(false)} title={PLAYER_CARD_COPY.linkClub}>
-          <LinkEaClubForm embedded onLinked={() => setEaSheetOpen(false)} />
+          <LinkEaClubForm
+            embedded
+            linkedClubId={user.ea_club_linked}
+            onLinked={() => setEaSheetOpen(false)}
+            onUnlinked={() => setEaSheetOpen(false)}
+          />
         </Sheet>
       ) : null}
     </View>

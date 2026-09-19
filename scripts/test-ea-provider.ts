@@ -49,16 +49,45 @@ function mockFetch(handler: (url: string) => Response | Promise<Response>) {
 async function run() {
   console.log("EA Data Foundation — ProClubsEAProvider");
 
-  await test("searchClub — liste complète, jamais first-hit", async () => {
-    mockFetch(() =>
-      jsonResponse([
-        { clubId: "1", name: "Alpha" },
-        { clubId: "2", name: "Alpha United" },
-      ])
-    );
-    const clubs = await provider.searchClub("Alpha");
+  await test("searchClub — CSL d'abord, jamais first-hit", async () => {
+    const urls: string[] = [];
+    mockFetch((url) => {
+      urls.push(url);
+      if (url.includes("/currentSeasonLeaderboard/search")) {
+        return jsonResponse([
+          { clubId: "42450", name: "Possibly FC", regionId: 49552 },
+          { clubId: "2", name: "Possibly United" },
+        ]);
+      }
+      throw new Error("allTime ne doit pas être appelé si CSL a des candidats");
+    });
+    const clubs = await provider.searchClub("Possibly");
     assert.ok(clubs, "non-null");
-    assert.deepEqual(clubs?.map((c) => c.externalId), ["1", "2"], "liste");
+    assert.deepEqual(clubs?.map((c) => c.externalId), ["42450", "2"], "liste");
+    assert.ok(urls[0]?.includes("/currentSeasonLeaderboard/search"), "CSL first");
+  });
+
+  await test("searchClub — CSL vide → fallback allTimeLeaderboard/search", async () => {
+    const urls: string[] = [];
+    mockFetch((url) => {
+      urls.push(url);
+      if (url.includes("/currentSeasonLeaderboard/search")) return jsonResponse([]);
+      return jsonResponse([{ clubId: "2582784", name: "United" }]);
+    });
+    const clubs = await provider.searchClub("United");
+    assert.deepEqual(clubs?.map((c) => c.externalId), ["2582784"], "allTime");
+    assert.ok(urls.some((u) => u.includes("/allTimeLeaderboard/search")), "fallback");
+  });
+
+  await test("searchClub — CSL en échec → fallback allTime", async () => {
+    mockFetch((url) => {
+      if (url.includes("/currentSeasonLeaderboard/search")) {
+        return new Response("nope", { status: 500 });
+      }
+      return jsonResponse([{ clubId: "1", name: "Alpha" }]);
+    });
+    const clubs = await provider.searchClub("Alpha");
+    assert.deepEqual(clubs?.map((c) => c.externalId), ["1"], "fallback ok");
   });
 
   await test("searchClub — payload vide -> [] pas un club inventé", async () => {
@@ -115,10 +144,26 @@ async function run() {
     assert.deepEqual(stats?.matchesPlayed, 1, "matches");
   });
 
+  await test("getClubMembers — noms réels, hop/fetch mocké", async () => {
+    mockFetch((url) => {
+      assert.ok(url.includes("/members/stats"), "members path");
+      return jsonResponse({ members: [{ name: "Ramsen7" }, { playername: "cpc_lm" }] });
+    });
+    const members = await provider.getClubMembers("42450");
+    assert.deepEqual(members?.map((m) => m.name), ["Ramsen7", "cpc_lm"], "names");
+  });
+
+  await test("getClubMembers — échec → null (preview dégradé)", async () => {
+    mockFetch(() => {
+      throw new Error("hop down");
+    });
+    const members = await provider.getClubMembers("42450");
+    assert.deepEqual(members, null, "null");
+  });
+
   const stubs = [
     "getClub",
     "getClubStats",
-    "getClubMembers",
     "getPlayerCareerStats",
     "getLeaderboard",
     "getPlayoffData",

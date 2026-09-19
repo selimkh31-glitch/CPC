@@ -235,11 +235,16 @@ test("LIVE context flag + note, sans inventer un statut", () => {
 
 test("copy EA vide : C'est mon club, pas de chiffres inventés", () => {
   assert.equal(PLAYER_CARD_COPY.linkClub, "C'est mon club", "cta");
+  assert.equal(PLAYER_CARD_COPY.changeClub, "Changer de club", "relink");
+  assert.equal(PLAYER_CARD_COPY.eaIdLabel, "ID EA", "id label");
   assert.equal(PLAYER_CARD_COPY.eaUnlinked.includes("invent"), false, "unlinked no inventer");
   assert.equal(PLAYER_CARD_COPY.eaLinkedPending.includes("pas encore"), true, "pending");
   const unlinked = buildPlayerCardData(baseUser({ ea_club_linked: null }));
   assert.equal(unlinked.eaClubLinked, false, "unlinked");
+  assert.equal(unlinked.eaClubId, null, "no id");
   assert.deepEqual(visibleEaStatBlocks(unlinked.eaStats), [], "no blocks");
+  const linked = buildPlayerCardData(baseUser({ ea_club_linked: "42450" }));
+  assert.equal(linked.eaClubId, "42450", "stored EA clubId");
 });
 
 test("playerCardHeroNumber — OVR gagne, sinon matchs, jamais un 0", () => {
@@ -310,6 +315,9 @@ test("FULL a la grille face ; MINI/COMPACT non", () => {
   assert.equal(compact.includes("visibleFaceStatCells"), false, "compact no grid");
   assert.equal(full.includes("EaSlot"), true, "EaSlot stays");
   assert.equal(full.includes("cpcHex.accent"), true, "green glow");
+  const eaSlot = src.slice(src.indexOf("function EaSlot"));
+  assert.equal(eaSlot.includes("PLAYER_CARD_COPY.changeClub"), true, "relink CTA");
+  assert.equal(eaSlot.includes("PLAYER_CARD_COPY.eaIdLabel"), true, "ID EA");
 });
 
 console.log(`\n${passed} test(s) passés.`);

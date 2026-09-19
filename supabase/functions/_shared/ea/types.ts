@@ -33,6 +33,10 @@ export interface EAProvenance {
 export interface EAClub extends EAProvenance {
   name: string;
   crestId: string | null;
+  /** Hint search (ranking EA) — jamais un inventé. */
+  rank: number | null;
+  /** Hint search (gamesPlayed) — jamais un inventé. */
+  gamesPlayed: number | null;
 }
 
 export interface EAPlayer extends EAProvenance {

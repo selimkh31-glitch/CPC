@@ -54,3 +54,12 @@ export function requireEnum<T extends string>(value: unknown, field: string, all
   }
   return value as T;
 }
+
+/** EA clubId : digits only. Refuse vide, texte, UUID, regionId non numérique. */
+export function requireEaClubId(value: unknown, field = "eaClubId"): string {
+  const raw = requireString(value, field, { min: 1, max: 16 });
+  if (!/^\d{1,16}$/.test(raw)) {
+    throw new ValidationError(`${field} doit être l'identifiant numérique EA (clubId), pas un regionId.`);
+  }
+  return raw;
+}

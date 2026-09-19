@@ -59,8 +59,7 @@ export interface EAProvider {
   /** Matchs récents (ligue + amicaux) — déjà utilisé en prod via ea-sync. */
   getClubMatches(clubId: string, platform?: string): Promise<EAMatch[] | null>;
 
-  /** READY FOR PROVIDER — pas de liste de membres fiable (dérivable des
-   *  matchs mais ce serait une inférence, pas une vraie liste d'effectif EA). */
+  /** Effectif /members/stats — best-effort preview claim. `null` si hop down. */
   getClubMembers(clubId: string, platform?: string): Promise<EAPlayer[] | null>;
 
   /** Stats d'un joueur, agrégées depuis les matchs du club (égalité
