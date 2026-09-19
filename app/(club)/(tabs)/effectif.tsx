@@ -6,7 +6,6 @@ import { ErrorState } from "@/components/ui/Screen";
 import { AppShell } from "@/components/nav/AppShell";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
-import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
 import { DevClearModeButton } from "@/components/profile/DevClearModeButton";
 import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
@@ -63,7 +62,6 @@ export default function ClubTab() {
       <ManagedClubEmpty
         extras={
           <>
-            <ModeLifeToggle target="PLAYER" />
             <DevTestAccountSwitcher />
             <DevClearModeButton />
           </>
@@ -109,7 +107,6 @@ export default function ClubTab() {
         }
       />
 
-      <ModeLifeToggle target="PLAYER" />
       <DevTestAccountSwitcher />
       <DevClearModeButton />
 

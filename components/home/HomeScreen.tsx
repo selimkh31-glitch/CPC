@@ -1,4 +1,4 @@
-import { InteractionManager, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router, type Href } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ClubProCard } from "@/components/profile/ClubProCard";
@@ -35,7 +35,7 @@ const INBOX_CAP = 3;
  */
 export function HomeScreen() {
   const { session, profile } = useAuth();
-  const { mode, setMode, selectedManagedClubId } = useAppMode();
+  const { mode, selectedManagedClubId } = useAppMode();
   const userId = session?.user.id ?? null;
   const now = useLiveClock();
   const { openMonClub, isLoading: membershipsLoading, anyClub, managed } = useOpenMonClub();
@@ -50,8 +50,7 @@ export function HomeScreen() {
 
   const goProfile = () => {
     if (mode === "CLUB") {
-      setMode("PLAYER");
-      InteractionManager.runAfterInteractions(() => router.push("/profile"));
+      router.push("/effectif");
       return;
     }
     router.push("/profile");
@@ -64,14 +63,9 @@ export function HomeScreen() {
   };
 
   const goRecrutement = () => {
+    if (mode !== "CLUB") return;
     Haptics.selectionAsync();
-    const push = () => router.push(CLUB_RECRUTEMENT_HREF as Href);
-    if (mode !== "CLUB") {
-      setMode("CLUB");
-      InteractionManager.runAfterInteractions(push);
-      return;
-    }
-    push();
+    router.push(CLUB_RECRUTEMENT_HREF as Href);
   };
 
   const pendingInvites = (invitations ?? []).filter((inv) => inv.status === "PENDING");
@@ -101,7 +95,7 @@ export function HomeScreen() {
       onPress: () => router.push("/my-applications"),
     });
   }
-  if (inbox.length < INBOX_CAP && managedClubId && incomingCount > 0) {
+  if (mode === "CLUB" && inbox.length < INBOX_CAP && managedClubId && incomingCount > 0) {
     inbox.push({
       key: "incoming",
       label: incomingCount === 1 ? "1 candidature à traiter" : `${incomingCount} candidatures à traiter`,

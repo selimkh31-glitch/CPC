@@ -156,7 +156,7 @@ test("onglet Club : switcher même en empty et si refetch échoue", () => {
   const emptyIdx = clubTab.indexOf("<ManagedClubEmpty");
   const afterEmpty = clubTab.slice(emptyIdx, emptyIdx + 350);
   assert.true(afterEmpty.includes("DevTestAccountSwitcher"), "switcher on empty");
-  assert.true(afterEmpty.includes('ModeLifeToggle target="PLAYER"'), "passer en joueur on empty");
+  assert.false(afterEmpty.includes("ModeLifeToggle"), "mode switch is header only");
 });
 
 console.log(`\n${passed} tests OK`);

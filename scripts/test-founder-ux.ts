@@ -158,6 +158,28 @@ test("onboarding cold start : validation + signup copy + mode door reset DEV", (
   assert.true(home.includes("Trouve un club LIVE"), "empty points to MM");
 });
 
+test("create-group : Edge unwrap + client invoke", () => {
+  const edge = read("supabase/functions/create-group/index.ts");
+  const hook = read("lib/hooks/useGroups.ts");
+  assert.true(hook.includes('callEdgeFunction<{ group: GroupRow }>("create-group"'), "client uses Edge");
+  assert.true(edge.includes('admin.rpc("create_group"'), "RPC create_group");
+  assert.true(edge.includes("Array.isArray(data)"), "unwrap row");
+  assert.true(edge.includes("Non authentifié"), "JWT required");
+});
+
+test("mode isolé : toggle header, pas de fuite setMode Accueil / Mon club", () => {
+  const header = read("components/nav/AppMenuHeader.tsx");
+  const home = read("components/home/HomeScreen.tsx");
+  const monClub = read("lib/hooks/useOpenMonClub.ts");
+  const playerMm = read("app/(player)/(tabs)/index.tsx");
+  const clubMm = read("components/club/ClubLiveRecruit.tsx");
+  assert.true(header.includes("ModeSegmentToggle"), "header toggle");
+  assert.false(home.includes("setMode("), "accueil stays in mode");
+  assert.false(monClub.includes("setMode("), "mon club stays in mode");
+  assert.false(playerMm.includes("ModeSegmentToggle"), "player MM no toggle");
+  assert.false(clubMm.includes("ModeSegmentToggle"), "club MM no toggle");
+});
+
 test("email confirm : session reprise sans reload Metro", () => {
   const cb = read("app/auth/callback.tsx");
   const auth = read("lib/providers/AuthProvider.tsx");

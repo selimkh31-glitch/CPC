@@ -9,7 +9,6 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { ClubDiscoveryToggle } from "@/components/club/ClubDiscoveryToggle";
 import { ClubRosterList } from "@/components/club/ClubRosterList";
-import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { cpcHex } from "@/lib/design/cpc-native";
 import { CLUB_MATCH_SHEET_HREF, LIVE_UX_COPY } from "@/lib/live";
@@ -55,7 +54,6 @@ export function ClubLiveRecruit() {
           keyboardShouldPersistTaps="handled"
         >
           {body}
-          <ModeSegmentToggle />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

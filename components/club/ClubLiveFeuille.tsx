@@ -19,7 +19,6 @@ import { FormationSelector } from "@/components/club/FormationSelector";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
 import { ClubRosterList } from "@/components/club/ClubRosterList";
 import { AssignSlotMemberSheet } from "@/components/club/AssignSlotMemberSheet";
-import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { type PositionCode } from "@/lib/constants";
 import { FORMATIONS, type FormationId, type FormationSlot } from "@/lib/formations";
 import { canMutateClub, filledSlotCount, rosterFillLabel } from "@/lib/sessionState";
@@ -67,7 +66,6 @@ export function ClubLiveFeuille() {
       >
         <ScrollView contentContainerStyle={{ paddingHorizontal: cpcTokens.geometry.contentPadding, paddingTop: 8, paddingBottom: 36, gap: 24 }} keyboardShouldPersistTaps="handled">
           {body}
-          <ModeSegmentToggle />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

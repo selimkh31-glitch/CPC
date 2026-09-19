@@ -8,15 +8,17 @@ import { splitMemberships } from "@/lib/monClubNav";
 import type { AppMode } from "@/lib/appMode";
 
 /**
- * Bascule Joueur | Club — même setMode que le tiroir.
- * Sur Matchmaking (sous le titre / bas du scroll) et dans AppMenuSheet.
+ * Unique bascule Joueur | Club (chrome). Persiste via AppModeProvider.
+ * Compact = header. Pas dans les tabs LIVE / feuille.
  */
 export function ModeSegmentToggle({
   onPicked,
   bottomInset,
+  compact = false,
 }: {
   onPicked?: () => void;
   bottomInset?: number;
+  compact?: boolean;
 }) {
   const { session } = useAuth();
   const { mode, setMode, setSelectedManagedClubId } = useAppMode();
@@ -50,7 +52,7 @@ export function ModeSegmentToggle({
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityState={{ selected }}
-              className="min-h-[44px] flex-1 items-center justify-center rounded-full"
+              className={`${compact ? "min-h-[36px]" : "min-h-[44px]"} flex-1 items-center justify-center rounded-full`}
               style={selected ? { backgroundColor: accent } : undefined}
             >
               <Text className={`text-sm font-bold ${selected ? "text-accent-fg" : "text-fg-muted"}`}>{label}</Text>
