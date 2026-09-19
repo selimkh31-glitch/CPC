@@ -128,6 +128,19 @@ export function ProfileOverview({
                 <Text className="text-sm text-fg-subtle">Modifier le profil</Text>
               </Pressable>
             ) : null}
+            {isOwn && onLinkEaClub ? (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  onLinkEaClub();
+                }}
+                className="min-h-[44px] justify-center"
+                accessibilityRole="button"
+                accessibilityLabel={PLAYER_CARD_COPY.linkPlayer}
+              >
+                <Text className="text-sm font-bold text-accent">{PLAYER_CARD_COPY.linkPlayer}</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </View>

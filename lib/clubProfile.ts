@@ -4,7 +4,7 @@
  * hydraté ou si aucune session n'est réellement LIVE, on renvoie null/false.
  */
 import { CLUB_LEVEL_LABELS, LANGUAGE_LABELS, PLATFORM_LABELS } from "@/lib/constants";
-import { findActiveLiveSession, type LiveSessionLike } from "@/lib/live";
+import { findActiveLiveSession, isLiveActive, type LiveSessionLike } from "@/lib/live";
 import type { ClubLevel, ClubMemberRow, Platform } from "@/lib/types";
 
 export function findClubOwner(members: ClubMemberRow[] | null | undefined): ClubMemberRow | undefined {
@@ -43,11 +43,33 @@ export function clubActiveLiveSession<T extends LiveSessionLike>(
  * Distinct de `/match-sheet` (vue joueur de la formation, interactive=false,
  * pas de candidature) et de `/match` (feuille owner/manager, Mode Club).
  */
-export function clubPublicHref(clubId: string, sessionId?: string | null): string {
+export function clubPublicHref(
+  clubId: string,
+  sessionId?: string | null,
+  opts?: { join?: boolean }
+): string {
   const id = clubId.trim();
   const base = `/club/${id}`;
+  const params = new URLSearchParams();
   const session = sessionId?.trim();
-  return session ? `${base}?session=${encodeURIComponent(session)}` : base;
+  if (session) params.set("session", session);
+  if (opts?.join) params.set("join", "1");
+  const q = params.toString();
+  return q ? `${base}?${q}` : base;
+}
+
+/** Session du query `?session=` si encore LIVE, sinon première session active. */
+export function resolveClubPreviewSession<T extends LiveSessionLike & { id?: string }>(
+  sessions: T[] | null | undefined,
+  nowMs: number,
+  preferredSessionId?: string | null
+): T | null {
+  const preferred = preferredSessionId?.trim();
+  if (preferred) {
+    const match = sessions?.find((s) => s.id === preferred);
+    if (match && isLiveActive(match, nowMs)) return match;
+  }
+  return findActiveLiveSession(sessions, nowMs);
 }
 
 /** Tri d'affichage uniquement — ne change aucun rôle en base. */

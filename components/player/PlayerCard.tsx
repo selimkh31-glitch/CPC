@@ -475,9 +475,9 @@ function EaSlot({
             {PLAYER_CARD_COPY.eaIdLabel} {data.eaClubId}
           </Text>
         ) : null}
-        {!hasCareer && !hasFaceEa ? (
-          <Text className="mt-1 text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>
-        ) : null}
+        <Text className="mt-1 text-xs text-fg-subtle">
+          {hasCareer || hasFaceEa ? PLAYER_CARD_COPY.eaLinkedBound : PLAYER_CARD_COPY.eaLinkedPending}
+        </Text>
         <Button
           variant="ghost"
           size="sm"

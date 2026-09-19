@@ -75,8 +75,9 @@ test("LIVE card ouvre un aperçu avant Rejoindre PENDING", () => {
   const apply = read("components/club/ApplyForm.tsx");
   assert.true(card.includes("clubPublicHref"), "preview href");
   assert.true(card.includes("Aperçu"), "preview copy");
-  assert.true(card.includes(">Voir<") || card.includes("Voir"), "Voir CTA");
-  assert.true(apply.includes("Rejoindre"), "join on preview is Rejoindre");
+  assert.true(card.includes("Voir") || card.includes("voir"), "Voir CTA");
+  assert.true(card.includes("rejoindre") || card.includes("Rejoindre"), "Rejoindre on card");
+  assert.true(apply.includes("Rejoindre") || apply.includes("rejoindre"), "join on preview is Rejoindre");
   assert.false(card.includes("join-live-club"), "no auto-join edge");
 });
 

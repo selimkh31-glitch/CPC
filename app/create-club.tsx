@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react-native";
 import { CreateClubForm } from "@/components/club/CreateClubForm";
+import { LinkEaClubForm } from "@/components/profile/LinkEaClubForm";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { useClub } from "@/lib/hooks/useClubs";
 
 /**
  * Foundation #1 — remplace l'ancien `dashboard.tsx?create=1`. Écran stack
@@ -25,55 +27,43 @@ import { useAuth } from "@/lib/providers/AuthProvider";
  * dès son premier rendu), puis `setSelectedManagedClubId` + `setMode("CLUB")`
  * + un flag local `createdClubId`.
  *
- * La navigation elle-même est déclenchée par le `useEffect` ci-dessous,
- * jamais dans `onCreated` : un effet ne s'exécute qu'APRÈS le commit React
- * qui reflète le nouvel état (garantie native de React, pas un délai
- * arbitraire) — donc au moment où `router.replace("/")` s'exécute,
- * app/_layout.tsx a déjà recalculé son Stack.Protected avec `mode === "CLUB"`
- * et `(club)` est déjà une route valide. Élimine la course React identifiée
- * par l'audit (router.replace appelé synchronement juste après setMode,
- * avant que le guard n'ait eu le temps de se propager).
- *
- * Fallback UX : `router.replace("/")` sur la racine ambiguë s'est révélé
- * pas toujours fiable en pratique (l'écran reste affiché malgré `mode ===
- * "CLUB"` déjà commité). Tant que ce point n'est pas ré-investigué, on
- * n'y touche pas (comportement automatique conservé tel quel) mais on
- * affiche, dès que `createdClubId` est posé, un CTA explicite indépendant
- * qui cible `/(club)/(tabs)` (accueil LIVE du Mode Club) plutôt que de
- * dépendre de la résolution de "/".
+ * Après création : offre « Lier le club EA » (même confirm / clubId).
+ * Pas d'auto-redirect — le LIVE marche sans lien EA. CTA explicite vers
+ * `/(club)/(tabs)` (accueil LIVE du Mode Club).
  */
 export default function CreateClubScreen() {
   const { session } = useAuth();
-  const { mode, setMode, setSelectedManagedClubId } = useAppMode();
+  const { setMode, setSelectedManagedClubId } = useAppMode();
   const queryClient = useQueryClient();
   const [createdClubId, setCreatedClubId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (createdClubId && mode === "CLUB") {
-      router.replace("/");
-    }
-  }, [createdClubId, mode]);
+  const { data: createdClub } = useClub(createdClubId);
 
   if (createdClubId) {
     return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16 }}>
+      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Card>
           <View className="mb-2 flex-row items-center gap-2">
             <CheckCircle2 size={22} color="#39ff8a" />
             <Text className="font-display text-lg uppercase tracking-wide text-fg">Club créé avec succès</Text>
           </View>
-          <Text className="mb-4 text-fg-muted">Ton club est prêt.</Text>
-          <Button
-            onPress={() => {
-              // Idempotent — déjà posés dans `onCreated` ci-dessous, mais le
-              // CTA doit fonctionner seul, sans dépendre de cet état antérieur.
-              setSelectedManagedClubId(createdClubId);
-              setMode("CLUB");
-              router.replace("/(club)/(tabs)");
-            }}
-          >
-            Accéder à la gestion du club →
-          </Button>
+          <Text className="mb-4 text-fg-muted">Ton club est prêt. Tu peux lier le vrai club EA — le LIVE marche déjà sans.</Text>
+          <LinkEaClubForm
+            embedded
+            target="managed-club"
+            cpcClubId={createdClubId}
+            linkedClubId={createdClub?.ea_club_id ?? null}
+          />
+          <View className="mt-4">
+            <Button
+              onPress={() => {
+                setSelectedManagedClubId(createdClubId);
+                setMode("CLUB");
+                router.replace("/(club)/(tabs)");
+              }}
+            >
+              {createdClub?.ea_club_id ? "Accéder à la gestion du club →" : "Plus tard — accéder au club"}
+            </Button>
+          </View>
         </Card>
       </ScrollView>
     );

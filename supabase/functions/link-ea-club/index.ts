@@ -6,9 +6,22 @@ import { confirmClubInSearch, parseEaClubId } from "../_shared/ea/normalize.ts";
 import type { EAClub } from "../_shared/ea/types.ts";
 import { buildVerifiedStatsForPlayer } from "../_shared/ea/verified.ts";
 import { computeReliabilityScore } from "../_shared/reliability.ts";
-import { requireEaClubId, requireEnum, requireString, ValidationError } from "../_shared/validate.ts";
+import { requireEaClubId, requireEnum, requireString, requireUuid, ValidationError } from "../_shared/validate.ts";
 
-const LINK_ACTIONS = ["search", "preview", "link", "unlink"] as const;
+type AdminClient = ReturnType<typeof getAdminClient>;
+
+async function callerCanLinkManagedClub(admin: AdminClient, userId: string, cpcClubId: string): Promise<boolean> {
+  const { data: membership } = await admin
+    .from("club_members")
+    .select("role")
+    .eq("club_id", cpcClubId)
+    .eq("user_id", userId)
+    .in("role", ["OWNER", "MANAGER"])
+    .maybeSingle();
+  return Boolean(membership);
+}
+
+const LINK_ACTIONS = ["search", "preview", "link", "unlink", "link-club", "unlink-club"] as const;
 
 function toCandidate(c: EAClub) {
   return {
@@ -27,6 +40,8 @@ function toCandidate(c: EAClub) {
  *  - link    : { eaClubId, eaClubName } → re-search, clubId numérique requis, puis
  *              update CALLER (USERNAME_EQUALITY). Retour { clubId, name }.
  *  - unlink  : clear ea_club_linked pour relier un autre id.
+ *  - link-club   : { cpcClubId, eaClubId, eaClubName } → clubs.ea_club_id (owner/manager).
+ *  - unlink-club : { cpcClubId } → clear clubs.ea_club_id.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -53,6 +68,21 @@ Deno.serve(async (req) => {
   if (action === "unlink") {
     const admin = getAdminClient();
     await admin.from("users").update({ ea_club_linked: null, ea_identity_kind: "NONE" }).eq("id", user.id);
+    return jsonResponse({ unlinked: true });
+  }
+
+  if (action === "unlink-club") {
+    let cpcClubId: string;
+    try {
+      cpcClubId = requireUuid(body.cpcClubId, "cpcClubId");
+    } catch (err) {
+      if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
+      return jsonResponse({ error: "Corps de requête invalide." }, 400);
+    }
+    const admin = getAdminClient();
+    const allowed = await callerCanLinkManagedClub(admin, user.id, cpcClubId);
+    if (!allowed) return jsonResponse({ error: "Seul l'owner ou un manager peut délier ce club." }, 403);
+    await admin.from("clubs").update({ ea_club_id: null }).eq("id", cpcClubId);
     return jsonResponse({ unlinked: true });
   }
 
@@ -119,6 +149,26 @@ Deno.serve(async (req) => {
   }
 
   const admin = getAdminClient();
+
+  if (action === "link-club") {
+    let cpcClubId: string;
+    try {
+      cpcClubId = requireUuid(body.cpcClubId, "cpcClubId");
+    } catch (err) {
+      if (err instanceof ValidationError) return jsonResponse({ error: err.message }, 400);
+      return jsonResponse({ error: "Corps de requête invalide." }, 400);
+    }
+    const allowed = await callerCanLinkManagedClub(admin, user.id, cpcClubId);
+    if (!allowed) return jsonResponse({ error: "Seul l'owner ou un manager peut lier ce club." }, 403);
+    await admin.from("clubs").update({ ea_club_id: confirmed.externalId }).eq("id", cpcClubId);
+    return jsonResponse({
+      eaClubId: confirmed.externalId,
+      clubId: confirmed.externalId,
+      name: confirmed.name,
+      synced: false,
+    });
+  }
+
   const { data: profile } = await admin.from("users").select("*").eq("id", user.id).single();
   if (!profile) return jsonResponse({ error: "Profil introuvable" }, 404);
 
