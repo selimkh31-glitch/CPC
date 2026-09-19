@@ -256,18 +256,28 @@ function FullBody({
   };
 
   const inner = (
-    <LinearGradient colors={surface} className="relative px-5 pb-8 pt-5">
-      <View className="min-h-[44px] flex-row items-start justify-between">
-        <View>
+    <LinearGradient colors={surface} className="relative px-5 pb-7 pt-5">
+      <View className="min-h-[44px] flex-row items-center justify-between">
+        <View className="min-w-0 flex-1">
           {hero ? (
-            <>
-              <Text className="font-display text-5xl leading-[48px] text-accent">{hero.value}</Text>
-              <Text className="text-[9px] uppercase tracking-wide text-fg-subtle">{hero.label}</Text>
-            </>
+            <View className="flex-row items-end gap-2">
+              <Text className="font-display text-5xl leading-[44px] text-accent" style={{ color: cpcHex.accent }}>
+                {hero.value}
+              </Text>
+              <View className="mb-1">
+                <Text className="text-[9px] uppercase tracking-wide text-fg-subtle" style={{ color: cpcHex.disabled }}>
+                  {hero.label}
+                </Text>
+                <Text className="font-display text-lg leading-5 text-accent" style={{ color: cpcHex.accent }}>
+                  {data.mainPosition}
+                </Text>
+              </View>
+            </View>
           ) : data.cpcMatchesPlayed === 0 && !footer ? (
             <Text className="text-xs text-fg-muted">{PLAYER_CARD_COPY.noMatch}</Text>
-          ) : null}
-          <Text className="mt-1 font-display text-2xl leading-7 text-accent">{data.mainPosition}</Text>
+          ) : (
+            <Text className="font-display text-2xl leading-7 text-accent">{data.mainPosition}</Text>
+          )}
         </View>
         {shareEnabled ? (
           <Pressable
@@ -283,39 +293,26 @@ function FullBody({
         )}
       </View>
 
-      <View className="mt-3 items-center">
-        <View className="items-center justify-center" style={{ width: 120, height: 120 }}>
+      <View className="mt-4 items-center">
+        <View className="items-center justify-center" style={{ width: 96, height: 96 }}>
           <View
             pointerEvents="none"
             style={{
               position: "absolute",
-              top: -18,
-              bottom: -18,
-              left: -18,
-              right: -18,
+              top: -10,
+              bottom: -10,
+              left: -10,
+              right: -10,
               borderRadius: 9999,
               backgroundColor: cpcHex.accent,
-              opacity: 0.18,
-            }}
-          />
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: -8,
-              bottom: -8,
-              left: -8,
-              right: -8,
-              borderRadius: 9999,
-              backgroundColor: cpcHex.accent,
-              opacity: 0.12,
+              opacity: 0.16,
             }}
           />
           <Avatar username={data.username} size="xl" tone="accent" />
         </View>
       </View>
 
-      <View className="mt-4 flex-row flex-wrap items-center justify-center gap-1.5">
+      <View className="mt-3 flex-row flex-wrap items-center justify-center gap-1.5">
         {data.live ? (
           <View className="flex-row items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5">
             <PulseDot />
@@ -329,28 +326,43 @@ function FullBody({
         ))}
       </View>
 
-      <Text numberOfLines={1} className="mt-3 text-center font-display text-3xl leading-9 text-fg">
+      <Text
+        numberOfLines={1}
+        className="mt-3 text-center font-display text-2xl leading-7 text-fg"
+        style={{ color: cpcHex.textPrimary }}
+      >
         {data.username}
       </Text>
-      <Text numberOfLines={1} className="mt-0.5 text-center text-sm text-fg-muted">
+      <Text
+        numberOfLines={1}
+        className="mt-0.5 text-center text-sm text-fg-muted"
+        style={{ color: cpcHex.textMuted }}
+      >
         {data.clubName ?? PLAYER_CARD_COPY.sansClub}
       </Text>
-      <Text className="mt-1 text-center text-[12px] text-fg-subtle">
+      <Text className="mt-1 text-center text-[12px] text-fg-subtle" style={{ color: cpcHex.disabled }}>
         {PLATFORM_LABELS[data.platform]}
         {data.playStyle ? ` · ${PLAY_STYLE_LABELS[data.playStyle]}` : ""}
       </Text>
 
       {faceCells.length > 0 && data.faceStats ? (
-        <View className="mt-5">
+        <View className="mt-5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
           <View className="flex-row flex-wrap">
             {faceCells.map((cell) => (
-              <View key={cell.key} className="w-1/3 items-center py-1.5">
-                <Text className="text-[10px] font-bold uppercase tracking-wide text-white/40">{cell.label}</Text>
-                <Text className="font-display text-xl text-fg">{cell.value}</Text>
+              <View key={cell.key} className="w-1/3 items-center py-2.5">
+                <Text className="text-[10px] font-bold uppercase tracking-wide text-white/45">{cell.label}</Text>
+                <Text className="mt-0.5 font-display text-xl leading-6 text-fg" style={{ color: cpcHex.textPrimary }}>
+                  {cell.value}
+                </Text>
               </View>
             ))}
           </View>
-          <Text className="mt-1.5 text-center text-[10px] text-fg-subtle">{faceStatsCaption(data.faceStats.source)}</Text>
+          <Text
+            className="border-t border-white/10 py-2 text-center text-[10px] text-fg-subtle"
+            style={{ color: cpcHex.disabled }}
+          >
+            {faceStatsCaption(data.faceStats.source)}
+          </Text>
         </View>
       ) : null}
 

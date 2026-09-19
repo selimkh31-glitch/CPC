@@ -50,9 +50,22 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile"
-        options={{ href: null, title: "Profil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
+        options={{
+          href: null,
+          tabBarItemStyle: { display: "none" },
+          title: "Profil",
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+        }}
       />
-      <Tabs.Screen name="clubs" options={{ href: null, title: "Clubs", tabBarIcon: ({ color, size }) => <Users color={color} size={size} /> }} />
+      <Tabs.Screen
+        name="clubs"
+        options={{
+          href: null,
+          tabBarItemStyle: { display: "none" },
+          title: "Clubs",
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+        }}
+      />
     </Tabs>
   );
 }

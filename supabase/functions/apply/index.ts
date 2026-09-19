@@ -92,9 +92,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Anti-auto-candidature — vérifié côté serveur, pas seulement dans l'UI
-  // (app/club/[id].tsx masque déjà le formulaire pour les membres existants,
-  // ce qui couvre l'owner puisqu'il est membre via le trigger on_club_created).
+  // Anti-auto-candidature — vérifié côté serveur, pas seulement dans l'UI.
+  // Après un départ, release_club_member (0032) a supprimé la ligne : un
+  // nouveau PENDING est autorisé. Un leftover unique (club_id, user_id)
+  // ne doit plus bloquer un rejoin sur le même club.
   const { data: existingMembership } = await admin
     .from("club_members")
     .select("id")
@@ -103,6 +104,20 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (existingMembership) {
     return jsonResponse({ error: "Tu es déjà membre de ce club." }, 409);
+  }
+
+  const { data: otherMembership } = await admin
+    .from("club_members")
+    .select("id")
+    .eq("user_id", user.id)
+    .in("role", ["MEMBER", "MANAGER"])
+    .neq("club_id", session.club_id)
+    .maybeSingle();
+  if (otherMembership) {
+    return jsonResponse(
+      { error: "Tu as déjà un club. Quitte-le avant d'en rejoindre un autre." },
+      409
+    );
   }
 
   if (profile.plan === "FREE") {
@@ -123,12 +138,12 @@ Deno.serve(async (req) => {
 
   const { data: existing } = await admin
     .from("applications")
-    .select("id")
+    .select("id, user_id, club_id, session_id, position, slot_id, status, message, created_at")
     .eq("user_id", user.id)
     .eq("session_id", sessionId)
     .eq("status", "PENDING")
     .maybeSingle();
-  if (existing) return jsonResponse({ error: "Tu as déjà postulé à cette session." }, 409);
+  if (existing) return jsonResponse({ application: existing, alreadyPending: true });
 
   const { data: application, error } = await admin
     .from("applications")

@@ -1,8 +1,7 @@
 import { ClubLiveFeuille } from "@/components/club/ClubLiveFeuille";
 
 /**
- * Deep link `/match` — même feuille que l'onglet Matchmaking (pas une 2e UI).
- * Hors tab bar (`href: null`).
+ * Match — feuille de match (pitch + membres). Distinct de Matchmaking (LIVE recruit).
  */
 export default function MatchTab() {
   return <ClubLiveFeuille />;

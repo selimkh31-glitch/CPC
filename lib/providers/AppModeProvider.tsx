@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import {
   type AppMode,
+  MODE_SWITCH_APPLY_MS,
+  MODE_SWITCH_MS,
   appModeStorageKey,
   parseStoredAppMode,
 } from "@/lib/appMode";
@@ -13,7 +15,12 @@ interface AppModeContextValue {
   mode: AppMode | null;
   hydrated: boolean;
   selectedManagedClubId: string | null;
+  transitioningTo: AppMode | null;
   setMode: (mode: AppMode) => void;
+  /** Menu hamburger — overlay puis autre shell. Porte / create-club gardent setMode. */
+  switchMode: (mode: AppMode) => void;
+  /** DEV / retest — efface le mode persisté pour réafficher la porte. */
+  clearMode: () => void;
   setSelectedManagedClubId: (clubId: string | null) => void;
 }
 
@@ -29,12 +36,29 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<AppMode | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [selectedManagedClubId, setSelectedManagedClubId] = useState<string | null>(null);
+  const [transitioningTo, setTransitioningTo] = useState<AppMode | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const modeRef = useRef<AppMode | null>(null);
+  const transitioningRef = useRef<AppMode | null>(null);
 
   const userId = session?.user.id ?? null;
+  modeRef.current = mode;
+  transitioningRef.current = transitioningTo;
+
+  const clearSwitchTimers = useCallback(() => {
+    for (const id of timersRef.current) clearTimeout(id);
+    timersRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => clearSwitchTimers();
+  }, [clearSwitchTimers]);
 
   useEffect(() => {
     let cancelled = false;
     setSelectedManagedClubId(null);
+    clearSwitchTimers();
+    setTransitioningTo(null);
 
     if (!userId) {
       setModeState(null);
@@ -58,9 +82,9 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, clearSwitchTimers]);
 
-  const setMode = useCallback(
+  const persistMode = useCallback(
     (next: AppMode) => {
       setModeState(next);
       if (!userId) return;
@@ -68,6 +92,43 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
     },
     [userId]
   );
+
+  const setMode = useCallback(
+    (next: AppMode) => {
+      persistMode(next);
+    },
+    [persistMode]
+  );
+
+  const switchMode = useCallback(
+    (next: AppMode) => {
+      if (transitioningRef.current === next) return;
+      if (modeRef.current === next && !transitioningRef.current) return;
+
+      clearSwitchTimers();
+      setTransitioningTo(next);
+
+      const apply = setTimeout(() => {
+        persistMode(next);
+      }, MODE_SWITCH_APPLY_MS);
+
+      const done = setTimeout(() => {
+        setTransitioningTo(null);
+      }, MODE_SWITCH_MS);
+
+      timersRef.current = [apply, done];
+    },
+    [clearSwitchTimers, persistMode]
+  );
+
+  const clearMode = useCallback(() => {
+    clearSwitchTimers();
+    setTransitioningTo(null);
+    setModeState(null);
+    setSelectedManagedClubId(null);
+    if (!userId) return;
+    SecureStore.deleteItemAsync(appModeStorageKey(userId)).catch(() => {});
+  }, [userId, clearSwitchTimers]);
 
   const setSelectedManagedClubIdStable = useCallback((clubId: string | null) => setSelectedManagedClubId(clubId), []);
 
@@ -77,7 +138,10 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
         mode,
         hydrated,
         selectedManagedClubId,
+        transitioningTo,
         setMode,
+        switchMode,
+        clearMode,
         setSelectedManagedClubId: setSelectedManagedClubIdStable,
       }}
     >

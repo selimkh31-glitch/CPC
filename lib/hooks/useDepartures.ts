@@ -45,6 +45,8 @@ export function useRequestDeparture(clubId: string) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["live-sessions"] });
     },
     onError: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
   });

@@ -74,6 +74,8 @@
     "test:profile-identity": "tsx scripts/test-profile-identity.ts",
     "test:club-identity": "tsx scripts/test-club-identity.ts",
     "test:club-gone": "tsx scripts/test-club-gone.ts",
+    "test:founder-ux": "tsx scripts/test-founder-ux.ts",
+    "test:auth-callback": "tsx scripts/test-auth-callback.ts",
     "test:competitions": "tsx scripts/test-competitions.ts",
     "test:tournaments": "tsx scripts/test-tournaments.ts",
     "test:leagues": "tsx scripts/test-leagues.ts",

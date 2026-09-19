@@ -1,4 +1,4 @@
-import { InteractionManager, Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, type Href } from "expo-router";
 import { X } from "lucide-react-native";
@@ -7,33 +7,26 @@ import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
-import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { useOpenMonClub } from "@/lib/hooks/useOpenMonClub";
+import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 
 /**
- * Menu unique — Profil, Réglages, Chat, Mon club, Pro.
- * Bascule Joueur | Club en bas du tiroir. Pas deux lignes club.
+ * Menu unique — reste dans le mode courant.
+ * Joueur ↔ Club = petite bascule secondaire en bas (switchMode + overlay).
+ * « Mon club » = aperçu joueur uniquement, jamais le shell manager.
  */
 export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const { mode, setMode } = useAppMode();
+  const { mode } = useAppMode();
   const proEntry = profileProEntryCopy(FEATURE_REVENUECAT);
   const showPro = profile?.plan !== "PRO";
   const { openMonClub } = useOpenMonClub();
 
-  const go = (href: Href, nextMode?: "PLAYER" | "CLUB") => {
+  const go = (href: Href) => {
     onClose();
-    const push = () => router.push(href);
-    if (nextMode && mode !== nextMode) {
-      setMode(nextMode);
-      InteractionManager.runAfterInteractions(push);
-      return;
-    }
-    push();
+    router.push(href);
   };
-
-  const openProfile = () => go("/profile", "PLAYER");
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -51,20 +44,28 @@ export function AppMenuSheet({ visible, onClose }: { visible: boolean; onClose: 
               <X size={20} color={cpcHex.textMuted} />
             </Pressable>
           </View>
-          <View className="flex-1 px-3 pb-6 pt-2">
-            <MenuRow label="Profil" onPress={openProfile} />
+          <View className="flex-1 px-3 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
+            {mode === "CLUB" ? (
+              <MenuRow label="Club" onPress={() => go("/effectif")} />
+            ) : (
+              <MenuRow label="Profil" onPress={() => go("/profile")} />
+            )}
             <MenuRow label="Réglages" onPress={() => go("/settings")} />
             <MenuRow label="Chat" onPress={() => go("/conversations")} />
-            <MenuRow
-              label="Mon club"
-              onPress={() => {
-                onClose();
-                openMonClub();
-              }}
-            />
+            {mode !== "CLUB" ? (
+              <MenuRow
+                label="Mon club"
+                onPress={() => {
+                  onClose();
+                  openMonClub();
+                }}
+              />
+            ) : null}
             {showPro ? <MenuRow label={proEntry.title} onPress={() => go("/pricing")} /> : null}
+            <View className="mt-auto border-t border-white/[0.06] px-1 pt-4">
+              <ModeSegmentToggle onPicked={onClose} />
+            </View>
           </View>
-          <ModeSegmentToggle onPicked={onClose} bottomInset={insets.bottom} />
         </View>
         <Pressable className="flex-1" onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
       </View>

@@ -75,7 +75,7 @@ export function ApplicationsPanel({ clubId }: { clubId: string }) {
                     loading={actingId === app.id && actingStatus === "ACCEPTED"}
                     disabled={Boolean(actingId)}
                     onPress={() => act(app.id, "ACCEPTED")}
-                    icon={<Check size={16} color="#08090b" />}
+                    icon={<Check size={16} color={cpcHex.background} />}
                     className="min-h-[44px] flex-1 px-2.5"
                     accessibilityLabel="Accepter"
                   >

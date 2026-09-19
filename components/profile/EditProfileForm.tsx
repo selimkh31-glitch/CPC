@@ -122,6 +122,7 @@ export function EditProfileForm({ user, onDone }: { user: UserRow; onDone: () =>
             max={2}
             value={secondaryPositions}
             onChange={setSecondaryPositions}
+            onMax={() => toast.info("2 postes secondaires max.")}
             options={POSITIONS.filter((p) => p !== mainPosition).map((p) => ({ value: p, label: POSITION_LABELS[p] }))}
           />
         </View>

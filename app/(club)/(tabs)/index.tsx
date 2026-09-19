@@ -1,9 +1,9 @@
-import { ClubLiveFeuille } from "@/components/club/ClubLiveFeuille";
+import { ClubLiveRecruit } from "@/components/club/ClubLiveRecruit";
 
 /**
- * Matchmaking Mode Club — la feuille (pitch + effectif + inviter sur ce poste).
- * Découverte = un ON/OFF en haut. Pas de seconde UI LIVE.
+ * Matchmaking Mode Club — recrutement LIVE (visibilité + postes cherchés).
+ * Distinct de l'onglet Match (feuille / pitch).
  */
 export default function ClubLiveTab() {
-  return <ClubLiveFeuille />;
+  return <ClubLiveRecruit />;
 }

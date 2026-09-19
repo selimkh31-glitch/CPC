@@ -14,6 +14,20 @@ export const MODE_DOOR_COPY = {
   toPlayer: "Passer en joueur",
 } as const;
 
+/** Overlay Menu → autre shell. 400–800 ms : assez pour sentir le switch, pas un splash. */
+export const MODE_SWITCH_MS = 650;
+/** Appliquer le mode sous l'overlay, avant qu'il disparaisse. */
+export const MODE_SWITCH_APPLY_MS = 280;
+
+export const MODE_SWITCH_COPY = {
+  toClub: "Passage en mode club…",
+  toPlayer: "Passage en mode joueur…",
+} as const;
+
+export function modeSwitchCopy(target: AppMode): string {
+  return target === "CLUB" ? MODE_SWITCH_COPY.toClub : MODE_SWITCH_COPY.toPlayer;
+}
+
 export function parseStoredAppMode(raw: string | null | undefined): AppMode | null {
   if (raw === "PLAYER" || raw === "CLUB") return raw;
   return null;

@@ -11,7 +11,6 @@ import { useLiveClock } from "@/lib/hooks/useLiveClock";
 import { isLiveActive, LIVE_UX_COPY } from "@/lib/live";
 import { EMPTY_LIVE_FILTERS, clubSessionMatchesLiveFilters } from "@/lib/liveFilters";
 import { useModeAccent } from "@/lib/theme";
-import { ModeSegmentToggle } from "@/components/nav/ModeSegmentToggle";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
@@ -45,7 +44,6 @@ export default function LiveScreen() {
       <Text className="font-display text-display text-fg" style={{ lineHeight: cpcTokens.font.lineHeight.display }}>
         {LIVE_UX_COPY.title}
       </Text>
-      <ModeSegmentToggle />
       <PlayerLivePanel />
       <MatchmakingFilters value={filters} onChange={setFilters} />
 

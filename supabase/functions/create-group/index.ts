@@ -5,20 +5,19 @@ import { optionalString, requireEnum, requireString, ValidationError } from "../
 function mapCreateGroupError(message: string): { text: string; status: number } {
   if (message.includes("name_required")) return { text: "Le nom du groupe est requis.", status: 400 };
   if (message.includes("name_too_long")) return { text: "Le nom du groupe est trop long (60 caractères max).", status: 400 };
+  if (message.includes("Could not find the function") || message.includes("schema cache")) {
+    return { text: "Création de groupe indisponible (RPC create_group absente).", status: 503 };
+  }
   return { text: message, status: 500 };
 }
 
 /**
  * Correctif "création d'un groupe PRIVATE échoue" (mission "GROUPES SOCIAUX",
  * bug post-0019). Délègue à create_group() (SECURITY DEFINER,
- * supabase/migrations/0020_create_group_function.sql) : le RETURN d'une
- * fonction PL/pgSQL n'est jamais soumis à une ré-évaluation RLS (contrairement
- * au RETURNING d'un INSERT client direct, voir en-tête de cette migration),
- * ce qui fonctionne identiquement pour PUBLIC et PRIVATE.
+ * supabase/migrations/0020_create_group_function.sql).
  *
- * `owner_id` n'est JAMAIS lu depuis le corps de la requête — uniquement
- * dérivé de `user.id` (JWT vérifié), même principe que
- * start-direct-conversation/set-group-member-role.
+ * `owner_id` n'est JAMAIS lu depuis le corps — uniquement `user.id` (JWT).
+ * Doit être déployée : sans cette fonction, invoke() renvoie un non-2xx (404).
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -52,5 +51,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: text }, status);
   }
 
-  return jsonResponse({ group: data });
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.id) return jsonResponse({ error: "Impossible de créer le groupe." }, 500);
+
+  return jsonResponse({ group: row });
 });

@@ -10,6 +10,7 @@ import { StepTransition } from "@/components/ui/StepTransition";
 import { Caption, DisplayMD } from "@/components/ui/Typography";
 import { MatchContextCards } from "@/components/club/MatchContextCards";
 import { useElapsedSeconds, formatSinceMinutes } from "@/lib/hooks/useElapsedSeconds";
+import { cpcHex } from "@/lib/design/cpc-native";
 import type { MatchParticipantRow } from "@/lib/types";
 
 type MatchDayStatus = "ready" | "live";
@@ -75,11 +76,11 @@ export function LiveMatchScreen({
 
           {/* ACTIONS */}
           {status === "ready" ? (
-            <Button icon={<PlayCircle size={18} color="#08090b" />} onPress={onKickoff}>
+            <Button icon={<PlayCircle size={18} color={cpcHex.background} />} onPress={onKickoff}>
               Coup d'envoi
             </Button>
           ) : (
-            <Button icon={<Flag size={18} color="#08090b" />} onPress={onFinalize}>
+            <Button icon={<Flag size={18} color={cpcHex.background} />} onPress={onFinalize}>
               Terminer le match
             </Button>
           )}

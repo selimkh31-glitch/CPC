@@ -16,7 +16,7 @@ interface ButtonProps extends Omit<PressableProps, "children"> {
 }
 
 const CONTAINER_CLASSES: Record<Variant, string> = {
-  primary: "bg-accent active:bg-accent-500",
+  primary: "bg-white active:bg-white/90",
   secondary: "bg-bg-elevated border border-border active:bg-bg-card",
   ghost: "bg-transparent active:bg-bg-elevated",
   danger: "bg-danger/10 border border-danger/30 active:bg-danger/20",
@@ -24,7 +24,7 @@ const CONTAINER_CLASSES: Record<Variant, string> = {
 };
 
 const TEXT_CLASSES: Record<Variant, string> = {
-  primary: "text-accent-fg",
+  primary: "text-bg",
   secondary: "text-fg",
   ghost: "text-fg-muted",
   danger: "text-danger",
@@ -70,15 +70,24 @@ export function Button({
         (disabled || loading) && "opacity-50",
         className
       )}
-      style={{ borderRadius: cpcTokens.radius.control, minHeight: size === "lg" ? cpcTokens.geometry.buttonLarge : cpcTokens.geometry.button }}
+      style={{
+        borderRadius: cpcTokens.radius.control,
+        minHeight: size === "lg" ? cpcTokens.geometry.buttonLarge : cpcTokens.geometry.button,
+        ...(variant === "primary" ? { backgroundColor: "#ffffff" } : null),
+      }}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? cpcHex.accentForeground : cpcHex.textPrimary} />
+        <ActivityIndicator color={variant === "primary" ? cpcHex.background : cpcHex.textPrimary} />
       ) : (
         <>
           {icon}
-          <Text className={cn("font-sans-bold", TEXT_CLASSES[variant], TEXT_SIZE_CLASSES[size])}>{children}</Text>
+          <Text
+            className={cn("font-sans-bold", TEXT_CLASSES[variant], TEXT_SIZE_CLASSES[size])}
+            style={variant === "primary" ? { color: cpcHex.background } : undefined}
+          >
+            {children}
+          </Text>
         </>
       )}
     </Pressable>

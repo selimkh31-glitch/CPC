@@ -8,7 +8,7 @@ export function Input({ className, style, ...props }: TextInputProps & { classNa
     <TextInput
       placeholderTextColor={cpcHex.disabled}
       className={cn("min-h-[44px] border border-border bg-bg-elevated px-4 font-sans text-body text-fg", className)}
-      style={[{ borderRadius: cpcTokens.radius.input, height: cpcTokens.geometry.button }, style]}
+      style={[{ borderRadius: cpcTokens.radius.input, height: cpcTokens.geometry.button, color: cpcHex.textPrimary }, style]}
       {...props}
     />
   );
@@ -21,7 +21,7 @@ export function Textarea({ className, style, ...props }: TextInputProps & { clas
       textAlignVertical="top"
       placeholderTextColor={cpcHex.disabled}
       className={cn("border border-border bg-bg-elevated px-4 py-3 font-sans text-body text-fg", className)}
-      style={[{ minHeight: 80, borderRadius: cpcTokens.radius.input }, style]}
+      style={[{ minHeight: 80, borderRadius: cpcTokens.radius.input, color: cpcHex.textPrimary }, style]}
       {...props}
     />
   );

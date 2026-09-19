@@ -7,6 +7,8 @@ import { ClubCard } from "@/components/club/ClubCard";
 import { FormationPitch } from "@/components/club/FormationPitch";
 import { MyDepartureStatusCard } from "@/components/club/MyDepartureStatusCard";
 import { VoiceLinkBlock } from "@/components/club/VoiceLinkBlock";
+import { ClubRosterList } from "@/components/club/ClubRosterList";
+import { DeleteClubButton } from "@/components/club/DeleteClubButton";
 import { useClub } from "@/lib/hooks/useClubs";
 import { useApply } from "@/lib/hooks/useApply";
 import { useAuth } from "@/lib/providers/AuthProvider";
@@ -23,7 +25,7 @@ import type { FormationId, FormationSlot } from "@/lib/formations";
  * Mode Joueur d'un club (lecture) — plus aucune branche `canManage` ne le
  * transforme en dashboard. La gestion (formation éditable, recrutement,
  * check-in) vit maintenant dans l'arbre Mode Club (app/(club)/(tabs)/...),
- * qui réutilise FormationPitch/FormationSelector/MatchCheckinPanel
+ * qui réutilise FormationPitch/FormationSelector/ClubLiveRecruit
  * indépendamment de ce composant. Consommé par deux écrans :
  *   - app/(player)/(tabs)/clubs.tsx (deep link `/clubs`, hors tab bar) si
  *     playerMembership : rendu directement, SANS navigation.
@@ -81,7 +83,7 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
   // plus jamais le recrutement ici (canManage n'existe plus dans ce
   // composant), même pour un OWNER/MANAGER qui consulterait son propre club
   // en Mode Joueur. Le recrutement vit désormais exclusivement dans
-  // app/(club)/(tabs)/match.tsx. Un membre (donc aussi un MANAGER, qui
+  // app/(club)/(tabs)/index.tsx (ClubLiveRecruit). Un membre (donc aussi un MANAGER, qui
   // reste isMember=true sur ce même club) tombe simplement sur "Poste
   // vacant." — jamais un clic silencieux, comportement inchangé pour ce cas.
   const onEmptySlotPress = (slot: FormationSlot) => {
@@ -173,12 +175,14 @@ export function ClubHome({ clubId }: { clubId: string | null }) {
         <EmptyState title="Ce club n'a pas encore configuré sa formation." />
       )}
 
+      <ClubRosterList members={club.members} currentUserId={session?.user.id ?? null} clubId={club.id} />
+
       {/* 5. Mon statut — engagement/départ, MEMBER et MANAGER (jamais OWNER, section 9).
-          Le check-in (MatchCheckinPanel) n'est plus ici — Foundation #1, vit
-          désormais dans app/(club)/(tabs)/match.tsx (owner/manager only). */}
+          Le check-in (MatchCheckinPanel) n'est plus sur la feuille. */}
       {myMembership && myMembership.role !== "OWNER" && session && (
         <MyDepartureStatusCard clubId={club.id} userId={session.user.id} membership={myMembership} />
       )}
+      {myMembership?.role === "OWNER" ? <DeleteClubButton clubId={club.id} clubName={club.name} /> : null}
     </ScrollView>
   );
 }

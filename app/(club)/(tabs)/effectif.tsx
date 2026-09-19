@@ -6,10 +6,11 @@ import { ErrorState } from "@/components/ui/Screen";
 import { AppShell } from "@/components/nav/AppShell";
 import { MembersPanel } from "@/components/club/MembersPanel";
 import { DeparturesPanel } from "@/components/club/DeparturesPanel";
-import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
+import { DevClearModeButton } from "@/components/profile/DevClearModeButton";
 import { ManagedClubEmpty } from "@/components/club/ManagedClubEmpty";
 import { ClubCard } from "@/components/club/ClubCard";
+import { DeleteClubButton } from "@/components/club/DeleteClubButton";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { StartClubConversationButton } from "@/components/social/StartClubConversationButton";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
@@ -61,8 +62,8 @@ export default function ClubTab() {
       <ManagedClubEmpty
         extras={
           <>
-            <ModeLifeToggle target="PLAYER" />
             <DevTestAccountSwitcher />
+            <DevClearModeButton />
           </>
         }
       />
@@ -101,12 +102,13 @@ export default function ClubTab() {
               </Pressable>
             ) : null}
             <StartClubConversationButton clubId={club.id} role={myMembership?.role} clubName={club.name} />
+            {isOwner ? <DeleteClubButton clubId={club.id} clubName={club.name} /> : null}
           </View>
         }
       />
 
-      <ModeLifeToggle target="PLAYER" />
       <DevTestAccountSwitcher />
+      <DevClearModeButton />
 
       <MatchHistoryList
         items={matchHistory}

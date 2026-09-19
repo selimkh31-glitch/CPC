@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { InteractionManager, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Menu } from "lucide-react-native";
 import { Avatar } from "@/components/ui/Avatar";
@@ -10,22 +10,19 @@ import { cpcHex } from "@/lib/design/cpc-native";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
 
 /**
- * Chrome authentifié CPC : hamburger, marque, avatar.
- * Hamburger à gauche ouvre le menu, avatar à droite ouvre /profile.
+ * Chrome authentifié : hamburger, marque, avatar.
+ * Joueur ↔ Club = petite bascule dans le menu, pas ici.
  */
 export function AppMenuHeader() {
   const { profile } = useAuth();
-  const { mode, setMode } = useAppMode();
+  const { mode } = useAppMode();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const username = profile?.username?.trim() || "CPC";
 
-  const goProfile = () => {
+  const goIdentity = () => {
     if (mode === "CLUB") {
-      setMode("PLAYER");
-      InteractionManager.runAfterInteractions(() => {
-        router.push("/profile");
-      });
+      router.push("/effectif");
       return;
     }
     router.push("/profile");
@@ -33,10 +30,13 @@ export function AppMenuHeader() {
 
   return (
     <View
-      className="border-b border-border bg-bg px-3"
-      style={{ minHeight: cpcTokens.geometry.header, justifyContent: "center" }}
+      className="border-b border-border bg-bg px-3 pt-1"
+      style={{ justifyContent: "center" }}
     >
-      <View className="flex-row items-center justify-between">
+      <View
+        className="flex-row items-center justify-between"
+        style={{ minHeight: cpcTokens.geometry.header }}
+      >
         <Pressable
           onPress={() => setOpen(true)}
           accessibilityRole="button"
@@ -53,9 +53,9 @@ export function AppMenuHeader() {
           Club<Text className="text-accent">Pro</Text>
         </Text>
         <Pressable
-          onPress={goProfile}
+          onPress={goIdentity}
           accessibilityRole="button"
-          accessibilityLabel="Ouvrir mon profil"
+          accessibilityLabel={mode === "CLUB" ? "Ouvrir l'identité du club" : "Ouvrir mon profil"}
           hitSlop={8}
           className="h-11 min-w-[44px] items-center justify-center"
         >

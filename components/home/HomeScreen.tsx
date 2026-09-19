@@ -1,4 +1,4 @@
-import { InteractionManager, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router, type Href } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ClubProCard } from "@/components/profile/ClubProCard";
@@ -9,7 +9,7 @@ import { AppShell } from "@/components/nav/AppShell";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ActivityRow } from "@/components/ui/ActivityRow";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
-import { buildClubCardData } from "@/lib/clubCard";
+import { buildClubCardData, buildClubCardDataFromHydratedClub } from "@/lib/clubCard";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useAppMode } from "@/lib/providers/AppModeProvider";
 import { useCurrentClubForUser } from "@/lib/hooks/useCurrentClubs";
@@ -35,7 +35,7 @@ const INBOX_CAP = 3;
  */
 export function HomeScreen() {
   const { session, profile } = useAuth();
-  const { mode, setMode, selectedManagedClubId } = useAppMode();
+  const { mode, selectedManagedClubId } = useAppMode();
   const userId = session?.user.id ?? null;
   const now = useLiveClock();
   const { openMonClub, isLoading: membershipsLoading, anyClub, managed } = useOpenMonClub();
@@ -50,8 +50,7 @@ export function HomeScreen() {
 
   const goProfile = () => {
     if (mode === "CLUB") {
-      setMode("PLAYER");
-      InteractionManager.runAfterInteractions(() => router.push("/profile"));
+      router.push("/effectif");
       return;
     }
     router.push("/profile");
@@ -64,14 +63,9 @@ export function HomeScreen() {
   };
 
   const goRecrutement = () => {
+    if (mode !== "CLUB") return;
     Haptics.selectionAsync();
-    const push = () => router.push(CLUB_RECRUTEMENT_HREF as Href);
-    if (mode !== "CLUB") {
-      setMode("CLUB");
-      InteractionManager.runAfterInteractions(push);
-      return;
-    }
-    push();
+    router.push(CLUB_RECRUTEMENT_HREF as Href);
   };
 
   const pendingInvites = (invitations ?? []).filter((inv) => inv.status === "PENDING");
@@ -101,7 +95,7 @@ export function HomeScreen() {
       onPress: () => router.push("/my-applications"),
     });
   }
-  if (inbox.length < INBOX_CAP && managedClubId && incomingCount > 0) {
+  if (mode === "CLUB" && inbox.length < INBOX_CAP && managedClubId && incomingCount > 0) {
     inbox.push({
       key: "incoming",
       label: incomingCount === 1 ? "1 candidature à traiter" : `${incomingCount} candidatures à traiter`,
@@ -120,7 +114,13 @@ export function HomeScreen() {
 
   const club = anyClub?.club ?? null;
   const clubCard = club?.name?.trim()
-    ? buildClubCardData({ id: club.id, name: club.name.trim(), level: club.level ?? undefined })
+    ? clubDetail && clubDetail.id === club.id
+      ? buildClubCardDataFromHydratedClub(clubDetail, {
+          members: clubDetail.members,
+          sessions: clubDetail.sessions,
+          nowMs: now,
+        })
+      : buildClubCardData({ id: club.id, name: club.name.trim(), level: club.level ?? undefined })
     : null;
 
   return (
@@ -144,7 +144,7 @@ export function HomeScreen() {
         {membershipsLoading ? (
           <Skeleton className="h-14" />
         ) : clubCard ? (
-          <ClubCard data={clubCard} variant="mini" onPress={openMonClub} />
+          <ClubCard data={clubCard} variant="compact" onPress={openMonClub} />
         ) : mode === "CLUB" ? (
           <View className="gap-3 border border-dashed border-border px-4 py-4">
             <Text className="text-body text-fg-muted">Aucun club géré.</Text>
@@ -153,8 +153,12 @@ export function HomeScreen() {
             </Button>
           </View>
         ) : (
-          <View className="border border-dashed border-border px-4 py-4">
+          <View className="gap-3 border border-dashed border-border px-4 py-4">
             <Text className="text-body text-fg-muted">Sans club.</Text>
+            <Text className="font-sans text-caption text-fg-subtle">Trouve un club LIVE sur Matchmaking.</Text>
+            <Button variant="secondary" className="min-h-[44px]" onPress={goMatchmaking}>
+              Matchmaking
+            </Button>
           </View>
         )}
       </View>

@@ -165,28 +165,34 @@ test("nextPositionsOnTap — vide → secondaire (max 2)", () => {
   assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "RW"), okSel("ST", ["CAM", "RW"]), "second");
 });
 
-test("nextPositionsOnTap — secondaire → principal, ancien principal en secondaire (cap 2)", () => {
-  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "CAM"), okSel("CAM", ["ST"]), "promote one");
+test("nextPositionsOnTap — 2e tap sur un sélectionné le retire (pas un promote)", () => {
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "CAM"), okSel("ST"), "remove secondary");
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM"),
-    okSel("CAM", ["ST", "RW"]),
-    "promote with cap"
+    okSel("ST", ["RW"]),
+    "remove one of two"
   );
 });
 
-test("nextPositionsOnTap — tap principal → no-op", () => {
-  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM"]), "ST"), { ok: false, reason: "noop" }, "main");
+test("nextPositionsOnTap — tap principal le retire ; 1er secondaire devient principal", () => {
+  assert.deepEqual(nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "ST"), okSel("CAM", ["RW"]), "promote leftover");
+  assert.deepEqual(nextPositionsOnTap(sel("ST"), "ST"), { ok: false, reason: "noop" }, "keep last");
 });
 
-test("nextPositionsOnTap — 4e case vide refusée (reason max), jamais promu", () => {
+test("nextPositionsOnTap — 4e case vide refusée (reason max), jamais ajoutée", () => {
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "LW"),
     { ok: false, reason: "max" },
     "refused"
   );
+  assert.deepEqual(
+    nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM"),
+    okSel("ST", ["RW"]),
+    "toggle off at cap is not max"
+  );
 });
 
-test("nextPositionsOnTap — long-press secondaire retire ; principal intouchable", () => {
+test("nextPositionsOnTap — long-press retire comme le tap", () => {
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM", "RW"]), "CAM", "long-press"),
     okSel("ST", ["RW"]),
@@ -194,8 +200,8 @@ test("nextPositionsOnTap — long-press secondaire retire ; principal intouchabl
   );
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM"]), "ST", "long-press"),
-    { ok: false, reason: "noop" },
-    "cannot remove main"
+    okSel("CAM"),
+    "remove main promotes leftover"
   );
   assert.deepEqual(
     nextPositionsOnTap(sel("ST", ["CAM"]), "RW", "long-press"),
@@ -233,8 +239,10 @@ test("grille profil perso : inline, pas de navigation / popup", () => {
   assert.true(overview.includes("nextPositionsOnTap"), "tap helper");
   assert.true(overview.includes("useUpdateOwnProfile"), "mutation");
   assert.true(overview.includes("validateProfileIdentity"), "full identity validate");
-  assert.true(overview.includes("onLongPress"), "long-press remove");
+  assert.true(overview.includes("onLongPress"), "long-press still wired");
   assert.true(overview.includes('toast.info("3 postes max.")'), "max toast");
+  assert.true(overview.includes("Retirer le poste"), "selected tap removes");
+  assert.true(overview.includes("Ajouter"), "empty tap adds");
   assert.true(overview.includes("`main-${main}`"), "main chip key");
   assert.true(overview.includes("`sec-${pos}`"), "sec chip key");
   assert.true(overview.includes("`grid-${pos}`"), "grid key");

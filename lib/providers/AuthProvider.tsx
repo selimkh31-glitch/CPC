@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { AppState, type AppStateStatus } from "react-native";
+import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { consumeAuthCallbackUrl } from "@/lib/auth/emailConfirm";
 import { USER_PUBLIC_COLUMNS, type UserRow } from "@/lib/types";
 
 interface AuthContextValue {
@@ -11,6 +14,7 @@ interface AuthContextValue {
    *  (qui doit mener à l'onboarding), voir app/_layout.tsx. */
   profileError: boolean;
   refreshProfile: () => Promise<void>;
+  refreshSession: () => Promise<Session | null>;
   signOut: () => Promise<void>;
 }
 
@@ -19,6 +23,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /**
  * Source de vérité de la session + du profil applicatif (table `users`).
  * Pilote le guard d'auth du layout racine (session -> onboarding -> tabs).
+ * Reprend la session au retour Mail (AppState active + deep link PKCE).
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -43,27 +48,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(data as unknown as UserRow | null);
   }, []);
 
+  const applySession = useCallback(
+    async (next: Session | null) => {
+      setSession(next);
+      if (next) {
+        await fetchProfile(next.user.id);
+        return;
+      }
+      setProfile(null);
+      setProfileError(false);
+    },
+    [fetchProfile]
+  );
+
+  const refreshSession = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    await applySession(data.session);
+    return data.session;
+  }, [applySession]);
+
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      if (data.session) await fetchProfile(data.session.user.id);
-      setLoading(false);
-    });
+    let cancelled = false;
+
+    const syncFromStorage = async (markReady: boolean) => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      await applySession(data.session);
+      if (markReady && !cancelled) setLoading(false);
+    };
+
+    void syncFromStorage(true);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      if (newSession) {
-        await fetchProfile(newSession.user.id);
-      } else {
-        setProfile(null);
-        setProfileError(false);
-      }
+      if (cancelled) return;
+      await applySession(newSession);
     });
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+    const onAppState = (state: AppStateStatus) => {
+      if (state !== "active") return;
+      void syncFromStorage(false);
+    };
+    const appSub = AppState.addEventListener("change", onAppState);
+
+    const onUrl = ({ url }: { url: string }) => {
+      void consumeAuthCallbackUrl(url);
+    };
+    const linkSub = Linking.addEventListener("url", onUrl);
+    void Linking.getInitialURL().then((url) => {
+      if (url) void consumeAuthCallbackUrl(url);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      appSub.remove();
+      linkSub.remove();
+    };
+  }, [applySession]);
 
   const refreshProfile = useCallback(async () => {
     if (session) await fetchProfile(session.user.id);
@@ -75,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, profile, profileError, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider
+      value={{ session, profile, profileError, loading, refreshProfile, refreshSession, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

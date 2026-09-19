@@ -6,8 +6,8 @@ import * as Haptics from "expo-haptics";
 import { Crown, LogOut, Plus } from "lucide-react-native";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { MyClubsList } from "@/components/club/MyClubsList";
-import { ModeLifeToggle } from "@/components/club/ModeLifeToggle";
 import { DevTestAccountSwitcher } from "@/components/profile/DevTestAccountSwitcher";
+import { DevClearModeButton } from "@/components/profile/DevClearModeButton";
 import { SocialShortcuts } from "@/components/social/SocialShortcuts";
 import { CompetitionsLink } from "@/components/competitions/CompetitionsLink";
 import { TournamentsLink } from "@/components/tournaments/TournamentsLink";
@@ -17,20 +17,17 @@ import { cpcHex } from "@/lib/design/cpc-native";
 import { cpcTokens } from "@/lib/design/cpc-tokens";
 import { useAuth } from "@/lib/providers/AuthProvider";
 import { useMyMemberships } from "@/lib/hooks/useClubs";
-import { useAppMode } from "@/lib/providers/AppModeProvider";
+import { clubPublicHref } from "@/lib/clubProfile";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
 import { FEATURE_REVENUECAT, profileProEntryCopy } from "@/lib/constants";
 
 /**
- * Onglet Profil — Card d'abord, puis la seule bascule « Passer en manager ».
+ * Onglet Profil (Mode Joueur). Bascule Joueur | Club = header chrome.
  * Candidatures / invitations / notifications : onglet Activité.
- * Trouver un club : onglet LIVE. Messages, groupes, bloqués : raccourcis.
  */
 export default function ProfileTabScreen() {
   const { session, profile, signOut } = useAuth();
   const { data: memberships, isLoading: membershipsLoading } = useMyMemberships(session?.user.id ?? null);
-  const { setMode, setSelectedManagedClubId } = useAppMode();
-  const managedClubs = memberships?.filter((m) => m.role === "OWNER" || m.role === "MANAGER") ?? [];
 
   useEffect(() => {
     if (session) registerForPushNotificationsAsync(session.user.id).catch(() => {});
@@ -62,11 +59,8 @@ export default function ProfileTabScreen() {
           <ProfileContent userId={session.user.id} isOwn />
         </View>
 
-        <View className="mb-8">
-          <ModeLifeToggle target="CLUB" managedClubs={managedClubs} />
-        </View>
-
         <DevTestAccountSwitcher />
+        <DevClearModeButton />
 
         {profile?.plan !== "PRO" && (
           <Pressable
@@ -123,8 +117,7 @@ export default function ProfileTabScreen() {
           memberships={memberships}
           isLoading={membershipsLoading}
           onManagedSelect={(clubId) => {
-            setSelectedManagedClubId(clubId);
-            setMode("CLUB");
+            router.push(clubPublicHref(clubId));
           }}
         />
       </ScrollView>

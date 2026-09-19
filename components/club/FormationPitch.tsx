@@ -143,11 +143,11 @@ function PitchSlot({
       {occupant?.user ? (
         <>
           <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-accent bg-bg-elevated">
-            <Text className="font-display text-[11px] font-bold text-accent">
+            <Text className="font-display text-[11px] font-bold text-accent" style={{ color: cpcHex.accent }}>
               {occupant.user.username.slice(0, 2).toUpperCase()}
             </Text>
           </View>
-          <Text numberOfLines={1} className="mt-0.5 max-w-[64px] text-center text-[10px] font-bold text-fg">
+          <Text numberOfLines={1} className="mt-0.5 max-w-[64px] text-center text-[10px] font-bold text-fg" style={{ color: cpcHex.textPrimary }}>
             {occupant.user.username}
           </Text>
           {isYou && <Badge tone="accent" className="mt-0.5 self-center px-1.5 py-0.5">Vous</Badge>}

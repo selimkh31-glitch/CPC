@@ -33,7 +33,7 @@ export function VoiceLinkBlock({ voiceLink }: { voiceLink: string | null }) {
         <Text numberOfLines={1} className="font-sans text-bodySmall text-fg-muted">
           {voiceLink}
         </Text>
-        <Button icon={<Mic size={16} color={cpcHex.accentForeground} />} onPress={join}>
+        <Button icon={<Mic size={16} color={cpcHex.background} />} onPress={join}>
           Rejoindre le vocal
         </Button>
       </View>

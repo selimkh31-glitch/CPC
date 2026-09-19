@@ -14,6 +14,7 @@ import {
 } from "@/lib/constants";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/providers/AuthProvider";
+import { validateProfileIdentity } from "@/lib/profileIdentity";
 import { toast } from "@/lib/toast";
 
 const AVAILABILITY_OPTIONS = [
@@ -60,21 +61,28 @@ export default function OnboardingScreen() {
 
   const submit = async () => {
     if (!session) return;
+    const validated = validateProfileIdentity({
+      username: username.trim(),
+      platform,
+      main_position: mainPosition,
+      secondary_positions: secondaryPositions.filter((p) => p !== mainPosition),
+      play_style: playStyle,
+      languages,
+      availability: { slots: availability },
+    });
+    if (!validated.ok) {
+      toast.error(validated.message);
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("users").upsert({
         id: session.user.id,
-        username: username.trim(),
-        platform,
-        main_position: mainPosition,
-        secondary_positions: secondaryPositions,
-        play_style: playStyle,
-        languages,
-        availability: { slots: availability },
+        ...validated.patch,
       });
       if (error) throw error;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      toast.success("Profil créé ! Bienvenue sur ClubPro Connect.");
+      toast.success("Profil créé. Choisis si tu joues ou tu gères.");
       await refreshProfile();
     } catch (err: any) {
       toast.error(err.message?.includes("duplicate") ? "Ce username est déjà pris." : err.message ?? "Erreur");
@@ -87,7 +95,13 @@ export default function OnboardingScreen() {
     <SafeAreaView className="flex-1 bg-bg px-6">
       <View className="mt-2 flex-row items-center gap-3">
         {step > 0 && (
-          <Pressable onPress={back} hitSlop={12}>
+          <Pressable
+            onPress={back}
+            hitSlop={12}
+            className="min-h-[44px] min-w-[44px] items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Étape précédente"
+          >
             <ChevronLeft size={22} color={cpcHex.textMuted} />
           </Pressable>
         )}
@@ -114,9 +128,24 @@ export default function OnboardingScreen() {
           {step === 2 && (
             <Step title="Tes postes" subtitle="1 poste principal, jusqu'à 2 postes secondaires.">
               <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Poste principal</Text>
-              <ChipSelect single value={mainPosition ? [mainPosition] : []} onChange={(v) => setMainPosition(v[0])} options={POSITIONS.map((p) => ({ value: p, label: POSITION_LABELS[p] }))} />
+              <ChipSelect
+                single
+                value={mainPosition ? [mainPosition] : []}
+                onChange={(v) => {
+                  const next = v[0] ?? "";
+                  setMainPosition(next);
+                  setSecondaryPositions((prev) => prev.filter((p) => p !== next));
+                }}
+                options={POSITIONS.map((p) => ({ value: p, label: POSITION_LABELS[p] }))}
+              />
               <Text className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-fg-muted">Postes secondaires (optionnel)</Text>
-              <ChipSelect max={2} value={secondaryPositions} onChange={setSecondaryPositions} options={POSITIONS.filter((p) => p !== mainPosition).map((p) => ({ value: p, label: POSITION_LABELS[p] }))} />
+              <ChipSelect
+                max={2}
+                value={secondaryPositions}
+                onChange={setSecondaryPositions}
+                onMax={() => toast.info("2 postes secondaires max.")}
+                options={POSITIONS.filter((p) => p !== mainPosition).map((p) => ({ value: p, label: POSITION_LABELS[p] }))}
+              />
             </Step>
           )}
           {step === 3 && (
