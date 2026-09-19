@@ -84,9 +84,29 @@ export function useUpdateOwnProfile() {
   });
 }
 
-export type EaClubCandidate = { clubId: string; name: string };
+export type EaClubCandidate = {
+  clubId: string;
+  name: string;
+  platform?: string | null;
+  rank?: number | null;
+  gamesPlayed?: number | null;
+};
 
 export type SearchEaClubResult = { candidates: EaClubCandidate[]; unavailable: boolean };
+
+export type LinkEaClubResult = {
+  synced: boolean;
+  clubId?: string;
+  name?: string;
+  eaClubId?: string;
+};
+
+export type PreviewEaClubResult = {
+  clubId: string;
+  name: string;
+  platform?: string | null;
+  members: string[];
+};
 
 export function useSearchEaClub() {
   return useMutation({
@@ -95,12 +115,32 @@ export function useSearchEaClub() {
   });
 }
 
+export function usePreviewEaClub() {
+  return useMutation({
+    mutationFn: (input: { eaClubId: string; eaClubName: string }) =>
+      callEdgeFunction<PreviewEaClubResult>("link-ea-club", { action: "preview", ...input }),
+  });
+}
+
 export function useLinkEaClub() {
   const queryClient = useQueryClient();
   const { refreshProfile } = useAuth();
   return useMutation({
     mutationFn: (input: { eaClubId: string; eaClubName: string }) =>
-      callEdgeFunction<{ synced: boolean }>("link-ea-club", { action: "link", ...input }),
+      callEdgeFunction<LinkEaClubResult>("link-ea-club", { action: "link", ...input }),
+    onSuccess: async () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshProfile();
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useUnlinkEaClub() {
+  const queryClient = useQueryClient();
+  const { refreshProfile } = useAuth();
+  return useMutation({
+    mutationFn: () => callEdgeFunction<{ unlinked: boolean }>("link-ea-club", { action: "unlink" }),
     onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await refreshProfile();

@@ -10,7 +10,7 @@ import type {
   EAPlayerStats,
   EAPlayoffData,
 } from "./types.ts";
-import { aggregatePlayerStats, normalizeMatch, normalizeSearchResults } from "./normalize.ts";
+import { aggregatePlayerStats, normalizeMatch, normalizeMemberList, normalizeSearchResults } from "./normalize.ts";
 
 const DEFAULT_PLATFORM = "common-gen5";
 
@@ -25,22 +25,29 @@ function asRawArray(raw: unknown): unknown[] {
  * Réutilise le client défensif (`eaGet`) : un seul fetch, pas de duplication.
  * `link-ea-club` et `ea-sync` passent par cet adapter (searchClub /
  * getClubMatches), puis normalize → DB. Stubs : NotImplementedError, jamais
- * d'appel /clubs/info, overallStats, members, career, playoffs.
+ * d'appel /clubs/info, overallStats, career, playoffs. Search : CSL puis
+ * allTime. Members : /members/stats best-effort (preview claim).
  */
 export class ProClubsEAProvider implements EAProvider {
   readonly name = "proclubs-community" as const;
 
   async searchClub(clubName: string, platform: string = DEFAULT_PLATFORM): Promise<EAClub[] | null> {
     if (!FEATURE_EA_STATS) return null;
-    try {
-      const raw = await eaGet<unknown>(
-        `/allTimeLeaderboard/search?platform=${encodeURIComponent(platform)}&clubName=${encodeURIComponent(clubName)}`
-      );
-      return normalizeSearchResults(raw, this.name, platform, clubName);
-    } catch (err) {
-      console.warn("[ea-provider] searchClub a échoué, fallback null:", err);
-      return null;
+    const q = `platform=${encodeURIComponent(platform)}&clubName=${encodeURIComponent(clubName)}`;
+    const paths = [`/currentSeasonLeaderboard/search?${q}`, `/allTimeLeaderboard/search?${q}`];
+    let lastError: unknown;
+    for (let i = 0; i < paths.length; i++) {
+      const path = paths[i]!;
+      try {
+        const raw = await eaGet<unknown>(path);
+        const clubs = normalizeSearchResults(raw, this.name, platform, clubName);
+        if (clubs.length > 0 || i === paths.length - 1) return clubs;
+      } catch (err) {
+        lastError = err;
+      }
     }
+    console.warn("[ea-provider] searchClub a échoué, fallback null:", lastError);
+    return null;
   }
 
   async getClub(_clubId: string, _platform?: string): Promise<EAClub | null> {
@@ -72,8 +79,17 @@ export class ProClubsEAProvider implements EAProvider {
     }
   }
 
-  async getClubMembers(_clubId: string, _platform?: string): Promise<EAPlayer[] | null> {
-    throw new NotImplementedError("getClubMembers");
+  async getClubMembers(clubId: string, platform: string = DEFAULT_PLATFORM): Promise<EAPlayer[] | null> {
+    if (!FEATURE_EA_STATS) return null;
+    try {
+      const raw = await eaGet<unknown>(
+        `/members/stats?platform=${encodeURIComponent(platform)}&clubId=${encodeURIComponent(clubId)}`
+      );
+      return normalizeMemberList(raw, clubId, this.name, platform);
+    } catch (err) {
+      console.warn(`[ea-provider] getClubMembers(${clubId}) a échoué, fallback null:`, err);
+      return null;
+    }
   }
 
   async getPlayerStats(clubId: string, playerName: string, platform: string = DEFAULT_PLATFORM): Promise<EAPlayerStats | null> {

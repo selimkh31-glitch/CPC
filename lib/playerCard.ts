@@ -89,6 +89,8 @@ export const PLAYER_CARD_COPY = {
   eaUsernameHint: "Pseudo EA (rapprochement par nom — pas un id joueur)",
   fc27: "EA SPORTS FC 27 Pro Clubs",
   linkClub: "C'est mon club",
+  changeClub: "Changer de club",
+  eaIdLabel: "ID EA",
   eaUnlinked: "Pas encore lié — tu peux jouer sans.",
   eaLinkedPending: "Club lié — chiffres pas encore là.",
   eaGoals: "Buts EA",
@@ -164,6 +166,8 @@ export interface PlayerCardData {
 
   /** Club EA lié (colonne). ≠ identité joueur EA vérifiée. */
   eaClubLinked: boolean;
+  /** clubId EA stocké — jamais un regionId. */
+  eaClubId: string | null;
   eaIdentityKind: EaIdentityKind;
   /** Career EA (buts/passes/matchs/note) — distinct du pack face PAC/SHO. */
   eaStats: VerifiedStats | null;
@@ -228,6 +232,7 @@ export function buildPlayerCardData(user: UserRow, opts: BuildPlayerCardOpts = {
     badges: visibleCpcBadges(user.badges),
 
     eaClubLinked: Boolean(user.ea_club_linked),
+    eaClubId: user.ea_club_linked?.trim() ? user.ea_club_linked.trim() : null,
     eaIdentityKind: identityKind,
     eaStats: showEaStats ? user.verified_stats : null,
     showEaStats,

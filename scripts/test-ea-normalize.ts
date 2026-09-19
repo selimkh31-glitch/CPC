@@ -14,8 +14,10 @@ import {
   normalizeClub,
   normalizeClubStats,
   normalizeMatch,
+  normalizeMemberList,
   normalizePlayerMatchStats,
   normalizeSearchResults,
+  parseEaClubId,
 } from "../supabase/functions/_shared/ea/normalize";
 import {
   buildVerifiedStatsForPlayer,
@@ -54,10 +56,71 @@ test("club EA complet (forme {clubId, name})", () => {
   assert.deepEqual(club?.name, "Les Invincibles", "name");
 });
 
-test("club EA — forme alternative {id, clubName}", () => {
+test("club EA — {id, clubName} sans clubId → null (id générique ≠ clubId EA)", () => {
   const club = normalizeClub({ id: 999, clubName: "FC Test" }, "proclubs-community", null);
-  assert.ok(club, "club non-null");
-  assert.deepEqual(club?.externalId, "999", "externalId converti en string");
+  assert.deepEqual(club, null, "id seul rejeté");
+});
+
+test("parseEaClubId — digits only, refuse vide / texte", () => {
+  assert.deepEqual(parseEaClubId("42450"), "42450", "string");
+  assert.deepEqual(parseEaClubId(42450), "42450", "number");
+  assert.deepEqual(parseEaClubId(""), null, "vide");
+  assert.deepEqual(parseEaClubId("  "), null, "blank");
+  assert.deepEqual(parseEaClubId("Possibly FC"), null, "nom");
+  assert.deepEqual(parseEaClubId("ea_club_linked=66"), null, "texte");
+});
+
+test("normalizeClub — Possibly FC : clubId EA 42450, jamais regionId 49552 / 4543827", () => {
+  const club = normalizeClub(
+    {
+      clubId: "42450",
+      name: "Possibly FC",
+      regionId: 49552,
+      teamId: 111651,
+      crestAssetId: "99161101",
+    },
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.ok(club, "club");
+  assert.deepEqual(club?.externalId, "42450", "EA clubId");
+  assert.deepEqual(club?.name, "Possibly FC", "name");
+});
+
+test("normalizeClub — regionId seul (Clubs.zone 49552) n'est jamais un clubId", () => {
+  assert.deepEqual(
+    normalizeClub({ regionId: 49552, name: "Possibly FC" }, "proclubs-community", null),
+    null,
+    "regionId seul"
+  );
+  assert.deepEqual(
+    normalizeClub({ teamId: 111651, name: "Possibly FC" }, "proclubs-community", null),
+    null,
+    "teamId seul"
+  );
+  assert.deepEqual(
+    normalizeClub({ crestAssetId: "99161101", name: "Possibly FC" }, "proclubs-community", null),
+    null,
+    "crest seul"
+  );
+  assert.deepEqual(
+    normalizeClub({ id: 49552, regionId: 49552, name: "Possibly FC" }, "proclubs-community", null),
+    null,
+    "id=regionId"
+  );
+});
+
+test("normalizeSearchResults — ne mappe jamais regionId comme clubId", () => {
+  const clubs = normalizeSearchResults(
+    [
+      { clubId: "42450", name: "Possibly FC", regionId: 49552 },
+      { regionId: 49552, name: "Possibly FC CZ" },
+      { id: 66, name: "bogus ea_club_linked" },
+    ],
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.deepEqual(clubs.map((c) => c.externalId), ["42450"], "seul le clubId EA");
 });
 
 test("club EA sans id exploitable -> null (jamais un objet à moitié vide)", () => {
@@ -86,13 +149,13 @@ test("search results — liste complète, jamais silent list[0]", () => {
   assert.deepEqual(clubs.map((c) => c.name), ["Alpha", "Alpha United"], "noms");
 });
 
-test("search results — forme { clubs: [...] }, ids numériques", () => {
+test("search results — forme { clubs: [...] }, seul clubId (pas id)", () => {
   const clubs = normalizeSearchResults(
     { clubs: [{ id: 10, clubName: "FC A" }, { clubId: "11", name: "FC B" }] },
     "proclubs-community",
     null
   );
-  assert.deepEqual(clubs.map((c) => c.externalId), ["10", "11"], "ids");
+  assert.deepEqual(clubs.map((c) => c.externalId), ["11"], "clubId seulement");
 });
 
 test("search results — payload vide/malformé -> liste vide, pas de club inventé", () => {
@@ -136,7 +199,18 @@ test("confirmClubInSearch — id connu vs id inconnu (rejet link)", () => {
   assert.deepEqual(confirmClubInSearch(candidates, " 2 ")?.externalId, "2", "trim");
   assert.deepEqual(confirmClubInSearch(candidates, "99"), null, "inconnu rejeté");
   assert.deepEqual(confirmClubInSearch(candidates, ""), null, "vide rejeté");
+  assert.deepEqual(confirmClubInSearch(candidates, "Possibly"), null, "non-numérique");
   assert.deepEqual(confirmClubInSearch([], "1"), null, "liste vide");
+});
+
+test("normalizeMemberList — top noms, ignore les lignes sans name", () => {
+  const members = normalizeMemberList(
+    { members: [{ name: "Ramsen7" }, { playername: "cpc_lm" }, { goals: 3 }, { name: "Ramsen7" }] },
+    "42450",
+    "proclubs-community",
+    "common-gen5"
+  );
+  assert.deepEqual(members.map((m) => m.name), ["Ramsen7", "cpc_lm"], "dédup");
 });
 
 // --- normalizeClubStats ------------------------------------------------------

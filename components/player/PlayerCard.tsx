@@ -52,7 +52,7 @@ export function PlayerCard({
   shareEnabled?: boolean;
   footer?: React.ReactNode;
   rightSlot?: React.ReactNode;
-  /** Profil perso, club EA pas lié — CTA sur la Card, pas dans les réglages. */
+  /** Profil perso — lier ou changer le club EA (ID EA visible). */
   onLinkEaClub?: () => void;
   className?: string;
 }) {
@@ -453,6 +453,39 @@ function EaSlot({
           accessibilityLabel={PLAYER_CARD_COPY.linkClub}
         >
           {PLAYER_CARD_COPY.linkClub}
+        </Button>
+      </View>
+    );
+  }
+
+  if (onLinkEaClub && data.eaClubLinked) {
+    return (
+      <View className="mt-5">
+        {identity.show ? (
+          <View className="mb-1">
+            <View className="flex-row items-center gap-1.5">
+              <BadgeCheck size={14} color="#666c74" />
+              <Text className="text-xs text-fg-subtle">{identity.label}</Text>
+            </View>
+            <Text className="mt-0.5 text-[10px] text-fg-subtle">{identity.hint}</Text>
+          </View>
+        ) : null}
+        {data.eaClubId ? (
+          <Text className="font-mono text-sm text-fg">
+            {PLAYER_CARD_COPY.eaIdLabel} {data.eaClubId}
+          </Text>
+        ) : null}
+        {!hasCareer && !hasFaceEa ? (
+          <Text className="mt-1 text-xs text-fg-subtle">{PLAYER_CARD_COPY.eaLinkedPending}</Text>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-2 min-h-[44px] self-start px-0"
+          onPress={onLinkEaClub}
+          accessibilityLabel={PLAYER_CARD_COPY.changeClub}
+        >
+          {PLAYER_CARD_COPY.changeClub}
         </Button>
       </View>
     );

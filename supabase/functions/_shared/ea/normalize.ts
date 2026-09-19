@@ -21,6 +21,17 @@ function toIdStr(v: unknown): string | null {
   return toStr(v);
 }
 
+/**
+ * EA `clubId` seulement — digits 1–16. Vide, texte, UUID, regionId/teamId
+ * lus depuis d'autres clés → null. Incident 2026-09-19 : Clubs.zone
+ * regionId 49552 n'est PAS le clubId EA 42450.
+ */
+export function parseEaClubId(value: unknown): string | null {
+  const s = toIdStr(value);
+  if (!s || !/^\d{1,16}$/.test(s)) return null;
+  return s;
+}
+
 function toNum(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string" && v.trim().length > 0) {
@@ -30,23 +41,27 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
-/** Club EA — accepte les deux formes rencontrées dans les payloads de
- *  recherche (`{clubId,...}` ou `{id,...}`). Retourne `null` si les champs
- *  minimum exploitables (id + nom) sont absents plutôt qu'un objet à moitié
- *  vide qui laisserait croire à une donnée réelle. */
+/**
+ * Club EA — `externalId` = champ `clubId` uniquement.
+ * Jamais `regionId`, `teamId`, `crestAssetId`, `crestId`, ni `id` générique
+ * (un `id` Clubs.zone / interne n'est pas un clubId EA).
+ */
 export function normalizeClub(raw: unknown, provider: EAProviderName, externalPlatform: string | null): EAClub | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
-  const externalId = toIdStr(r.clubId) ?? toIdStr(r.id);
+  const externalId = parseEaClubId(r.clubId);
   const name = toStr(r.name) ?? toStr(r.clubName);
   if (!externalId || !name) return null;
+  const rowPlatform = toStr(r.platform) ?? toStr(r.externalPlatform) ?? externalPlatform;
   return {
     provider,
     externalId,
-    externalPlatform,
+    externalPlatform: rowPlatform,
     syncedAt: new Date().toISOString(),
     name,
     crestId: toStr(r.crestId) ?? toStr(r.crestAssetId),
+    rank: toNum(r.ranking) ?? toNum(r.rank),
+    gamesPlayed: toNum(r.gamesPlayed),
   };
 }
 
@@ -87,9 +102,58 @@ export function normalizeSearchResults(
 
 /** Re-search confirm : l'id doit figurer dans les résultats du nom cherché. */
 export function confirmClubInSearch(candidates: EAClub[], eaClubId: string): EAClub | null {
-  const id = eaClubId.trim();
+  const id = parseEaClubId(eaClubId);
   if (!id) return null;
   return candidates.find((c) => c.externalId === id) ?? null;
+}
+
+function asObjectList(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+  const r = raw as Record<string, unknown>;
+  if (Array.isArray(r.members)) return r.members;
+  if (Array.isArray(r.memberList)) return r.memberList;
+  return [];
+}
+
+/** Membres /members/stats — noms seulement, jamais un inventaire fictif. */
+export function normalizeMember(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayer | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const name = toStr(r.name) ?? toStr(r.playername);
+  if (!name) return null;
+  return {
+    provider,
+    externalId: clubExternalId,
+    externalPlatform,
+    syncedAt: new Date().toISOString(),
+    name,
+    proPosition: toStr(r.proPos) ?? toStr(r.favoritePosition) ?? toStr(r.proPosition),
+  };
+}
+
+export function normalizeMemberList(
+  raw: unknown,
+  clubExternalId: string,
+  provider: EAProviderName,
+  externalPlatform: string | null
+): EAPlayer[] {
+  const out: EAPlayer[] = [];
+  const seen = new Set<string>();
+  for (const item of asObjectList(raw)) {
+    const member = normalizeMember(item, clubExternalId, provider, externalPlatform);
+    if (!member) continue;
+    const key = member.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(member);
+  }
+  return out;
 }
 
 export function normalizeClubStats(
