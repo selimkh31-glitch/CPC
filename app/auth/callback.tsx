@@ -1,136 +1,155 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
-import { supabase } from "@/lib/supabase/client";
-import { secureStoreAdapter } from "@/lib/supabase/secureStoreAdapter";
+import { Button } from "@/components/ui/Button";
+import { cpcHex } from "@/lib/design/cpc-native";
+import { useAuth } from "@/lib/providers/AuthProvider";
+import {
+  consumeParsedAuthCallback,
+  destAfterEmailConfirm,
+  parseAuthCallbackParams,
+  parseAuthCallbackUrl,
+  type ParsedAuthCallback,
+} from "@/lib/auth/emailConfirm";
+
+const SPINNER_MAX_MS = 10000;
 
 /**
- * Cible du deep link clubproconnect://auth/callback envoyé par Supabase après
- * confirmation d'email (flow PKCE, voir lib/supabase/client.ts). Route hors de
- * tout Stack.Protected (app/_layout.tsx) pour rester accessible avant qu'une
- * session existe, que l'app soit froide ou déjà ouverte.
- *
- * Une fois exchangeCodeForSession() réussi, AuthProvider.onAuthStateChange
- * (lib/providers/AuthProvider.tsx) détecte la nouvelle session et le
- * RootNavigator bascule automatiquement vers onboarding/tabs — pas de
- * navigation manuelle nécessaire pour la redirection finale, seulement pour
- * quitter cet écran une fois la session posée.
- *
- * DIAGNOSTIC TEMPORAIRE (à retirer après investigation) : logs booléens
- * uniquement, aucune valeur sensible (code, verifier, tokens) n'est jamais
- * affichée — voir chaque console.log ci-dessous.
+ * Deep link `clubproconnect://auth/callback` après Confirm signup Supabase.
+ * Hors Stack.Protected : l'écran peut rester monté après exchange — on quitte
+ * dès que `session` est posée, ou via le CTA, jamais un spinner infini.
  */
 export default function AuthCallbackScreen() {
   const params = useLocalSearchParams<{
     code?: string;
     error?: string;
     error_description?: string;
+    token_hash?: string;
+    type?: string;
   }>();
-  const { code, error, error_description } = params;
   const router = useRouter();
-  const handledCode = useRef<string | null>(null);
-  const [status, setStatus] = useState<"processing" | "error">("processing");
-  const [caughtMessage, setCaughtMessage] = useState<string | null>(null);
+  const { session, profile, refreshSession } = useAuth();
+  const handledKey = useRef<string | null>(null);
+  const [status, setStatus] = useState<"processing" | "ready" | "waiting" | "error">("processing");
+  const [message, setMessage] = useState<string | null>(null);
 
-  // --- DIAGNOSTIC TEMPORAIRE : montage + forme de l'URL reçue ---
+  const leave = async () => {
+    if (!session) {
+      const next = await refreshSession();
+      if (!next) {
+        router.replace("/(auth)/login");
+        return;
+      }
+    }
+    router.replace(destAfterEmailConfirm(Boolean(profile)));
+  };
+
   useEffect(() => {
-    console.log("[AUTH CALLBACK] mounted");
-    console.log("[AUTH CALLBACK] pathname: /auth/callback");
-    console.log("[AUTH CALLBACK] query keys:", Object.keys(params));
-    console.log("[AUTH CALLBACK] code present:", Boolean(code));
-    console.log("[AUTH CALLBACK] error present:", Boolean(error));
-    console.log("[AUTH CALLBACK] error_description present:", Boolean(error_description));
+    if (session) {
+      setStatus("ready");
+      void leave();
+    }
+    // leave captures router/profile — session flip is the trigger
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // --- DIAGNOSTIC TEMPORAIRE : présence du code_verifier PKCE en storage ---
-  useEffect(() => {
-    const storageKey = (supabase.auth as unknown as { storageKey: string }).storageKey;
-    secureStoreAdapter
-      .getItem(`${storageKey}-code-verifier`)
-      .then((verifier) => {
-        console.log("[AUTH CALLBACK] PKCE verifier present:", verifier != null);
-      })
-      .catch((err: unknown) => {
-        console.log("[AUTH CALLBACK] PKCE verifier check threw:", err instanceof Error ? err.message : String(err));
-      });
-  }, []);
+  }, [session]);
 
   useEffect(() => {
-    Linking.clearInitialURL();
-  }, []);
+    if (session) return;
+    const timer = setTimeout(() => {
+      setStatus((current) => (current === "processing" ? "waiting" : current));
+    }, SPINNER_MAX_MS);
+    return () => clearTimeout(timer);
+  }, [session]);
 
   useEffect(() => {
-    if (error) {
+    let cancelled = false;
+
+    const apply = async (parsed: ParsedAuthCallback) => {
+      if (cancelled) return;
+      if (parsed.kind === "error") {
+        setStatus("error");
+        setMessage(parsed.message);
+        return;
+      }
+      if (parsed.kind === "empty") {
+        setStatus((current) => (current === "processing" ? "waiting" : current));
+        return;
+      }
+      const key = parsed.kind === "code" ? `code:${parsed.code}` : `otp:${parsed.tokenHash}`;
+      if (handledKey.current === key) return;
+      handledKey.current = key;
+      setStatus("processing");
+      const result = await consumeParsedAuthCallback(parsed);
+      if (cancelled) return;
+      if (result.ok) {
+        setStatus("ready");
+        return;
+      }
+      if (result.reason === "empty") {
+        setStatus("waiting");
+        return;
+      }
       setStatus("error");
-      return;
+      setMessage(result.message ?? "Ce lien de confirmation n'est plus valide.");
+    };
+
+    const fromParams = parseAuthCallbackParams(params);
+    if (fromParams.kind !== "empty") {
+      void apply(fromParams);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    if (!code || handledCode.current === code) return;
-    handledCode.current = code;
-
-    // --- DIAGNOSTIC TEMPORAIRE : timeout d'observation (ne coupe rien) ---
-    let settled = false;
-    const timeoutId = setTimeout(() => {
-      if (!settled) console.log("[AUTH CALLBACK] exchange timeout (still pending after 15s)");
-    }, 15000);
-
-    console.log("[AUTH CALLBACK] starting exchange");
-
-    supabase.auth
-      .exchangeCodeForSession(code)
-      .then(({ data, error: exchangeError }) => {
-        settled = true;
-        clearTimeout(timeoutId);
-        console.log("[AUTH CALLBACK] exchange returned");
-        console.log("[AUTH CALLBACK] session present:", Boolean(data?.session));
-        console.log("[AUTH CALLBACK] error present:", Boolean(exchangeError));
-        if (exchangeError) {
-          console.log("[AUTH CALLBACK] error message:", exchangeError.message);
-          setStatus("error");
-          setCaughtMessage(exchangeError.message);
-          return;
-        }
-        // "/" résout vers Mode Joueur (Foundation #1 : le mode démarre
-        // toujours à PLAYER, voir AppModeProvider) via le Stack.Protected
-        // d'app/_layout.tsx ; si le profil n'existe pas encore (première
-        // confirmation d'email), ce même guard redirige automatiquement vers
-        // /onboarding — même mécanisme que app/(auth)/login.tsx, qui ne
-        // navigue jamais manuellement non plus.
-        console.log("[AUTH CALLBACK] navigating to /");
-        router.replace("/");
-        console.log("[AUTH CALLBACK] navigation call completed");
-      })
-      .catch((err: unknown) => {
-        settled = true;
-        clearTimeout(timeoutId);
-        // exchangeCodeForSession peut rejeter (réseau, etc.) plutôt que
-        // résoudre avec { error } — sans ce catch, l'écran restait bloqué en
-        // "processing" indéfiniment et l'échec restait invisible.
-        console.log("[AUTH CALLBACK] exchange threw");
-        console.log("[AUTH CALLBACK] error message:", err instanceof Error ? err.message : String(err));
-        setStatus("error");
-        setCaughtMessage(err instanceof Error ? err.message : "Erreur réseau inattendue.");
+    Linking.getInitialURL()
+      .then((url) => apply(parseAuthCallbackUrl(url)))
+      .catch(() => {
+        if (!cancelled) setStatus("waiting");
       });
-  }, [code, error, router]);
+
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      void apply(parseAuthCallbackUrl(url));
+    });
+
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+    // params object identity changes; primitive fields are the contract
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.code, params.error, params.error_description, params.token_hash, params.type]);
 
   return (
     <SafeAreaView className="flex-1 items-center justify-center bg-bg px-8">
-      {status === "processing" ? (
-        <>
-          <ActivityIndicator color="#39ff8a" />
+      {status === "processing" && !session ? (
+        <View className="items-center">
+          <ActivityIndicator color={cpcHex.accent} />
           <Text className="mt-4 text-center text-fg-muted">Confirmation en cours…</Text>
-        </>
-      ) : (
-        <View className="items-center gap-4">
+        </View>
+      ) : status === "error" ? (
+        <View className="w-full max-w-sm items-center gap-4">
           <Text className="text-center text-fg">
-            {error_description ?? caughtMessage ?? "Ce lien de confirmation n'est plus valide."}
+            {message ?? "Ce lien de confirmation n'est plus valide."}
           </Text>
-          <Pressable onPress={() => router.replace("/(auth)/login")} className="rounded-xl bg-accent px-5 py-3">
-            <Text className="font-bold text-bg">Retour à la connexion</Text>
-          </Pressable>
+          <Button className="w-full min-h-[44px]" onPress={() => router.replace("/(auth)/login")}>
+            Retour à la connexion
+          </Button>
+        </View>
+      ) : (
+        <View className="w-full max-w-sm items-center gap-4">
+          <Text className="text-center font-display text-xl text-fg">
+            {session ? "Email confirmé" : "Tu as confirmé ?"}
+          </Text>
+          <Text className="text-center text-sm text-fg-muted">
+            {session
+              ? "On continue avec ton profil."
+              : "Si tu as ouvert le lien dans l'email, continue — pas besoin de relancer l'app."}
+          </Text>
+          <Button className="w-full min-h-[44px]" onPress={leave}>
+            Continuer
+          </Button>
         </View>
       )}
     </SafeAreaView>

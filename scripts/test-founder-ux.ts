@@ -158,4 +158,15 @@ test("onboarding cold start : validation + signup copy + mode door reset DEV", (
   assert.true(home.includes("Trouve un club LIVE"), "empty points to MM");
 });
 
+test("email confirm : session reprise sans reload Metro", () => {
+  const cb = read("app/auth/callback.tsx");
+  const auth = read("lib/providers/AuthProvider.tsx");
+  const login = read("app/(auth)/login.tsx");
+  assert.true(cb.includes("Email confirmé"), "leave spinner");
+  assert.true(cb.includes("Continuer"), "cta");
+  assert.true(auth.includes("consumeAuthCallbackUrl"), "deep link consume");
+  assert.true(auth.includes("AppState"), "resume");
+  assert.true(login.includes("Email confirmé, continuer"), "login cta");
+});
+
 console.log(`\n${passed} tests founder UX OK`);
