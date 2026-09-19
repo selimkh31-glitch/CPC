@@ -36,8 +36,6 @@ export const LINK_EA_CLUB_COPY = {
   unlink: "Délier",
   relink: "Chercher un autre club",
   linkedNow: (id: string) => `Club déjà lié · ID EA ${id}`,
-  confirmLead: (name: string, clubId: string) =>
-    `Tu liais ${name} · ID EA ${clubId}. Ton pseudo CPC doit être identique au nom joueur EA pour les stats.`,
   linkedSynced: "Club EA lié. Stats syncées.",
   linkedPending: "Club EA lié. Stats en attente de sync.",
   unlinked: "Club EA délié. Tu peux en chercher un autre.",

@@ -2,7 +2,8 @@
  * Claim EA — gate Confirmer + normalize ne mappe jamais regionId.
  * Lancer : npx tsx scripts/test-link-ea-club-form.ts
  */
-import { readFileSync } from "node:fs";
+// @ts-expect-error Expo tsconfig has no @types/node; tsx provides `fs` at runtime.
+import { readFileSync } from "fs";
 import { canCallLinkEaClub, formatVisibleMembers, isNumericEaClubId, parseNumericEaClubId } from "../lib/eaClubClaim";
 import { normalizeSearchResults } from "../supabase/functions/_shared/ea/normalize";
 

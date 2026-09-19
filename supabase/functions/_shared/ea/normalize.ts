@@ -1,4 +1,4 @@
-import type { EAClub, EAClubStats, EAMatch, EAMatchType, EAPlayerMatchStats, EAPlayerStats, EAProviderName } from "./types.ts";
+import type { EAClub, EAClubStats, EAMatch, EAMatchType, EAPlayer, EAPlayerMatchStats, EAPlayerStats, EAProviderName } from "./types.ts";
 
 /**
  * EA RAW -> ADAPTER -> NORMALIZED CPC TYPES (mission section 7).
